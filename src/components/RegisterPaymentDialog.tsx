@@ -12,9 +12,10 @@ interface RegisterPaymentDialogProps {
   projectId: string;
   etapas: Array<{ id: string; nombre: string; orden: number }>;
   children: React.ReactNode;
+  onPaymentCreated?: () => void;
 }
 
-export function RegisterPaymentDialog({ projectId, etapas, children }: RegisterPaymentDialogProps) {
+export function RegisterPaymentDialog({ projectId, etapas, children, onPaymentCreated }: RegisterPaymentDialogProps) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     montoPagado: '',
@@ -50,6 +51,7 @@ export function RegisterPaymentDialog({ projectId, etapas, children }: RegisterP
         etapaId: 'none',
       });
       setComprobanteFile(null);
+      onPaymentCreated?.();
     }
   };
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -101,8 +102,12 @@ function WelcomeScreen() {
 
 // Project selection handled via Sidebar
 
-function PaymentSummary({ projectId }: { projectId: string }) {
-  const { payments, isLoading } = usePayments(projectId);
+function PaymentSummary({ projectId, refreshKey }: { projectId: string; refreshKey: number }) {
+  const { payments, isLoading, refetch } = usePayments(projectId);
+
+  React.useEffect(() => {
+    refetch();
+  }, [refreshKey, refetch]);
   const { role } = useUserRole();
 
   if (role !== 'admin') return null;
@@ -257,6 +262,7 @@ function DashboardContent() {
   const { data, isLoading, error, refetch } = useProjectSummary(selectedProjectId);
   const { projects, isLoading: projectsLoading } = useProjects();
   const { role, setRole } = useUserRole();
+  const [paymentsRefresh, setPaymentsRefresh] = useState(0);
 
   const showMoney = role === 'admin';
 
@@ -287,8 +293,9 @@ function DashboardContent() {
 
   // Project selected and data loaded - show dashboard
   const { proyecto, etapas, totalPagado, porcentajeAvance } = data;
-  const montoTotal = proyecto.monto_total_activo;
-  const pendiente = montoTotal - totalPagado;
+  const montoTotal = Number(proyecto.monto_total_activo ?? proyecto.presupuesto_total_usd ?? 0);
+  const totalPagadoNum = Number(totalPagado ?? 0);
+  const pendiente = montoTotal - totalPagadoNum;
   const moneda = proyecto.moneda;
 
   return (
@@ -318,7 +325,14 @@ function DashboardContent() {
 
           {/* Selección de proyecto ahora vive en el Sidebar */}
           {showMoney && (
-            <RegisterPaymentDialog projectId={proyecto.id} etapas={etapas.map(e => ({ id: e.id, nombre: e.nombre, orden: e.orden }))}>
+            <RegisterPaymentDialog
+              projectId={proyecto.id}
+              etapas={etapas.map(e => ({ id: e.id, nombre: e.nombre, orden: e.orden }))}
+              onPaymentCreated={() => {
+                refetch();
+                setPaymentsRefresh((v) => v + 1);
+              }}
+            >
               <Button className="gap-2">
                 <DollarSign className="h-4 w-4" />
                 Registrar Pago
@@ -401,7 +415,7 @@ function DashboardContent() {
 
         {showMoney && (
           <div className="md:col-span-1">
-            <PaymentSummary projectId={proyecto.id} />
+            <PaymentSummary projectId={proyecto.id} refreshKey={paymentsRefresh} />
           </div>
         )}
       </div>
