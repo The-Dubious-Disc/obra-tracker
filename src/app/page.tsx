@@ -292,8 +292,11 @@ function DashboardContent() {
   }
 
   // Project selected and data loaded - show dashboard
-  const { proyecto, etapas, totalPagado, porcentajeAvance } = data;
-  const montoTotal = Number(proyecto.monto_total_activo ?? proyecto.presupuesto_total_usd ?? 0);
+  const { proyecto, etapas, totalPagado, porcentajeAvance, presupuestoActivo } = data;
+  const projectAny = proyecto as Record<string, unknown>;
+  const montoActivo = projectAny.montoTotalActivo ?? projectAny.monto_total_activo ?? 0;
+  const presupuestoTotal = projectAny.presupuestoTotalUsd ?? projectAny.presupuesto_total_usd ?? montoActivo;
+  const montoTotal = Number(presupuestoActivo?.monto ?? montoActivo ?? presupuestoTotal ?? 0);
   const totalPagadoNum = Number(totalPagado ?? 0);
   const pendiente = montoTotal - totalPagadoNum;
   const moneda = proyecto.moneda;
@@ -340,11 +343,7 @@ function DashboardContent() {
             </RegisterPaymentDialog>
           )}
 
-          <Button variant="outline" size="icon" asChild>
-            <Link href="/projects/new">
-              <Plus className="h-4 w-4" />
-            </Link>
-          </Button>
+          {/* Nuevo proyecto solo desde Sidebar */}
         </div>
       </div>
 
