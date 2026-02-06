@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { LayoutDashboard, ListChecks, DraftingCompass, PlusCircle, X } from 'lucide-react'
 import { useProjects } from '@/hooks/useProject'
 import { useProjectSelection } from '@/contexts/ProjectContext'
+import { useUserRole } from '@/contexts/UserRoleContext'
+import type { UserRole } from '@/types/database.types'
 
 interface SidebarProps {
   open?: boolean
@@ -16,6 +18,7 @@ interface SidebarProps {
 export function Sidebar({ open = false, onClose }: SidebarProps) {
   const { projects, isLoading } = useProjects()
   const { selectedProjectId, setSelectedProjectId } = useProjectSelection()
+  const { role, setRole } = useUserRole()
 
   const content = (
     <div className="w-64 border-r bg-background h-full p-4 flex flex-col shadow-lg md:shadow-none">
@@ -26,24 +29,40 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         </Button>
       </div>
 
-      <div className="space-y-2 px-2 mb-6">
-        <div className="text-xs text-muted-foreground">Proyecto</div>
-        <Select
-          value={selectedProjectId || undefined}
-          onValueChange={(val) => setSelectedProjectId(val)}
-          disabled={isLoading || projects.length === 0}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder={isLoading ? 'Cargando...' : 'Seleccionar proyecto'} />
-          </SelectTrigger>
-          <SelectContent>
-            {projects.map(project => (
-              <SelectItem key={project.id} value={project.id}>
-                {project.nombre}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="space-y-4 px-2 mb-6">
+        <div className="space-y-2">
+          <div className="text-xs text-muted-foreground">Proyecto</div>
+          <Select
+            value={selectedProjectId || undefined}
+            onValueChange={(val) => setSelectedProjectId(val)}
+            disabled={isLoading || projects.length === 0}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={isLoading ? 'Cargando...' : 'Seleccionar proyecto'} />
+            </SelectTrigger>
+            <SelectContent>
+              {projects.map(project => (
+                <SelectItem key={project.id} value={project.id}>
+                  {project.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <div className="text-xs text-muted-foreground">Rol</div>
+          <Select value={role} onValueChange={(val) => setRole(val as UserRole)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Rol" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="admin">Administrador</SelectItem>
+              <SelectItem value="constructor">Constructor</SelectItem>
+              <SelectItem value="cliente">Cliente</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <nav className="space-y-2 flex-1">

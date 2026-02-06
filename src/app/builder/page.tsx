@@ -47,12 +47,12 @@ export default function TasksPage() {
 
   return (
     <div className="max-w-md mx-auto p-4 space-y-6 pb-24">
-      <header className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">Panel de Tareas</h1>
+      <header className="flex items-center justify-between">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold">Panel de Tareas</h1>
           <p className="text-muted-foreground">{summary.proyecto.nombre}</p>
         </div>
-        <Button variant="outline" className="gap-2" onClick={handleUploadClick}>
+        <Button className="gap-2" onClick={handleUploadClick}>
           <Camera className="h-4 w-4" />
           Subir reporte
         </Button>

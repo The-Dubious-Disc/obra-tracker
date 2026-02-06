@@ -3,18 +3,21 @@
 import { useState } from 'react'
 import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useProjectSummary, useProjects, usePayments, useStageTasks } from "@/hooks/useProject";
+import { useProjectSummary, useProjects, usePayments, useStageTasks, useBudgetUpdate, useBudgetHistory } from "@/hooks/useProject";
 import { useProjectSelection } from '@/contexts/ProjectContext';
-import Link from 'next/link';
-import type { EtapaConProgreso, UserRole } from '@/types/database.types';
+import type { EtapaConProgreso } from '@/types/database.types';
 import { AlertCircle, RefreshCw, Plus, DollarSign, Calendar, ChevronDown, ChevronUp, CheckCircle2, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 // Wizard replaced inline dialog for project creation
 import { RegisterPaymentDialog } from "@/components/RegisterPaymentDialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// role selector moved to sidebar
 import { useUserRole } from '@/contexts/UserRoleContext';
 
 // Project selection is managed via ProjectContext
@@ -91,12 +94,7 @@ function WelcomeScreen() {
         </p>
       </div>
       <div className="flex gap-4">
-        <Button size="lg" className="gap-2" asChild>
-          <Link href="/projects/new">
-            <Plus className="h-5 w-5" />
-            Nuevo Proyecto
-          </Link>
-        </Button>
+        {/* Creación solo desde Sidebar */}
       </div>
     </div>
   );
@@ -161,6 +159,118 @@ function PaymentSummary({ projectId, refreshKey }: { projectId: string; refreshK
                       {payment.comentario}
                     </p>
                   )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function BudgetHistoryCard({ projectId, onUpdated }: { projectId: string; onUpdated: () => void }) {
+  const { history, isLoading, refetch } = useBudgetHistory(projectId);
+  const { updateProjectBudget, isUpdating, error } = useBudgetUpdate();
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newAmount = parseFloat(amount);
+    if (!newAmount || newAmount <= 0) return;
+
+    const ok = await updateProjectBudget(projectId, newAmount, note || 'Nuevo presupuesto');
+    if (ok) {
+      setOpen(false);
+      setAmount('');
+      setNote('');
+      await refetch();
+      onUpdated();
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex items-center justify-between gap-2 sm:flex-row">
+        <div>
+          <CardTitle>Presupuestos</CardTitle>
+          <CardDescription>Historial de versiones</CardDescription>
+        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nuevo presupuesto
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[480px]">
+            <DialogHeader>
+              <DialogTitle>Nuevo presupuesto</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="budget-amount">Monto (USD)</Label>
+                <Input
+                  id="budget-amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="budget-note">Nota del cambio</Label>
+                <Textarea
+                  id="budget-note"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Ej: Ajuste por cambios de materiales"
+                />
+              </div>
+              {error && (
+                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                  {error}
+                </div>
+              )}
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" className="flex-1" onClick={() => setOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" className="flex-1" disabled={isUpdating}>
+                  {isUpdating ? 'Guardando...' : 'Guardar'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-8 w-full" />
+            ))}
+          </div>
+        ) : history.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No hay versiones de presupuesto.</p>
+        ) : (
+          <div className="space-y-3">
+            {history.map((item) => {
+              const itemAny = item as Record<string, unknown>;
+              const monto = Number(itemAny.monto ?? 0);
+              const notas = String(itemAny.notasCambio ?? itemAny.notas_cambio ?? '');
+              const fecha = String(itemAny.fechaCreacion ?? itemAny.fecha_creacion ?? '');
+              return (
+                <div key={item.id} className="flex items-center justify-between border-b pb-2 last:border-0">
+                  <div>
+                    <div className="text-sm font-medium">{formatCurrency(monto, 'USD')}</div>
+                    <div className="text-xs text-muted-foreground">{notas}</div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">{formatDate(fecha)}</div>
                 </div>
               )
             })}
@@ -268,7 +378,7 @@ function DashboardContent() {
   const { selectedProjectId } = useProjectSelection();
   const { data, isLoading, error, refetch } = useProjectSummary(selectedProjectId);
   const { projects, isLoading: projectsLoading } = useProjects();
-  const { role, setRole } = useUserRole();
+  const { role } = useUserRole();
   const [paymentsRefresh, setPaymentsRefresh] = useState(0);
 
   const showMoney = role === 'admin';
@@ -311,47 +421,26 @@ function DashboardContent() {
   return (
     <div className="space-y-8">
       {/* Header & Role Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground">
-            Resumen general: <span className="font-medium">{proyecto.nombre}</span>
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-3xl font-bold">Dashboard</h2>
+          <p className="text-muted-foreground">Resumen general: <span className="font-medium">{proyecto.nombre}</span></p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Role Switcher */}
-          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
-             <Select value={role} onValueChange={(val: string) => setRole(val as UserRole)}>
-               <SelectTrigger className="w-[140px] border-0 bg-transparent h-8 focus:ring-0">
-                 <SelectValue placeholder="Rol" />
-               </SelectTrigger>
-               <SelectContent>
-                 <SelectItem value="admin">Administrador</SelectItem>
-                 <SelectItem value="constructor">Constructor</SelectItem>
-                 <SelectItem value="cliente">Cliente</SelectItem>
-               </SelectContent>
-             </Select>
-          </div>
-
-          {/* Selección de proyecto ahora vive en el Sidebar */}
-          {showMoney && (
-            <RegisterPaymentDialog
-              projectId={proyecto.id}
-              etapas={etapas.map(e => ({ id: e.id, nombre: e.nombre, orden: e.orden }))}
-              onPaymentCreated={() => {
-                refetch();
-                setPaymentsRefresh((v) => v + 1);
-              }}
-            >
-              <Button className="gap-2">
-                <DollarSign className="h-4 w-4" />
-                Registrar Pago
-              </Button>
-            </RegisterPaymentDialog>
-          )}
-
-          {/* Nuevo proyecto solo desde Sidebar */}
-        </div>
+        {showMoney && (
+          <RegisterPaymentDialog
+            projectId={proyecto.id}
+            etapas={etapas.map(e => ({ id: e.id, nombre: e.nombre, orden: e.orden }))}
+            onPaymentCreated={() => {
+              refetch();
+              setPaymentsRefresh((v) => v + 1);
+            }}
+          >
+            <Button className="gap-2">
+              <DollarSign className="h-4 w-4" />
+              Registrar Pago
+            </Button>
+          </RegisterPaymentDialog>
+        )}
       </div>
 
       {/* Money Cards (Admin Only) */}
@@ -420,7 +509,11 @@ function DashboardContent() {
         </div>
 
         {showMoney && (
-          <div className="md:col-span-1">
+          <div className="md:col-span-1 space-y-4">
+            <BudgetHistoryCard projectId={proyecto.id} onUpdated={() => {
+              refetch();
+              setPaymentsRefresh((v) => v + 1);
+            }} />
             <PaymentSummary projectId={proyecto.id} refreshKey={paymentsRefresh} />
           </div>
         )}
