@@ -11,7 +11,7 @@ interface PlanViewerProps {
   proyectoId?: string; // Required for saving new annotations
 }
 
-export default function PlanViewer({ planoId, imageUrl, proyectoId }: PlanViewerProps) {
+export default function PlanViewer({ imageUrl, proyectoId }: PlanViewerProps) {
   const [pins, setPins] = useState<AnotacionPlano[]>([]);
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -23,7 +23,7 @@ export default function PlanViewer({ planoId, imageUrl, proyectoId }: PlanViewer
         return null;
       }
       return createClient();
-    } catch (e) {
+    } catch {
       return null;
     }
   }, []);
