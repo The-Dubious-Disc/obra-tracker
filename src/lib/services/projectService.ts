@@ -8,6 +8,13 @@ import type {
   EtapaConProgreso,
   ProjectSummary 
 } from '@/types/database.types'
+import type { 
+  ProyectoSelect, 
+  EtapaSelect, 
+  TareaSelect, 
+  PagoSelect, 
+  PresupuestoVersionSelect 
+} from '@/lib/db/schema'
 
 /**
  * Get a comprehensive project summary
@@ -21,15 +28,15 @@ export async function getProjectSummary(projectId: string): Promise<ProjectSumma
     if (!proyecto) return null;
 
     // 2. Fetch stages
-    const etapasData = await db.select().from(etapas)
+    const etapasData: EtapaSelect[] = await db.select().from(etapas)
       .where(eq(etapas.proyectoId, projectId))
       .orderBy(etapas.orden);
 
     // 3. Fetch tasks and payments
     const etapaIds = etapasData.map(e => e.id);
     
-    let tareasData: (typeof tareas.$inferSelect)[] = [];
-    let pagosData: (typeof pagos.$inferSelect)[] = [];
+    let tareasData: TareaSelect[] = [];
+    let pagosData: PagoSelect[] = [];
 
     if (etapaIds.length > 0) {
       tareasData = await db.select().from(tareas).where(inArray(tareas.etapaId, etapaIds));
@@ -98,13 +105,13 @@ function calculateWeightedProgress(etapas: EtapaConProgreso[]): number {
 }
 
 export async function getAllProjects(): Promise<Proyecto[]> {
-  const data = await db.select().from(proyectos).orderBy(proyectos.createdAt);
+  const data: ProyectoSelect[] = await db.select().from(proyectos).orderBy(proyectos.createdAt);
   return data as unknown as Proyecto[];
 }
 
 export async function getBudgetHistory(projectId: string): Promise<PresupuestoVersion[]> {
   try {
-    const data = await db.select().from(presupuestoVersiones)
+    const data: PresupuestoVersionSelect[] = await db.select().from(presupuestoVersiones)
       .where(eq(presupuestoVersiones.proyectoId, projectId))
       .orderBy(presupuestoVersiones.fechaCreacion);
     return data as unknown as PresupuestoVersion[];

@@ -15,12 +15,28 @@ export default function PlanViewer({ planoId, imageUrl, proyectoId }: PlanViewer
   const [pins, setPins] = useState<AnotacionPlano[]>([]);
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
-  const supabase = useMemo(() => createClient(), []);
+  
+  // Initialize supabase client safely to avoid build errors when env vars are missing
+  const supabase = useMemo(() => {
+    try {
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        return null;
+      }
+      return createClient();
+    } catch (e) {
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
     
     const fetchPins = async () => {
+      if (!supabase) {
+        if (isMounted) setLoading(false);
+        return;
+      }
+
       setLoading(true);
       // Query by plano_url since that's what identifies the plan
       const { data, error } = await supabase
@@ -46,7 +62,7 @@ export default function PlanViewer({ planoId, imageUrl, proyectoId }: PlanViewer
   }, [imageUrl, supabase]);
 
   const handleImageClick = async (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !supabase) return;
     
     if (!proyectoId) {
       alert('No hay proyecto asociado para guardar anotaciones');
@@ -61,7 +77,6 @@ export default function PlanViewer({ planoId, imageUrl, proyectoId }: PlanViewer
     if (!comentario) return;
 
     // Note: In production, creado_por should be the authenticated user's ID
-    // For now, this will fail without auth - which is expected behavior
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
       alert('Debes iniciar sesión para agregar anotaciones');
@@ -122,6 +137,12 @@ export default function PlanViewer({ planoId, imageUrl, proyectoId }: PlanViewer
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/50">
             <span>Cargando anotaciones...</span>
+          </div>
+        )}
+
+        {!supabase && !loading && (
+          <div className="absolute top-2 right-2 bg-yellow-100 text-yellow-800 text-[10px] px-2 py-1 rounded border border-yellow-200">
+            Mode: Offline (No DB)
           </div>
         )}
       </div>

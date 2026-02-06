@@ -68,6 +68,14 @@ export const anotacionesPlanos = pgTable('anotaciones_planos', {
   coordX: doublePrecision('coord_x').notNull(),
   coordY: doublePrecision('coord_y').notNull(),
   comentario: text('comentario').notNull(),
-  creadoPor: uuid('creado_por').notNull(), // Assuming auth handling remains similar but without auth.users() link for now
+  creadoPor: uuid('creado_por').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
+
+// Types for Select and Insert
+export type ProyectoSelect = typeof proyectos.$inferSelect;
+export type ProyectoInsert = typeof proyectos.$inferInsert;
+export type EtapaSelect = typeof etapas.$inferSelect;
+export type TareaSelect = typeof tareas.$inferSelect;
+export type PagoSelect = typeof pagos.$inferSelect;
+export type PresupuestoVersionSelect = typeof presupuestoVersiones.$inferSelect;
