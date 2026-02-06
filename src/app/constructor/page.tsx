@@ -1,6 +1,9 @@
 'use client'
 
 import React, { useRef } from 'react'
+// Forzamos que Next.js no intente optimizaciones estáticas agresivas aquí si hay problemas de salida
+export const dynamic = 'force-dynamic'
+
 import { useProjects, useProjectSummary } from '@/hooks/useProject'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
