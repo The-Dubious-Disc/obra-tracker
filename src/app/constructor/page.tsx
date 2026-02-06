@@ -1,18 +1,19 @@
 'use client'
 
 import React, { useRef } from 'react'
-// Forzamos que Next.js no intente optimizaciones estáticas agresivas aquí si hay problemas de salida
-export const dynamic = 'force-dynamic'
-
 import { useProjects, useProjectSummary } from '@/hooks/useProject'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Camera, Loader2, CheckCircle2 } from 'lucide-react'
 
+import { cookies } from 'next/headers'
+
 export default function ConstructorPage() {
+  // Fix para Vercel: Forzamos ruta dinámica para evitar error 'Unsupported output type: undefined'
+  const _ = cookies()
+  
   const { projects, isLoading: projectsLoading } = useProjects()
-  // Por ahora tomamos el primer proyecto para la vista de constructor
   const activeProjectId = projects.length > 0 ? projects[0].id : null
   const { data: summary, isLoading: summaryLoading } = useProjectSummary(activeProjectId)
   
@@ -71,8 +72,6 @@ export default function ConstructorPage() {
                 {etapa.nombre}
               </h3>
               
-              {/* Nota: En un sistema real, mapearíamos summary.tareas, 
-                  pero por ahora simulamos las tareas de la etapa para la UI */}
               <div className="space-y-2">
                 <Card className="overflow-hidden border-l-4 border-l-blue-500 shadow-sm">
                   <CardContent className="p-4 flex items-center gap-4">
@@ -105,7 +104,6 @@ export default function ConstructorPage() {
         </div>
       </section>
 
-      {/* Floating Action Button for Upload */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-md px-4">
         <input 
           type="file" 
