@@ -5,11 +5,10 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProjectSummary } from "@/hooks/useProject";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, RefreshCw, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-// TODO: Replace with actual project selection logic (e.g., from URL params or context)
-const DEMO_PROJECT_ID = process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || null;
+const DEFAULT_PROJECT_ID = process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || null;
 
 function formatCurrency(amount: number, currency: string = 'UYU'): string {
   return new Intl.NumberFormat('es-UY', {
@@ -26,7 +25,6 @@ function getStatusFromProgress(progress: number): string {
   return 'Pendiente';
 }
 
-// Loading skeleton component
 function DashboardSkeleton() {
   return (
     <div className="space-y-8">
@@ -34,8 +32,6 @@ function DashboardSkeleton() {
         <Skeleton className="h-9 w-48 mb-2" />
         <Skeleton className="h-5 w-72" />
       </div>
-
-      {/* KPIs Skeleton */}
       <div className="grid gap-4 md:grid-cols-3">
         {[1, 2, 3].map((i) => (
           <Card key={i}>
@@ -48,43 +44,10 @@ function DashboardSkeleton() {
           </Card>
         ))}
       </div>
-
-      {/* Progress Skeleton */}
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-36" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex justify-between">
-            <Skeleton className="h-4 w-28" />
-            <Skeleton className="h-4 w-12" />
-          </div>
-          <Skeleton className="h-3 w-full" />
-        </CardContent>
-      </Card>
-
-      {/* Etapas Skeleton */}
-      <div className="space-y-4">
-        <Skeleton className="h-7 w-44" />
-        <div className="grid gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardContent className="flex items-center justify-between p-4">
-                <div className="space-y-2">
-                  <Skeleton className="h-5 w-32" />
-                  <Skeleton className="h-4 w-24" />
-                </div>
-                <Skeleton className="h-6 w-20" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
 
-// Error component
 function DashboardError({ error, onRetry }: { error: string; onRetry: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
@@ -99,37 +62,40 @@ function DashboardError({ error, onRetry }: { error: string; onRetry: () => void
   );
 }
 
-// No project selected component
-function NoProjectSelected() {
+function WelcomeScreen() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-      <h2 className="text-xl font-semibold">No hay proyecto seleccionado</h2>
-      <p className="text-muted-foreground text-center max-w-md">
-        Configura NEXT_PUBLIC_DEFAULT_PROJECT_ID en tu archivo .env.local o selecciona un proyecto.
-      </p>
+    <div className="flex flex-col items-center justify-center min-h-[500px] space-y-6 text-center">
+      <div className="space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">Bienvenido a Obra Tracker</h2>
+        <p className="text-muted-foreground max-w-lg">
+          Parece que aún no tienes proyectos activos. Comienza creando tu primer proyecto para realizar el seguimiento de tus obras.
+        </p>
+      </div>
+      <div className="flex gap-4">
+        <Button size="lg" className="gap-2">
+          <Plus className="h-5 w-5" />
+          Nuevo Proyecto
+        </Button>
+        <Button size="lg" variant="outline">
+          Explorar Proyectos
+        </Button>
+      </div>
     </div>
   );
 }
 
 export default function Dashboard() {
-  const { data, isLoading, error, refetch } = useProjectSummary(DEMO_PROJECT_ID);
+  // Use null or DEFAULT_PROJECT_ID
+  const { data, isLoading, error, refetch } = useProjectSummary(DEFAULT_PROJECT_ID);
 
-  // Loading state
-  if (isLoading) {
-    return <DashboardSkeleton />;
+  if (isLoading) return <DashboardSkeleton />;
+  if (error) return <DashboardError error={error} onRetry={refetch} />;
+
+  // If no project is selected or database is empty, show welcome screen
+  if (!DEFAULT_PROJECT_ID || !data) {
+    return <WelcomeScreen />;
   }
 
-  // Error state
-  if (error) {
-    return <DashboardError error={error} onRetry={refetch} />;
-  }
-
-  // No project selected
-  if (!DEMO_PROJECT_ID || !data) {
-    return <NoProjectSelected />;
-  }
-
-  // Derived values from real data
   const { proyecto, etapas, totalPagado, porcentajeAvance } = data;
   const montoTotal = proyecto.monto_total_activo;
   const pendiente = montoTotal - totalPagado;
@@ -144,7 +110,6 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* KPIs */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -172,7 +137,6 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Avance de Obra */}
       <Card>
         <CardHeader>
           <CardTitle>Avance de Obra</CardTitle>
@@ -186,50 +150,28 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Lista de Etapas */}
       <div className="space-y-4">
         <h3 className="text-xl font-semibold">Etapas del Proyecto</h3>
-        {etapas.length === 0 ? (
-          <Card>
-            <CardContent className="p-4 text-center text-muted-foreground">
-              No hay etapas definidas para este proyecto.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4">
-            {etapas
-              .sort((a, b) => a.orden - b.orden)
-              .map((etapa) => {
-                const status = getStatusFromProgress(etapa.porcentajeCompletado);
-                return (
-                  <Card key={etapa.id}>
-                    <CardContent className="flex items-center justify-between p-4">
-                      <div className="space-y-1">
-                        <p className="font-medium leading-none">{etapa.nombre}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Progreso: {Math.round(etapa.porcentajeCompletado)}%
-                          {etapa.tareasTotal > 0 && (
-                            <span className="ml-2">
-                              ({etapa.tareasCompletadas}/{etapa.tareasTotal} tareas)
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      <Badge 
-                        variant={
-                          status === "Completado" ? "default" : 
-                          status === "En Proceso" ? "secondary" : 
-                          "outline"
-                        }
-                      >
-                        {status}
-                      </Badge>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-          </div>
-        )}
+        <div className="grid gap-4">
+          {etapas.sort((a, b) => a.orden - b.orden).map((etapa) => {
+            const status = getStatusFromProgress(etapa.porcentajeCompletado);
+            return (
+              <Card key={etapa.id}>
+                <CardContent className="flex items-center justify-between p-4">
+                  <div className="space-y-1">
+                    <p className="font-medium leading-none">{etapa.nombre}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Progreso: {Math.round(etapa.porcentajeCompletado)}%
+                    </p>
+                  </div>
+                  <Badge variant={status === "Completado" ? "default" : status === "En Proceso" ? "secondary" : "outline"}>
+                    {status}
+                  </Badge>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
