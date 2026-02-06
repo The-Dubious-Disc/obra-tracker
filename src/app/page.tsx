@@ -1,12 +1,14 @@
 'use client'
 
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useProjectSummary } from "@/hooks/useProject";
-import { AlertCircle, RefreshCw, Plus } from "lucide-react";
+import { useProjectSummary, useProjects } from "@/hooks/useProject";
+import { AlertCircle, RefreshCw, Plus, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CreateProjectDialog } from "@/components/CreateProjectDialog";
 
 const DEFAULT_PROJECT_ID = process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || null;
 
@@ -62,7 +64,7 @@ function DashboardError({ error, onRetry }: { error: string; onRetry: () => void
   );
 }
 
-function WelcomeScreen() {
+function WelcomeScreen({ onProjectCreated }: { onProjectCreated: (id: string) => void }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[500px] space-y-6 text-center">
       <div className="space-y-2">
@@ -72,30 +74,100 @@ function WelcomeScreen() {
         </p>
       </div>
       <div className="flex gap-4">
-        <Button size="lg" className="gap-2">
-          <Plus className="h-5 w-5" />
-          Nuevo Proyecto
-        </Button>
-        <Button size="lg" variant="outline">
-          Explorar Proyectos
-        </Button>
+        <CreateProjectDialog onProjectCreated={onProjectCreated}>
+          <Button size="lg" className="gap-2">
+            <Plus className="h-5 w-5" />
+            Nuevo Proyecto
+          </Button>
+        </CreateProjectDialog>
       </div>
     </div>
   );
 }
 
+function ProjectSelector({ projects, onSelect, onProjectCreated }: { 
+  projects: Array<{ id: string; nombre: string; moneda: string; monto_total_activo: number }>
+  onSelect: (id: string) => void
+  onProjectCreated: (id: string) => void
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[500px] space-y-6">
+      <div className="space-y-2 text-center">
+        <h2 className="text-3xl font-bold tracking-tight">Tus Proyectos</h2>
+        <p className="text-muted-foreground">
+          Selecciona un proyecto para ver sus detalles o crea uno nuevo.
+        </p>
+      </div>
+      
+      <div className="grid gap-4 w-full max-w-2xl">
+        {projects.map((project) => (
+          <Card 
+            key={project.id} 
+            className="cursor-pointer hover:border-primary transition-colors"
+            onClick={() => onSelect(project.id)}
+          >
+            <CardContent className="flex items-center justify-between p-6">
+              <div className="space-y-1">
+                <h3 className="font-semibold text-lg">{project.nombre}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Presupuesto: {formatCurrency(Number(project.monto_total_activo), project.moneda)}
+                </p>
+              </div>
+              <Button variant="ghost" size="icon">
+                <FolderOpen className="h-5 w-5" />
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <CreateProjectDialog onProjectCreated={onProjectCreated}>
+        <Button variant="outline" className="gap-2">
+          <Plus className="h-4 w-4" />
+          Crear Nuevo Proyecto
+        </Button>
+      </CreateProjectDialog>
+    </div>
+  );
+}
+
 export default function Dashboard() {
-  // Use null or DEFAULT_PROJECT_ID
-  const { data, isLoading, error, refetch } = useProjectSummary(DEFAULT_PROJECT_ID);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(DEFAULT_PROJECT_ID);
+  const { data, isLoading, error, refetch } = useProjectSummary(selectedProjectId);
+  const { projects, isLoading: projectsLoading, refetch: refetchProjects } = useProjects();
 
-  if (isLoading) return <DashboardSkeleton />;
-  if (error) return <DashboardError error={error} onRetry={refetch} />;
+  const handleProjectCreated = async (projectId: string) => {
+    await refetchProjects();
+    setSelectedProjectId(projectId);
+  };
 
-  // If no project is selected or database is empty, show welcome screen
-  if (!DEFAULT_PROJECT_ID || !data) {
-    return <WelcomeScreen />;
+  // Loading state
+  if (isLoading || projectsLoading) {
+    return <DashboardSkeleton />;
   }
 
+  // Error state
+  if (error) {
+    return <DashboardError error={error} onRetry={refetch} />;
+  }
+
+  // No projects at all - show welcome screen
+  if (projects.length === 0) {
+    return <WelcomeScreen onProjectCreated={handleProjectCreated} />;
+  }
+
+  // Has projects but none selected - show project selector
+  if (!selectedProjectId || !data) {
+    return (
+      <ProjectSelector 
+        projects={projects} 
+        onSelect={setSelectedProjectId}
+        onProjectCreated={handleProjectCreated}
+      />
+    );
+  }
+
+  // Project selected and data loaded - show dashboard
   const { proyecto, etapas, totalPagado, porcentajeAvance } = data;
   const montoTotal = proyecto.monto_total_activo;
   const pendiente = montoTotal - totalPagado;
@@ -103,11 +175,23 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-        <p className="text-muted-foreground">
-          Resumen general: <span className="font-medium">{proyecto.nombre}</span>
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+          <p className="text-muted-foreground">
+            Resumen general: <span className="font-medium">{proyecto.nombre}</span>
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setSelectedProjectId(null)}>
+            Cambiar Proyecto
+          </Button>
+          <CreateProjectDialog onProjectCreated={handleProjectCreated}>
+            <Button variant="outline" size="icon">
+              <Plus className="h-4 w-4" />
+            </Button>
+          </CreateProjectDialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -152,26 +236,47 @@ export default function Dashboard() {
 
       <div className="space-y-4">
         <h3 className="text-xl font-semibold">Etapas del Proyecto</h3>
-        <div className="grid gap-4">
-          {etapas.sort((a, b) => a.orden - b.orden).map((etapa) => {
-            const status = getStatusFromProgress(etapa.porcentajeCompletado);
-            return (
-              <Card key={etapa.id}>
-                <CardContent className="flex items-center justify-between p-4">
-                  <div className="space-y-1">
-                    <p className="font-medium leading-none">{etapa.nombre}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Progreso: {Math.round(etapa.porcentajeCompletado)}%
-                    </p>
-                  </div>
-                  <Badge variant={status === "Completado" ? "default" : status === "En Proceso" ? "secondary" : "outline"}>
-                    {status}
-                  </Badge>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+        {etapas.length === 0 ? (
+          <Card>
+            <CardContent className="p-4 text-center text-muted-foreground">
+              No hay etapas definidas para este proyecto.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4">
+            {etapas
+              .sort((a, b) => a.orden - b.orden)
+              .map((etapa) => {
+                const status = getStatusFromProgress(etapa.porcentajeCompletado);
+                return (
+                  <Card key={etapa.id}>
+                    <CardContent className="flex items-center justify-between p-4">
+                      <div className="space-y-1">
+                        <p className="font-medium leading-none">{etapa.nombre}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Progreso: {Math.round(etapa.porcentajeCompletado)}%
+                          {etapa.tareasTotal > 0 && (
+                            <span className="ml-2">
+                              ({etapa.tareasCompletadas}/{etapa.tareasTotal} tareas)
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <Badge 
+                        variant={
+                          status === "Completado" ? "default" : 
+                          status === "En Proceso" ? "secondary" : 
+                          "outline"
+                        }
+                      >
+                        {status}
+                      </Badge>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+          </div>
+        )}
       </div>
     </div>
   );

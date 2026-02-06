@@ -13,12 +13,53 @@ import type {
   EtapaSelect, 
   TareaSelect, 
   PagoSelect, 
-  PresupuestoVersionSelect 
+  PresupuestoVersionSelect
 } from '@/lib/db/schema'
 
 export const dynamic = 'force-dynamic'
 
 import { unstable_noStore as noStore } from 'next/cache';
+
+/**
+ * Create a new project
+ */
+export async function createProject(
+  nombre: string, 
+  moneda: string = 'UYU',
+  montoInicial: number = 0
+): Promise<{ success: boolean; projectId?: string; error?: string }> {
+  noStore();
+  try {
+    // Insert project
+    const [newProject] = await db.insert(proyectos).values({
+      nombre,
+      moneda,
+      montoTotalActivo: montoInicial.toString(),
+    }).returning({ id: proyectos.id });
+
+    if (!newProject) {
+      return { success: false, error: 'Failed to create project' };
+    }
+
+    // Create initial budget version if amount > 0
+    if (montoInicial > 0) {
+      await db.insert(presupuestoVersiones).values({
+        proyectoId: newProject.id,
+        monto: montoInicial.toString(),
+        notasCambio: 'Presupuesto inicial',
+        esActiva: true,
+      });
+    }
+
+    return { success: true, projectId: newProject.id };
+  } catch (error) {
+    console.error('Error in createProject:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    };
+  }
+}
 
 /**
  * Get a comprehensive project summary

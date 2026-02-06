@@ -7,7 +7,8 @@ import {
   getProjectSummary, 
   getAllProjects, 
   updateBudget,
-  getBudgetHistory 
+  getBudgetHistory,
+  createProject
 } from '@/lib/services/projectService'
 
 // ============================================
@@ -90,6 +91,44 @@ export function useProjects(): UseProjectsResult {
   }, [fetchData])
 
   return { projects, isLoading, error, refetch: fetchData }
+}
+
+// ============================================
+// useCreateProject - Create a new project
+// ============================================
+interface UseCreateProjectResult {
+  createNewProject: (nombre: string, moneda: string, montoInicial: number) => Promise<string | null>
+  isCreating: boolean
+  error: string | null
+}
+
+export function useCreateProject(): UseCreateProjectResult {
+  const [isCreating, setIsCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const createNewProject = useCallback(
+    async (nombre: string, moneda: string, montoInicial: number): Promise<string | null> => {
+      setIsCreating(true)
+      setError(null)
+
+      try {
+        const result = await createProject(nombre, moneda, montoInicial)
+        if (!result.success) {
+          setError(result.error || 'Create failed')
+          return null
+        }
+        return result.projectId || null
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Create failed')
+        return null
+      } finally {
+        setIsCreating(false)
+      }
+    },
+    []
+  )
+
+  return { createNewProject, isCreating, error }
 }
 
 // ============================================
