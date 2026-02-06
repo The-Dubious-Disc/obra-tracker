@@ -3,13 +3,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { ProjectSummary, Proyecto, PresupuestoVersion } from '@/types/database.types'
-import { 
-  getProjectSummary, 
-  getAllProjects, 
-  updateBudget,
-  getBudgetHistory,
-  createProject
-} from '@/lib/services/projectService'
 
 // ============================================
 // useProjectSummary - Fetch project with full summary
@@ -37,12 +30,12 @@ export function useProjectSummary(projectId: string | null): UseProjectSummaryRe
     setError(null)
 
     try {
-      const result = await getProjectSummary(projectId)
-      if (result) {
-        setData(result)
-      } else {
-        setError('Project not found')
+      const response = await fetch(`/api/projects/${projectId}`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
+      const result = await response.json()
+      setData(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch project')
     } finally {
@@ -77,7 +70,11 @@ export function useProjects(): UseProjectsResult {
     setError(null)
 
     try {
-      const result = await getAllProjects()
+      const response = await fetch('/api/projects')
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const result = await response.json()
       setProjects(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch projects')
@@ -112,11 +109,20 @@ export function useCreateProject(): UseCreateProjectResult {
       setError(null)
 
       try {
-        const result = await createProject(nombre, moneda, montoInicial)
-        if (!result.success) {
-          setError(result.error || 'Create failed')
-          return null
+        const response = await fetch('/api/projects', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ nombre, moneda, montoInicial }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
         }
+
+        const result = await response.json()
         return result.projectId || null
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Create failed')
@@ -150,11 +156,19 @@ export function useBudgetUpdate(): UseBudgetUpdateResult {
       setError(null)
 
       try {
-        const result = await updateBudget(projectId, newAmount, note)
-        if (!result.success) {
-          setError(result.error || 'Update failed')
-          return false
+        const response = await fetch(`/api/projects/${projectId}/budget`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ newAmount, note }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
         }
+
         return true
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Update failed')
@@ -195,7 +209,11 @@ export function useBudgetHistory(projectId: string | null): UseBudgetHistoryResu
     setError(null)
 
     try {
-      const result = await getBudgetHistory(projectId)
+      const response = await fetch(`/api/projects/${projectId}/budget/history`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const result = await response.json()
       setHistory(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch budget history')
