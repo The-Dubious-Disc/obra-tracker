@@ -29,7 +29,9 @@ function formatCurrency(amount: number, currency: string = 'UYU'): string {
 }
 
 function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('es-UY', {
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return 'Fecha inválida';
+  return date.toLocaleDateString('es-UY', {
     day: 'numeric',
     month: 'short',
     year: 'numeric'
@@ -138,25 +140,30 @@ function PaymentSummary({ projectId, refreshKey }: { projectId: string; refreshK
           <p className="text-sm text-muted-foreground text-center py-4">No hay pagos registrados.</p>
         ) : (
           <div className="space-y-4">
-            {payments.slice(0, 5).map((payment) => (
-              <div key={payment.id} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-sm">{formatCurrency(Number(payment.monto_pagado), payment.moneda)}</p>
-                    <Badge variant="outline" className="text-xs">{payment.estado}</Badge>
+            {payments.slice(0, 5).map((payment) => {
+              const paymentAny = payment as Record<string, unknown>;
+              const monto = Number((paymentAny.montoPagado ?? paymentAny.monto_pagado ?? 0) as number);
+              const fecha = String(paymentAny.fechaPago ?? paymentAny.fecha_pago ?? '');
+              return (
+                <div key={payment.id} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-sm">{formatCurrency(monto, payment.moneda)}</p>
+                      <Badge variant="outline" className="text-xs">{payment.estado}</Badge>
+                    </div>
+                    <div className="flex items-center text-xs text-muted-foreground gap-2">
+                      <Calendar className="h-3 w-3" />
+                      {formatDate(fecha)}
+                    </div>
                   </div>
-                  <div className="flex items-center text-xs text-muted-foreground gap-2">
-                    <Calendar className="h-3 w-3" />
-                    {formatDate(payment.fecha_pago)}
-                  </div>
+                  {payment.comentario && (
+                    <p className="text-xs text-muted-foreground max-w-[150px] truncate hidden sm:block">
+                      {payment.comentario}
+                    </p>
+                  )}
                 </div>
-                {payment.comentario && (
-                  <p className="text-xs text-muted-foreground max-w-[150px] truncate hidden sm:block">
-                    {payment.comentario}
-                  </p>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </CardContent>
