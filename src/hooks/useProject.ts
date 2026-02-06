@@ -529,3 +529,44 @@ export function useStageTasks(etapaId: string | null): UseStageTasksResult {
 
   return { tasks, isLoading, error, refetch: fetchData }
 }
+
+// ============================================
+// useUpdateTask - Update task status
+// ============================================
+interface UseUpdateTaskResult {
+  updateTask: (taskId: string, estado: 'pendiente' | 'en_progreso' | 'completada') => Promise<boolean>
+  isUpdating: boolean
+  error: string | null
+}
+
+export function useUpdateTask(): UseUpdateTaskResult {
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const updateTask = useCallback(async (taskId: string, estado: 'pendiente' | 'en_progreso' | 'completada') => {
+    setIsUpdating(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Update failed')
+      }
+
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Update failed')
+      return false
+    } finally {
+      setIsUpdating(false)
+    }
+  }, [])
+
+  return { updateTask, isUpdating, error }
+}

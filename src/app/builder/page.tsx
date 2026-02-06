@@ -1,12 +1,85 @@
 'use client'
 
-import React, { useRef } from 'react'
-import { useProjects, useProjectSummary } from '@/hooks/useProject'
+import React, { useRef, useState } from 'react'
+import { useProjects, useProjectSummary, useStageTasks, useUpdateTask } from '@/hooks/useProject'
 import { useProjectSelection } from '@/contexts/ProjectContext'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
-import { Camera, Loader2 } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
+import { Camera, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+
+function StageTasks({ etapaId, nombre, hito }: { etapaId: string; nombre: string; hito?: string | null }) {
+  const [open, setOpen] = useState(false)
+  const { tasks, isLoading, refetch } = useStageTasks(open ? etapaId : null)
+  const { updateTask } = useUpdateTask()
+
+  const total = tasks.length
+  const completed = tasks.filter(t => t.estado === 'completada').length
+  const progress = total > 0 ? (completed / total) * 100 : 0
+
+  const handleToggle = async (taskId: string, next: 'pendiente' | 'en_progreso' | 'completada') => {
+    const ok = await updateTask(taskId, next)
+    if (ok) await refetch()
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex items-center justify-between gap-2 sm:flex-row">
+        <div>
+          <CardTitle className="text-lg">{nombre}</CardTitle>
+          <CardDescription>{hito ? `Hito: ${hito}` : 'Sin hito'}</CardDescription>
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => setOpen(v => !v)}>
+          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between text-sm">
+          <span>Progreso</span>
+          <span className="font-medium">{Math.round(progress)}%</span>
+        </div>
+        <Progress value={progress} className="h-2" />
+
+        {open && (
+          <div className="space-y-2 pt-2">
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground">Cargando tareas...</p>
+            ) : tasks.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No hay tareas registradas.</p>
+            ) : (
+              tasks.map((task) => (
+                <div key={task.id} className="flex items-start gap-3 rounded-md border p-3">
+                  <Checkbox
+                    checked={task.estado === 'completada'}
+                    onCheckedChange={(checked) =>
+                      handleToggle(task.id, checked ? 'completada' : 'pendiente')
+                    }
+                  />
+                  <div className="flex-1">
+                    <p className={`text-sm ${task.estado === 'completada' ? 'line-through text-muted-foreground' : ''}`}>
+                      {task.descripcion}
+                    </p>
+                    <div className="text-xs text-muted-foreground">
+                      Estado: {task.estado}
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleToggle(task.id, task.estado === 'en_progreso' ? 'pendiente' : 'en_progreso')}
+                  >
+                    {task.estado === 'en_progreso' ? 'Pausar' : 'Iniciar'}
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function TasksPage() {
   const { projects, isLoading: projectsLoading } = useProjects()
@@ -46,8 +119,8 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto p-4 space-y-6 pb-24">
-      <header className="flex items-center justify-between">
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold">Panel de Tareas</h1>
           <p className="text-muted-foreground">{summary.proyecto.nombre}</p>
@@ -56,47 +129,32 @@ export default function TasksPage() {
           <Camera className="h-4 w-4" />
           Subir reporte
         </Button>
-      </header>
+      </div>
 
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            Tareas Pendientes
-          </h2>
-          <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
-            {summary.porcentajeAvance.toFixed(0)}% Completado
-          </span>
-        </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Resumen</CardTitle>
+          <CardDescription>Avance general de tareas</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between text-sm">
+            <span>Progreso general</span>
+            <span className="font-medium">{summary.porcentajeAvance.toFixed(0)}%</span>
+          </div>
+          <Progress value={summary.porcentajeAvance} className="h-2" />
+        </CardContent>
+      </Card>
 
-        <div className="space-y-6">
-          {summary.etapas.map((etapa) => (
-            <div key={etapa.id} className="space-y-3">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground border-b pb-1">
-                {etapa.nombre}
-              </h3>
-              
-              <div className="space-y-2">
-                <Card className="overflow-hidden border-l-4 border-l-blue-500 shadow-sm">
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <Checkbox id={`task-${etapa.id}-1`} className="h-6 w-6" />
-                    <div className="flex-1">
-                      <label 
-                        htmlFor={`task-${etapa.id}-1`}
-                        className="text-base font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        Iniciar {etapa.nombre.toLowerCase()}
-                      </label>
-                      <p className="text-xs text-muted-foreground mt-1">Hito: {etapa.hito_verificacion || 'Sin hito'}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* tarea "Preparación" removida */}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <div className="space-y-4">
+        {summary.etapas.map((etapa) => (
+          <StageTasks
+            key={etapa.id}
+            etapaId={etapa.id}
+            nombre={etapa.nombre}
+            hito={etapa.hito_verificacion}
+          />
+        ))}
+      </div>
 
       <input 
         type="file" 
