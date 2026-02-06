@@ -1,0 +1,1 @@
+export DATABASE_URL="postgres://dummy:dummy@localhost:5432/dummy" && npx tsc --noEmit && npm run lint

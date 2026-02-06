@@ -28,8 +28,8 @@ export async function getProjectSummary(projectId: string): Promise<ProjectSumma
     // 3. Fetch tasks and payments
     const etapaIds = etapasData.map(e => e.id);
     
-    let tareasData = [];
-    let pagosData = [];
+    let tareasData: (typeof tareas.$inferSelect)[] = [];
+    let pagosData: (typeof pagos.$inferSelect)[] = [];
 
     if (etapaIds.length > 0) {
       tareasData = await db.select().from(tareas).where(inArray(tareas.etapaId, etapaIds));
@@ -64,7 +64,7 @@ export async function getProjectSummary(projectId: string): Promise<ProjectSumma
         tareasCompletadas,
         porcentajeCompletado: tareasTotal > 0 ? Math.round((tareasCompletadas / tareasTotal) * 100) : 0,
         pagosTotales,
-      } as unknown as EtapaConProgreso; // Adapt to legacy type if needed
+      } as unknown as EtapaConProgreso;
     });
 
     const totalPagado = pagosData.reduce((sum, p) => sum + Number(p.montoPagado), 0);
@@ -85,10 +85,13 @@ export async function getProjectSummary(projectId: string): Promise<ProjectSumma
 
 function calculateWeightedProgress(etapas: EtapaConProgreso[]): number {
   if (etapas.length === 0) return 0;
-  const totalWeight = etapas.reduce((sum, e) => sum + Number(e.porcentaje_peso || (e as any).porcentajePeso), 0);
+  const totalWeight = etapas.reduce((sum, e) => {
+    const weight = Number(e.porcentaje_peso || 0);
+    return sum + weight;
+  }, 0);
   if (totalWeight === 0) return 0;
   const weightedSum = etapas.reduce((sum, e) => {
-    const weight = Number(e.porcentaje_peso || (e as any).porcentajePeso);
+    const weight = Number(e.porcentaje_peso || 0);
     return sum + ((e.porcentajeCompletado / 100) * weight);
   }, 0);
   return Math.round((weightedSum / totalWeight) * 100);
@@ -111,20 +114,28 @@ export async function getBudgetHistory(projectId: string): Promise<PresupuestoVe
   }
 }
 
-export async function updateBudget(projectId: string, newAmount: number, note: string) {
-  // Logic simplified for migration example, should use db.transaction
-  await db.update(presupuestoVersiones).set({ esActiva: false })
-    .where(and(eq(presupuestoVersiones.proyectoId, projectId), eq(presupuestoVersiones.esActiva, true)));
-  
-  await db.insert(presupuestoVersiones).values({
-    proyectoId: projectId,
-    monto: newAmount.toString(),
-    notasCambio: note,
-    esActiva: true,
-  });
+export async function updateBudget(
+  projectId: string, 
+  newAmount: number, 
+  note: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await db.update(presupuestoVersiones).set({ esActiva: false })
+      .where(and(eq(presupuestoVersiones.proyectoId, projectId), eq(presupuestoVersiones.esActiva, true)));
+    
+    await db.insert(presupuestoVersiones).values({
+      proyectoId: projectId,
+      monto: newAmount.toString(),
+      notasCambio: note,
+      esActiva: true,
+    });
 
-  await db.update(proyectos).set({ montoTotalActivo: newAmount.toString(), updatedAt: new Date() })
-    .where(eq(proyectos.id, projectId));
+    await db.update(proyectos).set({ montoTotalActivo: newAmount.toString(), updatedAt: new Date() })
+      .where(eq(proyectos.id, projectId));
 
-  return { success: true };
+    return { success: true };
+  } catch (error) {
+    console.error('Error in updateBudget:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
 }
