@@ -1,5 +1,5 @@
-// Database types inferred from schema.sql
-// Run `npx supabase gen types typescript` for auto-generation if needed
+// Database types inferred from schema
+// Update when schema changes
 
 export type Json =
   | string
@@ -323,7 +323,7 @@ export interface Database {
           coord_x: number
           coord_y: number
           comentario: string
-          creado_por: string
+          creado_por: string | null
           created_at: string
         }
         Insert: {
@@ -332,7 +332,7 @@ export interface Database {
           coord_x: number
           coord_y: number
           comentario: string
-          creado_por: string
+          creado_por: string | null
           created_at?: string
         }
         Update: {
@@ -341,7 +341,7 @@ export interface Database {
           coord_x?: number
           coord_y?: number
           comentario?: string
-          creado_por?: string
+          creado_por?: string | null
           created_at?: string
         }
         Relationships: [

@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { createClient } from '@/lib/supabase/client';
 import type { AnotacionPlano } from '@/types/database.types';
 
 interface PlanViewerProps {
@@ -14,54 +13,39 @@ export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
   const [pins, setPins] = useState<AnotacionPlano[]>([]);
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  // Initialize supabase client safely to avoid build errors when env vars are missing
-  const supabase = useMemo(() => {
-    try {
-      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        return null;
-      }
-      return createClient();
-    } catch {
-      return null;
-    }
-  }, []);
 
   useEffect(() => {
     let isMounted = true;
-    
+
     const fetchPins = async () => {
-      if (!supabase || !planoId) {
+      if (!planoId) {
         if (isMounted) setLoading(false);
         return;
       }
 
       setLoading(true);
-      const { data, error } = await supabase
-        .from('anotaciones_planos')
-        .select('*')
-        .eq('plano_id', planoId);
-
-      if (!isMounted) return;
-      
-      if (error) {
+      try {
+        const res = await fetch(`/api/planos/${planoId}/annotations`);
+        if (!res.ok) throw new Error('Failed to fetch annotations');
+        const data = await res.json();
+        if (isMounted) setPins(data || []);
+      } catch (error) {
         console.error('Error fetching pins:', error);
-      } else {
-        setPins(data || []);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-      setLoading(false);
     };
-    
+
     fetchPins();
-    
+
     return () => {
       isMounted = false;
     };
-  }, [planoId, supabase]);
+  }, [planoId]);
 
   const handleImageClick = async (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current || !supabase) return;
-    
+    if (!containerRef.current) return;
+
     if (!planoId) {
       alert('No hay plano asociado para guardar anotaciones');
       return;
@@ -74,51 +58,44 @@ export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
     const comentario = prompt('Ingrese comentario técnico para este punto:');
     if (!comentario) return;
 
-    // Note: In production, creado_por should be the authenticated user's ID
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) {
-      alert('Debes iniciar sesión para agregar anotaciones');
-      return;
-    }
-
     const newPin = {
-      plano_id: planoId,
       coord_x: x,
       coord_y: y,
       comentario,
-      creado_por: userData.user.id,
     };
 
-    const { data, error } = await supabase
-      .from('anotaciones_planos')
-      .insert(newPin)
-      .select()
-      .single();
+    try {
+      const res = await fetch(`/api/planos/${planoId}/annotations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newPin),
+      });
 
-    if (error) {
+      if (!res.ok) throw new Error('Failed to save annotation');
+      const data = await res.json();
+      if (data) setPins((prev) => [...prev, data]);
+    } catch (error) {
       console.error('Error saving pin:', error);
       alert('Error al guardar la anotación');
-    } else if (data) {
-      setPins([...pins, data]);
     }
   };
 
   return (
     <div className="flex flex-col gap-4">
-      <div 
+      <div
         ref={containerRef}
         className="relative border rounded-lg overflow-hidden cursor-crosshair bg-slate-100"
         onClick={handleImageClick}
         style={{ width: '100%', aspectRatio: '16/9' }}
       >
-        <Image 
-          src={imageUrl} 
-          alt="Plano" 
+        <Image
+          src={imageUrl}
+          alt="Plano"
           fill
           className="object-contain pointer-events-none"
           unoptimized
         />
-        
+
         {!loading && pins.map((pin) => (
           <div
             key={pin.id}
@@ -134,12 +111,6 @@ export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/50">
             <span>Cargando anotaciones...</span>
-          </div>
-        )}
-
-        {!supabase && !loading && (
-          <div className="absolute top-2 right-2 bg-yellow-100 text-yellow-800 text-[10px] px-2 py-1 rounded border border-yellow-200">
-            Mode: Offline (No DB)
           </div>
         )}
       </div>

@@ -97,7 +97,7 @@ export const anotacionesPlanos = pgTable('anotaciones_planos', {
   coordX: doublePrecision('coord_x').notNull(),
   coordY: doublePrecision('coord_y').notNull(),
   comentario: text('comentario').notNull(),
-  creadoPor: uuid('creado_por').references(() => usuarios.id).notNull(),
+  creadoPor: uuid('creado_por').references(() => usuarios.id),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
