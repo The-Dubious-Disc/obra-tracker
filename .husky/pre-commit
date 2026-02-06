@@ -1,1 +1,14 @@
-export DATABASE_URL="postgres://dummy:dummy@localhost:5432/dummy" && npx tsc --noEmit && npm run lint
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+
+# Run linting
+echo "Running ESLint..."
+npm run lint
+
+# Run build to check for TypeScript errors
+echo "Running build to check TypeScript..."
+npm run build
+
+echo "✅ All checks passed!"

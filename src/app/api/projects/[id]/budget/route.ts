@@ -3,10 +3,10 @@ import { updateBudget } from '@/lib/services/projectService';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const projectId = params.id;
+    const { id: projectId } = await params;
     const body = await request.json();
     const { newAmount, note } = body;
 
