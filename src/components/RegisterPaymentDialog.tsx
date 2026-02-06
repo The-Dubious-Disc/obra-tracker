@@ -97,8 +97,6 @@ export function RegisterPaymentDialog({ projectId, etapas, children, onPaymentCr
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="UYU">UYU</SelectItem>
-                  <SelectItem value="EUR">EUR</SelectItem>
                 </SelectContent>
               </Select>
             </div>

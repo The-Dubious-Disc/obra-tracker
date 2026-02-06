@@ -6,9 +6,9 @@ import { useProjectSelection } from '@/contexts/ProjectContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
-import { Camera, Loader2, CheckCircle2 } from 'lucide-react'
+import { Camera, Loader2 } from 'lucide-react'
 
-export default function ConstructorPage() {
+export default function TasksPage() {
   const { projects, isLoading: projectsLoading } = useProjects()
   const { selectedProjectId } = useProjectSelection()
   const activeProjectId = selectedProjectId || (projects.length > 0 ? projects[0].id : null)
@@ -47,9 +47,15 @@ export default function ConstructorPage() {
 
   return (
     <div className="max-w-md mx-auto p-4 space-y-6 pb-24">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">Panel del Constructor</h1>
-        <p className="text-muted-foreground">{summary.proyecto.nombre}</p>
+      <header className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight">Panel de Tareas</h1>
+          <p className="text-muted-foreground">{summary.proyecto.nombre}</p>
+        </div>
+        <Button variant="outline" className="gap-2" onClick={handleUploadClick}>
+          <Camera className="h-4 w-4" />
+          Subir reporte
+        </Button>
       </header>
 
       <section className="space-y-4">
@@ -85,40 +91,21 @@ export default function ConstructorPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="overflow-hidden border-l-4 border-l-slate-200 shadow-sm">
-                  <CardContent className="p-4 flex items-center gap-4 opacity-70">
-                    <CheckCircle2 className="h-6 w-6 text-green-500" />
-                    <div className="flex-1">
-                      <span className="text-base font-medium line-through decoration-slate-400 text-slate-500">
-                        Preparación de {etapa.nombre.toLowerCase()}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* tarea "Preparación" removida */}
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-md px-4">
-        <input 
-          type="file" 
-          accept="image/*" 
-          capture="environment" 
-          className="hidden" 
-          ref={fileInputRef}
-          onChange={handleFileChange}
-        />
-        <Button 
-          size="lg" 
-          className="w-full h-14 text-lg font-bold shadow-xl rounded-2xl gap-3"
-          onClick={handleUploadClick}
-        >
-          <Camera className="h-6 w-6" />
-          Subir Foto de Avance
-        </Button>
-      </div>
+      <input 
+        type="file" 
+        accept="image/*" 
+        capture="environment" 
+        className="hidden" 
+        ref={fileInputRef}
+        onChange={handleFileChange}
+      />
     </div>
   )
 }

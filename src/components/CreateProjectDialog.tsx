@@ -87,10 +87,7 @@ export function CreateProjectDialog({ onProjectCreated, children }: CreateProjec
                   <SelectValue placeholder="Selecciona moneda" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="UYU">UYU - Peso Uruguayo</SelectItem>
                   <SelectItem value="USD">USD - Dólar Americano</SelectItem>
-                  <SelectItem value="EUR">EUR - Euro</SelectItem>
-                  <SelectItem value="ARS">ARS - Peso Argentino</SelectItem>
                 </SelectContent>
               </Select>
             </div>

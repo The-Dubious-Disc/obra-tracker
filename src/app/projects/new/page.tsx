@@ -162,11 +162,8 @@ export default function NewProjectWizard() {
                     <SelectValue placeholder="Selecciona moneda" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="UYU">UYU - Peso Uruguayo</SelectItem>
-                    <SelectItem value="USD">USD - Dólar Americano</SelectItem>
-                    <SelectItem value="EUR">EUR - Euro</SelectItem>
-                    <SelectItem value="ARS">ARS - Peso Argentino</SelectItem>
-                  </SelectContent>
+                  <SelectItem value="USD">USD - Dólar Americano</SelectItem>
+                </SelectContent>
                 </Select>
               </div>
 
