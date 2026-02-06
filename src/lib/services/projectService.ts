@@ -16,10 +16,15 @@ import type {
   PresupuestoVersionSelect 
 } from '@/lib/db/schema'
 
+export const dynamic = 'force-dynamic'
+
+import { unstable_noStore as noStore } from 'next/cache';
+
 /**
  * Get a comprehensive project summary
  */
 export async function getProjectSummary(projectId: string): Promise<ProjectSummary | null> {
+  noStore();
   try {
     // 1. Fetch project
     const proyectoData = await db.select().from(proyectos).where(eq(proyectos.id, projectId)).limit(1);
@@ -105,11 +110,13 @@ function calculateWeightedProgress(etapas: EtapaConProgreso[]): number {
 }
 
 export async function getAllProjects(): Promise<Proyecto[]> {
+  noStore();
   const data: ProyectoSelect[] = await db.select().from(proyectos).orderBy(proyectos.createdAt);
   return data as unknown as Proyecto[];
 }
 
 export async function getBudgetHistory(projectId: string): Promise<PresupuestoVersion[]> {
+  noStore();
   try {
     const data: PresupuestoVersionSelect[] = await db.select().from(presupuestoVersiones)
       .where(eq(presupuestoVersiones.proyectoId, projectId))
