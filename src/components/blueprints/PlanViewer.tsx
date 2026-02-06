@@ -8,10 +8,9 @@ import type { AnotacionPlano } from '@/types/database.types';
 interface PlanViewerProps {
   planoId: string;
   imageUrl: string;
-  proyectoId?: string; // Required for saving new annotations
 }
 
-export default function PlanViewer({ imageUrl, proyectoId }: PlanViewerProps) {
+export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
   const [pins, setPins] = useState<AnotacionPlano[]>([]);
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -32,17 +31,16 @@ export default function PlanViewer({ imageUrl, proyectoId }: PlanViewerProps) {
     let isMounted = true;
     
     const fetchPins = async () => {
-      if (!supabase) {
+      if (!supabase || !planoId) {
         if (isMounted) setLoading(false);
         return;
       }
 
       setLoading(true);
-      // Query by plano_url since that's what identifies the plan
       const { data, error } = await supabase
         .from('anotaciones_planos')
         .select('*')
-        .eq('plano_url', imageUrl);
+        .eq('plano_id', planoId);
 
       if (!isMounted) return;
       
@@ -59,13 +57,13 @@ export default function PlanViewer({ imageUrl, proyectoId }: PlanViewerProps) {
     return () => {
       isMounted = false;
     };
-  }, [imageUrl, supabase]);
+  }, [planoId, supabase]);
 
   const handleImageClick = async (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current || !supabase) return;
     
-    if (!proyectoId) {
-      alert('No hay proyecto asociado para guardar anotaciones');
+    if (!planoId) {
+      alert('No hay plano asociado para guardar anotaciones');
       return;
     }
 
@@ -84,8 +82,7 @@ export default function PlanViewer({ imageUrl, proyectoId }: PlanViewerProps) {
     }
 
     const newPin = {
-      proyecto_id: proyectoId,
-      plano_url: imageUrl,
+      plano_id: planoId,
       coord_x: x,
       coord_y: y,
       comentario,

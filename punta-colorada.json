@@ -1,0 +1,86 @@
+{
+  "proyecto": {
+    "nombre": "Punta Colorada",
+    "descripcion": "Construcción de vivienda unifamiliar en Punta Colorada",
+    "sistema_constructivo": "Steel Framing",
+    "presupuesto_total_usd": 120000.00,
+    "moneda": "USD"
+  },
+  "etapas": [
+    {
+      "orden": 1,
+      "nombre": "Movimiento de suelos y cimentación",
+      "porcentaje_total": 15,
+      "monto_usd": 18000.00,
+      "duracion_estimada_jornales": 20,
+      "hito_verificacion": "Platea hormigonada y nivelada",
+      "tareas": [
+        "Limpieza de terreno",
+        "Nivelación y replanteo",
+        "Excavación de vigas de fundación",
+        "Colocación de armaduras",
+        "Llenado de platea"
+      ]
+    },
+    {
+      "orden": 2,
+      "nombre": "Estructura de Steel Framing",
+      "porcentaje_total": 25,
+      "monto_usd": 30000.00,
+      "duracion_estimada_jornales": 30,
+      "hito_verificacion": "Estructura montada y arriostrada",
+      "tareas": [
+        "Panelizado en taller/obra",
+        "Montaje de paneles perimetrales",
+        "Montaje de tabiquería interna",
+        "Estructura de cubierta (techo)",
+        "Colocación de cruces de San Andrés"
+      ]
+    },
+    {
+      "orden": 3,
+      "nombre": "Emplacado exterior y techado",
+      "porcentaje_total": 20,
+      "monto_usd": 24000.00,
+      "duracion_estimada_jornales": 25,
+      "hito_verificacion": "Casa cerrada (Water barrier finalizada)",
+      "tareas": [
+        "Colocación de OSB exterior",
+        "Barrera de agua y viento (Tyvek)",
+        "Colocación de cubierta de techo (chapa/teja)",
+        "Instalación de aberturas exteriores",
+        "Tratamiento de juntas exteriores"
+      ]
+    },
+    {
+      "orden": 4,
+      "nombre": "Instalaciones y aislaciones",
+      "porcentaje_total": 20,
+      "monto_usd": 24000.00,
+      "duracion_estimada_jornales": 35,
+      "hito_verificacion": "Pruebas de presión realizadas",
+      "tareas": [
+        "Instalación sanitaria (agua y desagües)",
+        "Instalación eléctrica y datos",
+        "Colocación de lana de vidrio/aislante",
+        "Barrera de vapor interna",
+        "Instalación de aire acondicionado (pre-instalación)"
+      ]
+    },
+    {
+      "orden": 5,
+      "nombre": "Terminaciones e interiores",
+      "porcentaje_total": 20,
+      "monto_usd": 24000.00,
+      "duracion_estimada_jornales": 40,
+      "hito_verificacion": "Entrega de llaves",
+      "tareas": [
+        "Emplacado de yeso interior",
+        "Enduido y pintura",
+        "Colocación de pisos y revestimientos",
+        "Instalación de artefactos sanitarios y griferías",
+        "Mobiliario de cocina y placares"
+      ]
+    }
+  ]
+}

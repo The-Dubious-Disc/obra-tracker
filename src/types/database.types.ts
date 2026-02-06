@@ -11,36 +11,89 @@ export type Json =
 
 export type TareaEstado = 'pendiente' | 'en_progreso' | 'completada'
 export type PagoEstado = 'pendiente' | 'confirmado'
+export type UserRole = 'admin' | 'constructor' | 'cliente'
 
 export interface Database {
   public: {
     Tables: {
+      usuarios: {
+        Row: {
+          id: string
+          email: string
+          nombre: string
+          rol: UserRole
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          email: string
+          nombre: string
+          rol?: UserRole
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          nombre?: string
+          rol?: UserRole
+          created_at?: string
+        }
+        Relationships: []
+      }
       proyectos: {
         Row: {
           id: string
           nombre: string
+          descripcion: string | null
+          sistema_constructivo: string | null
+          presupuesto_total_usd: number
           monto_total_activo: number
           moneda: string
+          cliente_id: string | null
+          constructor_id: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           nombre: string
+          descripcion?: string | null
+          sistema_constructivo?: string | null
+          presupuesto_total_usd?: number
           monto_total_activo?: number
           moneda?: string
+          cliente_id?: string | null
+          constructor_id?: string | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           nombre?: string
+          descripcion?: string | null
+          sistema_constructivo?: string | null
+          presupuesto_total_usd?: number
           monto_total_activo?: number
           moneda?: string
+          cliente_id?: string | null
+          constructor_id?: string | null
           created_at?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+           {
+            foreignKeyName: "proyectos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proyectos_constructor_id_fkey"
+            columns: ["constructor_id"]
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       presupuesto_versiones: {
         Row: {
@@ -82,8 +135,8 @@ export interface Database {
           proyecto_id: string
           orden: number
           nombre: string
-          porcentaje_peso: number
-          monto_etapa: number
+          porcentaje_total: number
+          monto_usd: number
           duracion_estimada_jornales: number | null
           hito_verificacion: string | null
           created_at: string
@@ -93,8 +146,8 @@ export interface Database {
           proyecto_id: string
           orden: number
           nombre: string
-          porcentaje_peso: number
-          monto_etapa: number
+          porcentaje_total: number
+          monto_usd: number
           duracion_estimada_jornales?: number | null
           hito_verificacion?: string | null
           created_at?: string
@@ -104,8 +157,8 @@ export interface Database {
           proyecto_id?: string
           orden?: number
           nombre?: string
-          porcentaje_peso?: number
-          monto_etapa?: number
+          porcentaje_total?: number
+          monto_usd?: number
           duracion_estimada_jornales?: number | null
           hito_verificacion?: string | null
           created_at?: string
@@ -156,36 +209,109 @@ export interface Database {
       pagos: {
         Row: {
           id: string
+          proyecto_id: string
           etapa_id: string | null
           monto_pagado: number
+          moneda: string
           fecha_pago: string
+          comentario: string | null
           comprobante_url: string | null
+          registrado_por: string | null
           estado: PagoEstado
           created_at: string
         }
         Insert: {
           id?: string
+          proyecto_id: string
           etapa_id?: string | null
           monto_pagado: number
+          moneda?: string
           fecha_pago?: string
+          comentario?: string | null
           comprobante_url?: string | null
+          registrado_por?: string | null
           estado?: PagoEstado
           created_at?: string
         }
         Update: {
           id?: string
+          proyecto_id?: string
           etapa_id?: string | null
           monto_pagado?: number
+          moneda?: string
           fecha_pago?: string
+          comentario?: string | null
           comprobante_url?: string | null
+          registrado_por?: string | null
           estado?: PagoEstado
           created_at?: string
         }
         Relationships: [
           {
+            foreignKeyName: "pagos_proyecto_id_fkey"
+            columns: ["proyecto_id"]
+            referencedRelation: "proyectos"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pagos_etapa_id_fkey"
             columns: ["etapa_id"]
             referencedRelation: "etapas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pagos_registrado_por_fkey"
+            columns: ["registrado_por"]
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      planos: {
+        Row: {
+          id: string
+          proyecto_id: string
+          nombre: string
+          descripcion: string | null
+          url: string
+          tipo: string
+          orden: number
+          uploaded_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          proyecto_id: string
+          nombre: string
+          descripcion?: string | null
+          url: string
+          tipo: string
+          orden?: number
+          uploaded_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          proyecto_id?: string
+          nombre?: string
+          descripcion?: string | null
+          url?: string
+          tipo?: string
+          orden?: number
+          uploaded_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planos_proyecto_id_fkey"
+            columns: ["proyecto_id"]
+            referencedRelation: "proyectos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planos_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            referencedRelation: "usuarios"
             referencedColumns: ["id"]
           }
         ]
@@ -193,8 +319,7 @@ export interface Database {
       anotaciones_planos: {
         Row: {
           id: string
-          proyecto_id: string
-          plano_url: string
+          plano_id: string
           coord_x: number
           coord_y: number
           comentario: string
@@ -203,8 +328,7 @@ export interface Database {
         }
         Insert: {
           id?: string
-          proyecto_id: string
-          plano_url: string
+          plano_id: string
           coord_x: number
           coord_y: number
           comentario: string
@@ -213,8 +337,7 @@ export interface Database {
         }
         Update: {
           id?: string
-          proyecto_id?: string
-          plano_url?: string
+          plano_id?: string
           coord_x?: number
           coord_y?: number
           comentario?: string
@@ -223,9 +346,15 @@ export interface Database {
         }
         Relationships: [
           {
-            foreignKeyName: "anotaciones_planos_proyecto_id_fkey"
-            columns: ["proyecto_id"]
-            referencedRelation: "proyectos"
+            foreignKeyName: "anotaciones_planos_plano_id_fkey"
+            columns: ["plano_id"]
+            referencedRelation: "planos"
+            referencedColumns: ["id"]
+          },
+           {
+            foreignKeyName: "anotaciones_planos_creado_por_fkey"
+            columns: ["creado_por"]
+            referencedRelation: "usuarios"
             referencedColumns: ["id"]
           }
         ]
@@ -240,6 +369,7 @@ export interface Database {
     Enums: {
       tarea_estado: TareaEstado
       pago_estado: PagoEstado
+      user_role: UserRole
     }
     CompositeTypes: {
       [_ in never]: never
@@ -248,11 +378,13 @@ export interface Database {
 }
 
 // Convenience type aliases
+export type Usuario = Database['public']['Tables']['usuarios']['Row']
 export type Proyecto = Database['public']['Tables']['proyectos']['Row']
 export type PresupuestoVersion = Database['public']['Tables']['presupuesto_versiones']['Row']
 export type Etapa = Database['public']['Tables']['etapas']['Row']
 export type Tarea = Database['public']['Tables']['tareas']['Row']
 export type Pago = Database['public']['Tables']['pagos']['Row']
+export type Plano = Database['public']['Tables']['planos']['Row']
 export type AnotacionPlano = Database['public']['Tables']['anotaciones_planos']['Row']
 
 // Extended types for business logic

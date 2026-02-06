@@ -21,6 +21,7 @@ export const proyectos = pgTable('proyectos', {
   descripcion: text('descripcion'),
   sistemaConstructivo: text('sistema_constructivo'),
   presupuestoTotalUsd: decimal('presupuesto_total_usd', { precision: 12, scale: 2 }).notNull().default('0'),
+  montoTotalActivo: decimal('monto_total_activo', { precision: 12, scale: 2 }).notNull().default('0'),
   moneda: text('moneda').notNull().default('USD'),
   clienteId: uuid('cliente_id').references(() => usuarios.id),
   constructorId: uuid('constructor_id').references(() => usuarios.id),

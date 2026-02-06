@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import type { ProjectSummary, Proyecto, PresupuestoVersion } from '@/types/database.types'
+import type { ProjectSummary, Proyecto, PresupuestoVersion, Pago, Plano, Tarea } from '@/types/database.types'
 
 // ============================================
 // useProjectSummary - Fetch project with full summary
@@ -227,4 +227,305 @@ export function useBudgetHistory(projectId: string | null): UseBudgetHistoryResu
   }, [fetchData])
 
   return { history, isLoading, error, refetch: fetchData }
+}
+// ============================================
+// usePayments - Fetch project payments
+// ============================================
+interface UsePaymentsResult {
+  payments: Pago[]
+  isLoading: boolean
+  error: string | null
+  refetch: () => Promise<void>
+}
+
+export function usePayments(projectId: string | null): UsePaymentsResult {
+  const [payments, setPayments] = useState<Pago[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchData = useCallback(async () => {
+    if (!projectId) {
+      setPayments([])
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}/payments`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const result = await response.json()
+      setPayments(result)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch payments')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [projectId])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  return { payments, isLoading, error, refetch: fetchData }
+}
+
+// ============================================
+// useCreatePayment - Create a new payment
+// ============================================
+interface CreatePaymentParams {
+  proyectoId: string
+  etapaId: string | null
+  montoPagado: number
+  moneda: string
+  fechaPago: string
+  comentario: string
+  comprobanteFile: File | null
+}
+
+interface UseCreatePaymentResult {
+  createPayment: (params: CreatePaymentParams) => Promise<boolean>
+  isCreating: boolean
+  error: string | null
+}
+
+export function useCreatePayment(): UseCreatePaymentResult {
+  const [isCreating, setIsCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const createPayment = useCallback(
+    async (params: CreatePaymentParams): Promise<boolean> => {
+      setIsCreating(true)
+      setError(null)
+
+      try {
+        let comprobanteUrl = null;
+
+        // Upload file if present
+        if (params.comprobanteFile) {
+          const formData = new FormData();
+          formData.append('file', params.comprobanteFile);
+
+          const uploadRes = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!uploadRes.ok) {
+            throw new Error('Failed to upload receipt');
+          }
+
+          const uploadData = await uploadRes.json();
+          comprobanteUrl = uploadData.url;
+        }
+
+        const response = await fetch('/api/payments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            proyectoId: params.proyectoId,
+            etapaId: params.etapaId,
+            montoPagado: params.montoPagado,
+            moneda: params.moneda,
+            fechaPago: params.fechaPago,
+            comentario: params.comentario,
+            comprobanteUrl,
+          }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+        }
+
+        return true
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Payment creation failed')
+        return false
+      } finally {
+        setIsCreating(false)
+      }
+    },
+    []
+  )
+
+  return { createPayment, isCreating, error }
+}
+
+// ============================================
+// usePlanos - Fetch project planos
+// ============================================
+interface UsePlanosResult {
+  planos: Plano[]
+  isLoading: boolean
+  error: string | null
+  refetch: () => Promise<void>
+}
+
+export function usePlanos(projectId: string | null): UsePlanosResult {
+  const [planos, setPlanos] = useState<Plano[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchData = useCallback(async () => {
+    if (!projectId) {
+      setPlanos([])
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}/planos`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const result = await response.json()
+      setPlanos(result)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch planos')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [projectId])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  return { planos, isLoading, error, refetch: fetchData }
+}
+
+// ============================================
+// useUploadPlano - Upload a new plano
+// ============================================
+interface UploadPlanoParams {
+  proyectoId: string
+  nombre: string
+  descripcion: string
+  tipo: string
+  orden: number
+  file: File
+}
+
+interface UseUploadPlanoResult {
+  uploadPlano: (params: UploadPlanoParams) => Promise<boolean>
+  isUploading: boolean
+  error: string | null
+}
+
+export function useUploadPlano(): UseUploadPlanoResult {
+  const [isUploading, setIsUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const uploadPlano = useCallback(
+    async (params: UploadPlanoParams): Promise<boolean> => {
+      setIsUploading(true)
+      setError(null)
+
+      try {
+        // 1. Upload file
+        const formData = new FormData();
+        formData.append('file', params.file);
+
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error('Failed to upload file');
+        }
+
+        const uploadData = await uploadRes.json();
+        const fileUrl = uploadData.url;
+
+        // 2. Create plano record
+        const response = await fetch('/api/planos', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            proyectoId: params.proyectoId,
+            nombre: params.nombre,
+            descripcion: params.descripcion,
+            tipo: params.tipo,
+            orden: params.orden,
+            url: fileUrl,
+          }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+        }
+
+        return true
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Plano upload failed')
+        return false
+      } finally {
+        setIsUploading(false)
+      }
+    },
+    []
+  )
+
+  return { uploadPlano, isUploading, error }
+}
+
+// ============================================
+// useStageTasks - Fetch tasks for a stage
+// ============================================
+interface UseStageTasksResult {
+  tasks: Tarea[]
+  isLoading: boolean
+  error: string | null
+  refetch: () => Promise<void>
+}
+
+export function useStageTasks(etapaId: string | null): UseStageTasksResult {
+  const [tasks, setTasks] = useState<Tarea[]>([])
+  const [isLoading, setIsLoading] = useState(false) // Start false, only load when expanding or id set
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchData = useCallback(async () => {
+    if (!etapaId) {
+      setTasks([])
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/etapas/${etapaId}/tasks`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const result = await response.json()
+      setTasks(result)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch tasks')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [etapaId])
+
+  useEffect(() => {
+    if (etapaId) {
+      fetchData()
+    }
+  }, [fetchData, etapaId])
+
+  return { tasks, isLoading, error, refetch: fetchData }
 }

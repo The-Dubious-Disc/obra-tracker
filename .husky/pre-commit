@@ -6,8 +6,8 @@ echo "🔍 Running pre-commit checks..."
 echo "Running ESLint..."
 npm run lint
 
-# Run TypeScript check (faster than full build)
-echo "Running TypeScript check..."
-npx tsc --noEmit
+# Run full build to ensure production readiness
+echo "Running full build..."
+npm run build
 
 echo "✅ All checks passed!"

@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   description: "Seguimiento de obras de construcción",
 };
 
+import { UserRoleProvider } from '@/contexts/UserRoleContext';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,12 +30,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div className="flex h-screen overflow-hidden">
-          <Sidebar />
-          <main className="flex-1 overflow-y-auto bg-background p-8">
-            {children}
-          </main>
-        </div>
+        <UserRoleProvider>
+          <div className="flex h-screen overflow-hidden">
+            <Sidebar />
+            <main className="flex-1 overflow-y-auto bg-background p-8">
+              {children}
+            </main>
+          </div>
+        </UserRoleProvider>
       </body>
     </html>
   );

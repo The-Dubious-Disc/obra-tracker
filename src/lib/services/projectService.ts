@@ -1,1 +1,249 @@
-import { proyectos, etapas, tareas, pagos, presupuestoVersiones, planos } from '@/lib/db/schema'
+import { db } from '@/lib/db';
+import { pagos, proyectos, etapas, tareas, planos, presupuestoVersiones } from '@/lib/db/schema';
+import { eq, desc, and } from 'drizzle-orm';
+
+// Projects & Summary
+export async function getProjectSummary(projectId: string) {
+  try {
+    // 1. Get Project
+    const project = await db.query.proyectos.findFirst({
+      where: eq(proyectos.id, projectId),
+    });
+
+    if (!project) return null;
+
+    // 2. Get Etapas
+    const stages = await db.select().from(etapas).where(eq(etapas.proyectoId, projectId)).orderBy(etapas.orden);
+
+    // 3. Aggregate data per stage
+    const etapasWithProgress = await Promise.all(stages.map(async (etapa) => {
+      // Tasks stats
+      const stageTasks = await db.select().from(tareas).where(eq(tareas.etapaId, etapa.id));
+      const totalTasks = stageTasks.length;
+      const completedTasks = stageTasks.filter(t => t.estado === 'completada').length;
+      const percentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+      // Payments stats
+      const stagePayments = await db.select().from(pagos).where(eq(pagos.etapaId, etapa.id));
+      const totalPaid = stagePayments.reduce((sum, p) => sum + Number(p.montoPagado), 0);
+
+      return {
+        ...etapa,
+        tareasTotal: totalTasks,
+        tareasCompletadas: completedTasks,
+        porcentajeCompletado: percentage,
+        pagosTotales: totalPaid,
+      };
+    }));
+
+    // 4. Global stats
+    const allPayments = await db.select().from(pagos).where(eq(pagos.proyectoId, projectId));
+    const totalPagado = allPayments.reduce((sum, p) => sum + Number(p.montoPagado), 0);
+    
+    // Weighted progress
+    const weightedProgress = etapasWithProgress.reduce((acc, curr) => {
+      return acc + (curr.porcentajeCompletado * (Number(curr.porcentajeTotal) || 0) / 100);
+    }, 0);
+
+    const activeBudget = await db.query.presupuestoVersiones.findFirst({
+      where: and(eq(presupuestoVersiones.proyectoId, projectId), eq(presupuestoVersiones.esActiva, true)),
+    });
+
+    return {
+      proyecto: project,
+      etapas: etapasWithProgress,
+      totalPagado,
+      porcentajeAvance: weightedProgress,
+      presupuestoActivo: activeBudget || null,
+    };
+
+  } catch (error) {
+    console.error('Error in getProjectSummary:', error);
+    return null;
+  }
+}
+
+export async function getStageTasks(etapaId: string) {
+  try {
+     return await db.select().from(tareas).where(eq(tareas.etapaId, etapaId)).orderBy(desc(tareas.createdAt));
+  } catch (error) {
+    console.error('Error in getStageTasks:', error);
+    return [];
+  }
+}
+
+// Payments
+export async function createPayment(data: {
+  proyectoId: string;
+  etapaId: string | null;
+  montoPagado: number;
+  moneda: string;
+  fechaPago: string;
+  comentario?: string;
+  comprobanteUrl?: string;
+}) {
+  try {
+    const [newPayment] = await db.insert(pagos).values({
+      proyectoId: data.proyectoId,
+      etapaId: data.etapaId,
+      montoPagado: data.montoPagado.toString(),
+      moneda: data.moneda,
+      fechaPago: data.fechaPago,
+      comentario: data.comentario,
+      comprobanteUrl: data.comprobanteUrl,
+      estado: 'confirmado', 
+    }).returning();
+
+    return { success: true, paymentId: newPayment.id };
+  } catch (error) {
+    console.error('Error in createPayment:', error);
+    return { success: false, error: 'Database error' };
+  }
+}
+
+export async function getProjectPayments(proyectoId: string) {
+  try {
+    const payments = await db.select({
+      id: pagos.id,
+      montoPagado: pagos.montoPagado,
+      moneda: pagos.moneda,
+      fechaPago: pagos.fechaPago,
+      comentario: pagos.comentario,
+      etapaId: pagos.etapaId,
+      etapaNombre: etapas.nombre,
+      estado: pagos.estado,
+      comprobanteUrl: pagos.comprobanteUrl
+    })
+    .from(pagos)
+    .leftJoin(etapas, eq(pagos.etapaId, etapas.id))
+    .where(eq(pagos.proyectoId, proyectoId))
+    .orderBy(desc(pagos.fechaPago));
+
+    return payments;
+  } catch (error) {
+    console.error('Error in getProjectPayments:', error);
+    return [];
+  }
+}
+
+// Planos
+export async function createPlano(data: {
+  proyectoId: string;
+  nombre: string;
+  descripcion?: string;
+  url: string;
+  tipo: string;
+  orden?: number;
+}) {
+  try {
+    const [newPlano] = await db.insert(planos).values({
+      proyectoId: data.proyectoId,
+      nombre: data.nombre,
+      descripcion: data.descripcion,
+      url: data.url,
+      tipo: data.tipo,
+      orden: data.orden || 0,
+    }).returning();
+
+    return { success: true, planoId: newPlano.id };
+  } catch (error) {
+    console.error('Error in createPlano:', error);
+    return { success: false, error: 'Database error' };
+  }
+}
+
+export async function getProjectPlanos(proyectoId: string) {
+  try {
+    const result = await db.select()
+      .from(planos)
+      .where(eq(planos.proyectoId, proyectoId))
+      .orderBy(planos.orden, desc(planos.createdAt));
+
+    return result;
+  } catch (error) {
+    console.error('Error in getProjectPlanos:', error);
+    return [];
+  }
+}
+
+// Missing functions restoration
+
+export async function getAllProjects() {
+  try {
+    return await db.select().from(proyectos).orderBy(desc(proyectos.createdAt));
+  } catch (error) {
+    console.error('Error in getAllProjects:', error);
+    return [];
+  }
+}
+
+export async function createProject(
+  nombre: string, 
+  moneda: string = 'UYU',
+  montoInicial: number = 0
+) {
+  try {
+    const [newProject] = await db.insert(proyectos).values({
+      nombre,
+      moneda,
+      montoTotalActivo: montoInicial.toString(),
+    }).returning();
+
+    if (montoInicial > 0) {
+      await db.insert(presupuestoVersiones).values({
+        proyectoId: newProject.id,
+        monto: montoInicial.toString(),
+        notasCambio: 'Presupuesto inicial',
+        esActiva: true,
+      });
+    }
+
+    return { success: true, projectId: newProject.id };
+  } catch (error) {
+    console.error('Error in createProject:', error);
+    return { success: false, error: 'Database error' };
+  }
+}
+
+export async function getBudgetHistory(projectId: string) {
+  try {
+    return await db.select()
+      .from(presupuestoVersiones)
+      .where(eq(presupuestoVersiones.proyectoId, projectId))
+      .orderBy(desc(presupuestoVersiones.fechaCreacion));
+  } catch (error) {
+    console.error('Error in getBudgetHistory:', error);
+    return [];
+  }
+}
+
+export async function updateBudget(
+  projectId: string, 
+  newAmount: number, 
+  note: string
+) {
+  try {
+    // Deactivate current active budget
+    await db.update(presupuestoVersiones)
+      .set({ esActiva: false })
+      .where(and(eq(presupuestoVersiones.proyectoId, projectId), eq(presupuestoVersiones.esActiva, true)));
+    
+    // Create new version
+    await db.insert(presupuestoVersiones).values({
+      proyectoId: projectId,
+      monto: newAmount.toString(),
+      notasCambio: note,
+      esActiva: true,
+    });
+
+    // Update project total
+    await db.update(proyectos)
+      .set({ montoTotalActivo: newAmount.toString(), updatedAt: new Date() })
+      .where(eq(proyectos.id, projectId));
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error in updateBudget:', error);
+    return { success: false, error: 'Database error' };
+  }
+}
