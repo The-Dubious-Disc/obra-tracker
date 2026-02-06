@@ -48,7 +48,9 @@ export async function seedProject(data: ProjectData, clienteId?: string, constru
       orden: etapaData.orden,
       nombre: etapaData.nombre,
       porcentajeTotal: etapaData.porcentaje_total.toString(),
+      porcentajePeso: etapaData.porcentaje_total.toString(),
       montoUsd: etapaData.monto_usd.toString(),
+      montoEtapa: etapaData.monto_usd.toString(),
       duracionEstimadaJornales: etapaData.duracion_estimada_jornales,
       hitoVerificacion: etapaData.hito_verificacion,
     }).returning();

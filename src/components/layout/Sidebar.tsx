@@ -18,7 +18,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const { selectedProjectId, setSelectedProjectId } = useProjectSelection()
 
   const content = (
-    <div className="w-64 border-r bg-muted/40 h-full p-4 flex flex-col">
+    <div className="w-64 border-r bg-background h-full p-4 flex flex-col shadow-lg md:shadow-none">
       <div className="mb-6 px-2 flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight">ObraTracker</h1>
         <Button variant="ghost" size="icon" className="md:hidden" onClick={onClose}>
@@ -75,8 +75,10 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       <div className="hidden md:block h-screen">{content}</div>
       {open && (
         <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="flex-1 bg-black/40" onClick={onClose} />
-          <div className="h-full">{content}</div>
+          <div className="fixed inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+          <div className="relative h-full animate-in slide-in-from-left duration-300">
+            {content}
+          </div>
         </div>
       )}
     </>

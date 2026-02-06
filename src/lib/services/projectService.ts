@@ -213,7 +213,9 @@ export async function createProject(
         orden: index + 1,
         nombre: etapa.nombre,
         porcentajeTotal: etapa.porcentajeTotal.toString(),
+        porcentajePeso: etapa.porcentajeTotal.toString(),
         montoUsd: montoEtapa,
+        montoEtapa: montoEtapa,
         duracionEstimadaJornales: etapa.duracionEstimadaJornales,
         hitoVerificacion: etapa.hitoVerificacion || null,
       }).returning();
