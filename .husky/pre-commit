@@ -1,5 +1,4 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
 
 echo "🔍 Running pre-commit checks..."
 
@@ -7,8 +6,8 @@ echo "🔍 Running pre-commit checks..."
 echo "Running ESLint..."
 npm run lint
 
-# Run build to check for TypeScript errors
-echo "Running build to check TypeScript..."
-npm run build
+# Run TypeScript check (faster than full build)
+echo "Running TypeScript check..."
+npx tsc --noEmit
 
 echo "✅ All checks passed!"
