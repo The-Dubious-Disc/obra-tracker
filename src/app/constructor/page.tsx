@@ -7,12 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Camera, Loader2, CheckCircle2 } from 'lucide-react'
 
-import { cookies } from 'next/headers'
-
 export default function ConstructorPage() {
-  // Fix para Vercel: Forzamos ruta dinámica para evitar error 'Unsupported output type: undefined'
-  const _ = cookies()
-  
   const { projects, isLoading: projectsLoading } = useProjects()
   const activeProjectId = projects.length > 0 ? projects[0].id : null
   const { data: summary, isLoading: summaryLoading } = useProjectSummary(activeProjectId)
