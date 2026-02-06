@@ -190,49 +190,45 @@ export async function createProject(
   }> = []
 ) {
   try {
-    const result = await db.transaction(async (tx) => {
-      const [newProject] = await tx.insert(proyectos).values({
-        nombre,
-        moneda,
-        presupuestoTotalUsd: presupuestoTotal.toString(),
-        montoTotalActivo: presupuestoTotal.toString(),
-      }).returning();
+    const [newProject] = await db.insert(proyectos).values({
+      nombre,
+      moneda,
+      presupuestoTotalUsd: presupuestoTotal.toString(),
+      montoTotalActivo: presupuestoTotal.toString(),
+    }).returning();
 
-      await tx.insert(presupuestoVersiones).values({
-        proyectoId: newProject.id,
-        monto: presupuestoTotal.toString(),
-        notasCambio: 'Presupuesto inicial',
-        esActiva: true,
-      });
-
-      for (let index = 0; index < etapasPayload.length; index++) {
-        const etapa = etapasPayload[index];
-        const montoEtapa = (presupuestoTotal * (etapa.porcentajeTotal / 100)).toFixed(2);
-
-        const [newStage] = await tx.insert(etapas).values({
-          proyectoId: newProject.id,
-          orden: index + 1,
-          nombre: etapa.nombre,
-          porcentajeTotal: etapa.porcentajeTotal.toString(),
-          montoUsd: montoEtapa,
-          duracionEstimadaJornales: etapa.duracionEstimadaJornales,
-          hitoVerificacion: etapa.hitoVerificacion || null,
-        }).returning();
-
-        const tareasValues = etapa.tareas.map((t) => ({
-          etapaId: newStage.id,
-          descripcion: t.descripcion,
-        }));
-
-        if (tareasValues.length > 0) {
-          await tx.insert(tareas).values(tareasValues);
-        }
-      }
-
-      return newProject;
+    await db.insert(presupuestoVersiones).values({
+      proyectoId: newProject.id,
+      monto: presupuestoTotal.toString(),
+      notasCambio: 'Presupuesto inicial',
+      esActiva: true,
     });
 
-    return { success: true, projectId: result.id };
+    for (let index = 0; index < etapasPayload.length; index++) {
+      const etapa = etapasPayload[index];
+      const montoEtapa = (presupuestoTotal * (etapa.porcentajeTotal / 100)).toFixed(2);
+
+      const [newStage] = await db.insert(etapas).values({
+        proyectoId: newProject.id,
+        orden: index + 1,
+        nombre: etapa.nombre,
+        porcentajeTotal: etapa.porcentajeTotal.toString(),
+        montoUsd: montoEtapa,
+        duracionEstimadaJornales: etapa.duracionEstimadaJornales,
+        hitoVerificacion: etapa.hitoVerificacion || null,
+      }).returning();
+
+      const tareasValues = etapa.tareas.map((t) => ({
+        etapaId: newStage.id,
+        descripcion: t.descripcion,
+      }));
+
+      if (tareasValues.length > 0) {
+        await db.insert(tareas).values(tareasValues);
+      }
+    }
+
+    return { success: true, projectId: newProject.id };
   } catch (error) {
     console.error('Error in createProject:', error);
     return { success: false, error: 'Database error' };

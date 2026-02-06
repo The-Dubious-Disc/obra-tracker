@@ -99,7 +99,7 @@ function WelcomeScreen() {
   );
 }
 
-// Project selection handled via Topbar
+// Project selection handled via Sidebar
 
 function PaymentSummary({ projectId }: { projectId: string }) {
   const { payments, isLoading } = usePayments(projectId);
@@ -316,7 +316,7 @@ function DashboardContent() {
              </Select>
           </div>
 
-          {/* Selección de proyecto ahora vive en la Topbar */}
+          {/* Selección de proyecto ahora vive en el Sidebar */}
           {showMoney && (
             <RegisterPaymentDialog projectId={proyecto.id} etapas={etapas.map(e => ({ id: e.id, nombre: e.nombre, orden: e.orden }))}>
               <Button className="gap-2">
