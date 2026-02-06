@@ -1,14 +1,14 @@
-import type { Config } from "drizzle-kit";
+import { defineConfig } from "drizzle-kit";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is missing");
 }
 
-export default {
+export default defineConfig({
   schema: "./src/lib/db/schema.ts",
   out: "./drizzle",
-  driver: "pg",
+  dialect: "postgresql",
   dbCredentials: {
-    connectionString: process.env.DATABASE_URL,
+    url: process.env.DATABASE_URL,
   },
-} satisfies Config;
+});
