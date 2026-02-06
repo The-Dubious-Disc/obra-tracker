@@ -180,25 +180,59 @@ export async function getAllProjects() {
 export async function createProject(
   nombre: string, 
   moneda: string = 'UYU',
-  montoInicial: number = 0
+  presupuestoTotal: number = 0,
+  etapasPayload: Array<{ 
+    nombre: string;
+    porcentajeTotal: number;
+    duracionEstimadaJornales: number;
+    hitoVerificacion?: string | null;
+    tareas: Array<{ descripcion: string }>;
+  }> = []
 ) {
   try {
-    const [newProject] = await db.insert(proyectos).values({
-      nombre,
-      moneda,
-      montoTotalActivo: montoInicial.toString(),
-    }).returning();
+    const result = await db.transaction(async (tx) => {
+      const [newProject] = await tx.insert(proyectos).values({
+        nombre,
+        moneda,
+        presupuestoTotalUsd: presupuestoTotal.toString(),
+        montoTotalActivo: presupuestoTotal.toString(),
+      }).returning();
 
-    if (montoInicial > 0) {
-      await db.insert(presupuestoVersiones).values({
+      await tx.insert(presupuestoVersiones).values({
         proyectoId: newProject.id,
-        monto: montoInicial.toString(),
+        monto: presupuestoTotal.toString(),
         notasCambio: 'Presupuesto inicial',
         esActiva: true,
       });
-    }
 
-    return { success: true, projectId: newProject.id };
+      for (let index = 0; index < etapasPayload.length; index++) {
+        const etapa = etapasPayload[index];
+        const montoEtapa = (presupuestoTotal * (etapa.porcentajeTotal / 100)).toFixed(2);
+
+        const [newStage] = await tx.insert(etapas).values({
+          proyectoId: newProject.id,
+          orden: index + 1,
+          nombre: etapa.nombre,
+          porcentajeTotal: etapa.porcentajeTotal.toString(),
+          montoUsd: montoEtapa,
+          duracionEstimadaJornales: etapa.duracionEstimadaJornales,
+          hitoVerificacion: etapa.hitoVerificacion || null,
+        }).returning();
+
+        const tareasValues = etapa.tareas.map((t) => ({
+          etapaId: newStage.id,
+          descripcion: t.descripcion,
+        }));
+
+        if (tareasValues.length > 0) {
+          await tx.insert(tareas).values(tareasValues);
+        }
+      }
+
+      return newProject;
+    });
+
+    return { success: true, projectId: result.id };
   } catch (error) {
     console.error('Error in createProject:', error);
     return { success: false, error: 'Database error' };

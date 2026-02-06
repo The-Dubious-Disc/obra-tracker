@@ -7,10 +7,11 @@ import { UploadPlanoDialog } from '@/components/UploadPlanoDialog';
 import { Button } from '@/components/ui/button';
 import { Plus, FolderOpen } from 'lucide-react';
 import { usePlanos } from '@/hooks/useProject';
+import { useProjectSelection } from '@/contexts/ProjectContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Plano } from '@/types/database.types';
 
-const DEFAULT_PROJECT_ID = process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || null;
+// Project selection is managed via ProjectContext
 
 import { useUserRole } from '@/contexts/UserRoleContext';
 
@@ -18,7 +19,8 @@ export default function PlanosPage() {
   const [selectedPlan, setSelectedPlan] = useState<Plano | null>(null);
   const { role } = useUserRole();
   const canUpload = role === 'admin' || role === 'constructor';
-  const projectId = DEFAULT_PROJECT_ID; 
+  const { selectedProjectId } = useProjectSelection();
+  const projectId = selectedProjectId;
   
   const { planos, isLoading, refetch } = usePlanos(projectId);
 
@@ -33,7 +35,7 @@ export default function PlanosPage() {
   }, [planos, selectedPlan]);
 
   if (!projectId) {
-     return <div className="p-6">No hay proyecto seleccionado por defecto. Configure NEXT_PUBLIC_DEFAULT_PROJECT_ID.</div>;
+     return <div className="p-6">Selecciona un proyecto en la barra superior para ver los planos.</div>;
   }
 
   return (

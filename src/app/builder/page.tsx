@@ -2,6 +2,7 @@
 
 import React, { useRef } from 'react'
 import { useProjects, useProjectSummary } from '@/hooks/useProject'
+import { useProjectSelection } from '@/contexts/ProjectContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
@@ -9,7 +10,8 @@ import { Camera, Loader2, CheckCircle2 } from 'lucide-react'
 
 export default function ConstructorPage() {
   const { projects, isLoading: projectsLoading } = useProjects()
-  const activeProjectId = projects.length > 0 ? projects[0].id : null
+  const { selectedProjectId } = useProjectSelection()
+  const activeProjectId = selectedProjectId || (projects.length > 0 ? projects[0].id : null)
   const { data: summary, isLoading: summaryLoading } = useProjectSummary(activeProjectId)
   
   const fileInputRef = useRef<HTMLInputElement>(null)

@@ -17,7 +17,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { nombre, moneda, montoInicial } = body;
+    const { nombre, moneda, presupuestoTotal, etapas } = body;
 
     if (!nombre || typeof nombre !== 'string' || nombre.trim() === '') {
       return NextResponse.json(
@@ -26,7 +26,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await createProject(nombre.trim(), moneda, montoInicial);
+    if (!presupuestoTotal || typeof presupuestoTotal !== 'number' || presupuestoTotal <= 0) {
+      return NextResponse.json(
+        { error: 'Presupuesto total es obligatorio' },
+        { status: 400 }
+      );
+    }
+
+    if (!Array.isArray(etapas) || etapas.length === 0) {
+      return NextResponse.json(
+        { error: 'Debe incluir al menos una etapa' },
+        { status: 400 }
+      );
+    }
+
+    const porcentajeTotal = etapas.reduce((sum, etapa) => sum + (etapa.porcentajeTotal || 0), 0);
+    if (porcentajeTotal !== 100) {
+      return NextResponse.json(
+        { error: 'La suma de porcentajes debe ser 100%' },
+        { status: 400 }
+      );
+    }
+
+    for (const etapa of etapas) {
+      if (!etapa.nombre || !etapa.porcentajeTotal || !etapa.duracionEstimadaJornales) {
+        return NextResponse.json(
+          { error: 'Cada etapa debe tener nombre, porcentaje y duración estimada' },
+          { status: 400 }
+        );
+      }
+      if (!Array.isArray(etapa.tareas) || etapa.tareas.length === 0 || etapa.tareas.some((t: { descripcion: string }) => !t.descripcion || !t.descripcion.trim())) {
+        return NextResponse.json(
+          { error: 'Cada etapa debe tener al menos una tarea con descripción' },
+          { status: 400 }
+        );
+      }
+    }
+
+    const result = await createProject(nombre.trim(), moneda, presupuestoTotal, etapas);
 
     if (!result.success) {
       return NextResponse.json(

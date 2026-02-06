@@ -21,7 +21,7 @@ export function RegisterPaymentDialog({ projectId, etapas, children }: RegisterP
     moneda: 'USD',
     fechaPago: new Date().toISOString().split('T')[0],
     comentario: '',
-    etapaId: '',
+    etapaId: 'none',
   });
   const [comprobanteFile, setComprobanteFile] = useState<File | null>(null);
 
@@ -32,7 +32,7 @@ export function RegisterPaymentDialog({ projectId, etapas, children }: RegisterP
 
     const success = await createPayment({
       proyectoId: projectId,
-      etapaId: formData.etapaId || null,
+      etapaId: formData.etapaId === 'none' ? null : formData.etapaId,
       montoPagado: parseFloat(formData.montoPagado),
       moneda: formData.moneda,
       fechaPago: formData.fechaPago,
@@ -47,7 +47,7 @@ export function RegisterPaymentDialog({ projectId, etapas, children }: RegisterP
         moneda: 'USD',
         fechaPago: new Date().toISOString().split('T')[0],
         comentario: '',
-        etapaId: '',
+        etapaId: 'none',
       });
       setComprobanteFile(null);
     }
@@ -120,7 +120,7 @@ export function RegisterPaymentDialog({ projectId, etapas, children }: RegisterP
                 <SelectValue placeholder="Seleccionar etapa..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Sin etapa específica</SelectItem>
+                <SelectItem value="none">Sin etapa específica</SelectItem>
                 {etapas.map((etapa) => (
                   <SelectItem key={etapa.id} value={etapa.id}>
                     {etapa.orden}. {etapa.nombre}

@@ -18,6 +18,9 @@ export function Sidebar() {
         <Button variant="ghost" className="w-full justify-start" asChild>
           <Link href="/planos">Planos</Link>
         </Button>
+        <Button variant="ghost" className="w-full justify-start" asChild>
+          <Link href="/projects/new">Nuevo Proyecto</Link>
+        </Button>
       </nav>
       <Separator className="my-4" />
       <div className="px-2">

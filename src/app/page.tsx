@@ -6,15 +6,17 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProjectSummary, useProjects, usePayments, useStageTasks } from "@/hooks/useProject";
+import { useProjectSelection } from '@/contexts/ProjectContext';
+import Link from 'next/link';
 import type { EtapaConProgreso, UserRole } from '@/types/database.types';
-import { AlertCircle, RefreshCw, Plus, FolderOpen, DollarSign, Calendar, ChevronDown, ChevronUp, CheckCircle2, Circle } from "lucide-react";
+import { AlertCircle, RefreshCw, Plus, DollarSign, Calendar, ChevronDown, ChevronUp, CheckCircle2, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CreateProjectDialog } from "@/components/CreateProjectDialog";
+// Wizard replaced inline dialog for project creation
 import { RegisterPaymentDialog } from "@/components/RegisterPaymentDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUserRole } from '@/contexts/UserRoleContext';
 
-const DEFAULT_PROJECT_ID = process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || null;
+// Project selection is managed via ProjectContext
 
 function formatCurrency(amount: number, currency: string = 'UYU'): string {
   return new Intl.NumberFormat('es-UY', {
@@ -76,7 +78,7 @@ function DashboardError({ error, onRetry }: { error: string; onRetry: () => void
   );
 }
 
-function WelcomeScreen({ onProjectCreated }: { onProjectCreated: (id: string) => void }) {
+function WelcomeScreen() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[500px] space-y-6 text-center">
       <div className="space-y-2">
@@ -86,62 +88,18 @@ function WelcomeScreen({ onProjectCreated }: { onProjectCreated: (id: string) =>
         </p>
       </div>
       <div className="flex gap-4">
-        <CreateProjectDialog onProjectCreated={onProjectCreated}>
-          <Button size="lg" className="gap-2">
+        <Button size="lg" className="gap-2" asChild>
+          <Link href="/projects/new">
             <Plus className="h-5 w-5" />
             Nuevo Proyecto
-          </Button>
-        </CreateProjectDialog>
-      </div>
-    </div>
-  );
-}
-
-function ProjectSelector({ projects, onSelect, onProjectCreated }: { 
-  projects: Array<{ id: string; nombre: string; moneda: string; monto_total_activo: number }>
-  onSelect: (id: string) => void
-  onProjectCreated: (id: string) => void
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[500px] space-y-6">
-      <div className="space-y-2 text-center">
-        <h2 className="text-3xl font-bold tracking-tight">Tus Proyectos</h2>
-        <p className="text-muted-foreground">
-          Selecciona un proyecto para ver sus detalles o crea uno nuevo.
-        </p>
-      </div>
-      
-      <div className="grid gap-4 w-full max-w-2xl">
-        {projects.map((project) => (
-          <Card 
-            key={project.id} 
-            className="cursor-pointer hover:border-primary transition-colors"
-            onClick={() => onSelect(project.id)}
-          >
-            <CardContent className="flex items-center justify-between p-6">
-              <div className="space-y-1">
-                <h3 className="font-semibold text-lg">{project.nombre}</h3>
-                <p className="text-sm text-muted-foreground">
-                  Presupuesto: {formatCurrency(Number(project.monto_total_activo), project.moneda)}
-                </p>
-              </div>
-              <Button variant="ghost" size="icon">
-                <FolderOpen className="h-5 w-5" />
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <CreateProjectDialog onProjectCreated={onProjectCreated}>
-        <Button variant="outline" className="gap-2">
-          <Plus className="h-4 w-4" />
-          Crear Nuevo Proyecto
+          </Link>
         </Button>
-      </CreateProjectDialog>
+      </div>
     </div>
   );
 }
+
+// Project selection handled via Topbar
 
 function PaymentSummary({ projectId }: { projectId: string }) {
   const { payments, isLoading } = usePayments(projectId);
@@ -295,15 +253,10 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
 }
 
 function DashboardContent() {
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(DEFAULT_PROJECT_ID);
+  const { selectedProjectId } = useProjectSelection();
   const { data, isLoading, error, refetch } = useProjectSummary(selectedProjectId);
-  const { projects, isLoading: projectsLoading, refetch: refetchProjects } = useProjects();
+  const { projects, isLoading: projectsLoading } = useProjects();
   const { role, setRole } = useUserRole();
-
-  const handleProjectCreated = async (projectId: string) => {
-    await refetchProjects();
-    setSelectedProjectId(projectId);
-  };
 
   const showMoney = role === 'admin';
 
@@ -319,17 +272,16 @@ function DashboardContent() {
 
   // No projects at all - show welcome screen
   if (projects.length === 0) {
-    return <WelcomeScreen onProjectCreated={handleProjectCreated} />;
+    return <WelcomeScreen />;
   }
 
-  // Has projects but none selected - show project selector
+  // Has projects but none selected - show prompt
   if (!selectedProjectId || !data) {
     return (
-      <ProjectSelector 
-        projects={projects} 
-        onSelect={setSelectedProjectId}
-        onProjectCreated={handleProjectCreated}
-      />
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-3">
+        <h2 className="text-2xl font-semibold">Selecciona un proyecto</h2>
+        <p className="text-muted-foreground">Usa el selector en la barra superior para elegir un proyecto.</p>
+      </div>
     );
   }
 
@@ -364,10 +316,7 @@ function DashboardContent() {
              </Select>
           </div>
 
-          <Button variant="outline" onClick={() => setSelectedProjectId(null)}>
-            Cambiar Proyecto
-          </Button>
-          
+          {/* Selección de proyecto ahora vive en la Topbar */}
           {showMoney && (
             <RegisterPaymentDialog projectId={proyecto.id} etapas={etapas.map(e => ({ id: e.id, nombre: e.nombre, orden: e.orden }))}>
               <Button className="gap-2">
@@ -377,11 +326,11 @@ function DashboardContent() {
             </RegisterPaymentDialog>
           )}
 
-          <CreateProjectDialog onProjectCreated={handleProjectCreated}>
-            <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/projects/new">
               <Plus className="h-4 w-4" />
-            </Button>
-          </CreateProjectDialog>
+            </Link>
+          </Button>
         </div>
       </div>
 
