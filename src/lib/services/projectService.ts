@@ -99,6 +99,18 @@ export async function getAllProjects(): Promise<Proyecto[]> {
   return data as unknown as Proyecto[];
 }
 
+export async function getBudgetHistory(projectId: string): Promise<PresupuestoVersion[]> {
+  try {
+    const data = await db.select().from(presupuestoVersiones)
+      .where(eq(presupuestoVersiones.proyectoId, projectId))
+      .orderBy(presupuestoVersiones.fechaCreacion);
+    return data as unknown as PresupuestoVersion[];
+  } catch (error) {
+    console.error('Error in getBudgetHistory:', error);
+    return [];
+  }
+}
+
 export async function updateBudget(projectId: string, newAmount: number, note: string) {
   // Logic simplified for migration example, should use db.transaction
   await db.update(presupuestoVersiones).set({ esActiva: false })
