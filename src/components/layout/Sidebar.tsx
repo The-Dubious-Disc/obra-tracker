@@ -13,10 +13,10 @@ export function Sidebar() {
           <Link href="/">Dashboard</Link>
         </Button>
         <Button variant="ghost" className="w-full justify-start" asChild>
-          <Link href="/obras">Obras</Link>
+          <Link href="/builder">Constructor</Link>
         </Button>
         <Button variant="ghost" className="w-full justify-start" asChild>
-          <Link href="/etapas">Etapas</Link>
+          <Link href="/planos">Planos</Link>
         </Button>
       </nav>
       <Separator className="my-4" />
