@@ -4,6 +4,42 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { ProjectSummary, Proyecto, PresupuestoVersion, Pago, Plano, Tarea } from '@/types/database.types'
 
+async function uploadToR2(params: {
+  projectId: string
+  file: File
+  kind: 'planos' | 'comprobantes' | 'adjuntos'
+}): Promise<string> {
+  const presignRes = await fetch('/api/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      projectId: params.projectId,
+      filename: params.file.name,
+      contentType: params.file.type || 'application/octet-stream',
+      kind: params.kind,
+    }),
+  })
+
+  if (!presignRes.ok) {
+    const data = await presignRes.json()
+    throw new Error(data.error || 'No se pudo generar la URL de subida')
+  }
+
+  const { uploadUrl, key } = await presignRes.json()
+
+  const uploadRes = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': params.file.type || 'application/octet-stream' },
+    body: params.file,
+  })
+
+  if (!uploadRes.ok) {
+    throw new Error('No se pudo subir el archivo')
+  }
+
+  return key
+}
+
 // ============================================
 // useProjectSummary - Fetch project with full summary
 // ============================================
@@ -307,20 +343,11 @@ export function useCreatePayment(): UseCreatePaymentResult {
 
         // Upload file if present
         if (params.comprobanteFile) {
-          const formData = new FormData();
-          formData.append('file', params.comprobanteFile);
-
-          const uploadRes = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData,
-          });
-
-          if (!uploadRes.ok) {
-            throw new Error('Failed to upload receipt');
-          }
-
-          const uploadData = await uploadRes.json();
-          comprobanteUrl = uploadData.url;
+          comprobanteUrl = await uploadToR2({
+            projectId: params.proyectoId,
+            file: params.comprobanteFile,
+            kind: 'comprobantes',
+          })
         }
 
         const response = await fetch('/api/payments', {
@@ -433,20 +460,11 @@ export function useUploadPlano(): UseUploadPlanoResult {
 
       try {
         // 1. Upload file
-        const formData = new FormData();
-        formData.append('file', params.file);
-
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!uploadRes.ok) {
-          throw new Error('Failed to upload file');
-        }
-
-        const uploadData = await uploadRes.json();
-        const fileUrl = uploadData.url;
+        const fileUrl = await uploadToR2({
+          projectId: params.proyectoId,
+          file: params.file,
+          kind: 'planos',
+        })
 
         // 2. Create plano record
         const response = await fetch('/api/planos', {
