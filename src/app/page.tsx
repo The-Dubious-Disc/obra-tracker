@@ -328,11 +328,11 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <span className="text-xs text-muted-foreground">Presupuesto Etapa</span>
-                  <p className="text-lg font-semibold">{formatCurrency(Number(etapa.monto_usd), moneda)}</p>
+                  <p className="text-lg font-semibold">{formatCurrency(Number((etapa as unknown as Record<string, unknown>).montoUsd ?? (etapa as unknown as Record<string, unknown>).monto_usd ?? 0), moneda)}</p>
                 </div>
                 <div className="space-y-1">
                   <span className="text-xs text-muted-foreground">Ejecutado</span>
-                  <p className={`text-lg font-semibold ${etapa.pagosTotales > Number(etapa.monto_usd) ? 'text-red-500' : 'text-green-600'}`}>
+                  <p className={`text-lg font-semibold ${etapa.pagosTotales > Number((etapa as unknown as Record<string, unknown>).montoUsd ?? (etapa as unknown as Record<string, unknown>).monto_usd ?? 0) ? 'text-red-500' : 'text-green-600'}`}>
                     {formatCurrency(etapa.pagosTotales, moneda)}
                   </p>
                 </div>
