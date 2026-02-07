@@ -9,18 +9,35 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Camera, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 
-function StageTasks({ etapaId, nombre, hito }: { etapaId: string; nombre: string; hito?: string | null }) {
+function StageTasks({
+  etapaId,
+  nombre,
+  hito,
+  tareasTotal,
+  tareasCompletadas,
+  onUpdated,
+}: {
+  etapaId: string;
+  nombre: string;
+  hito?: string | null;
+  tareasTotal: number;
+  tareasCompletadas: number;
+  onUpdated: () => void;
+}) {
   const [open, setOpen] = useState(false)
   const { tasks, isLoading, refetch } = useStageTasks(open ? etapaId : null)
   const { updateTask } = useUpdateTask()
 
-  const total = tasks.length
-  const completed = tasks.filter(t => t.estado === 'completada').length
+  const total = open ? tasks.length : tareasTotal
+  const completed = open ? tasks.filter(t => t.estado === 'completada').length : tareasCompletadas
   const progress = total > 0 ? (completed / total) * 100 : 0
 
   const handleToggle = async (taskId: string, next: 'pendiente' | 'en_progreso' | 'completada') => {
     const ok = await updateTask(taskId, next)
-    if (ok) await refetch()
+    if (ok) {
+      await refetch()
+      onUpdated()
+    }
   }
 
   return (
@@ -85,7 +102,7 @@ export default function TasksPage() {
   const { projects, isLoading: projectsLoading } = useProjects()
   const { selectedProjectId } = useProjectSelection()
   const activeProjectId = selectedProjectId || (projects.length > 0 ? projects[0].id : null)
-  const { data: summary, isLoading: summaryLoading } = useProjectSummary(activeProjectId)
+  const { data: summary, isLoading: summaryLoading, refetch } = useProjectSummary(activeProjectId)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -152,6 +169,9 @@ export default function TasksPage() {
             etapaId={etapa.id}
             nombre={etapa.nombre}
             hito={etapa.hito_verificacion}
+            tareasTotal={etapa.tareasTotal}
+            tareasCompletadas={etapa.tareasCompletadas}
+            onUpdated={refetch}
           />
         ))}
       </div>
