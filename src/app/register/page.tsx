@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 export default function RegisterPage() {
   const [nombre, setNombre] = useState('');
@@ -50,6 +51,9 @@ export default function RegisterPage() {
         <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
           Register
         </button>
+        <p className="mt-4 text-sm text-muted-foreground">
+          ¿Ya tenés cuenta? <Link href="/login" className="text-blue-600 hover:underline">Iniciá sesión</Link>
+        </p>
         {message && <p className="mt-4">{message}</p>}
       </form>
     </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -45,6 +46,9 @@ export default function LoginPage() {
         <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
           Login
         </button>
+        <p className="mt-4 text-sm text-muted-foreground">
+          ¿No tenés cuenta? <Link href="/register" className="text-blue-600 hover:underline">Registrate</Link>
+        </p>
         {message && <p className="mt-4">{message}</p>}
       </form>
     </div>

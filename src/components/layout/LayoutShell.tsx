@@ -14,8 +14,10 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
 
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname) || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))
+
   useEffect(() => {
-    if (PUBLIC_ROUTES.includes(pathname) || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) {
+    if (isPublicRoute) {
       return
     }
 
@@ -39,7 +41,11 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [pathname, router])
+  }, [isPublicRoute, pathname, router])
+
+  if (isPublicRoute) {
+    return <main className="min-h-screen bg-background">{children}</main>
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">
