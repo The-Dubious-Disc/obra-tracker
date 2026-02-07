@@ -1,16 +1,18 @@
 import { pgTable, uuid, text, decimal, timestamp, integer, boolean, pgEnum, date, doublePrecision } from "drizzle-orm/pg-core";
+import { relations } from 'drizzle-orm';
 
 // Enums
 export const tareaEstadoEnum = pgEnum('tarea_estado', ['pendiente', 'en_progreso', 'completada']);
 export const pagoEstadoEnum = pgEnum('pago_estado', ['pendiente', 'confirmado']);
-export const userRoleEnum = pgEnum('user_role', ['admin', 'constructor', 'cliente']);
+export const userRoleEnum = pgEnum('user_role', ['admin', 'editor', 'viewer']);
 
 // 1. Usuarios (Nuevo)
 export const usuarios = pgTable('usuarios', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
   nombre: text('nombre').notNull(),
-  rol: userRoleEnum('rol').default('cliente'),
+  passwordHash: text('password_hash'),
+  rol: userRoleEnum('rol').default('viewer'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
@@ -103,6 +105,28 @@ export const anotacionesPlanos = pgTable('anotaciones_planos', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
+// 9. Invitaciones
+export const invitaciones = pgTable('invitaciones', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  proyectoId: uuid('proyecto_id').references(() => proyectos.id, { onDelete: 'cascade' }).notNull(),
+  email: text('email').notNull(),
+  rol: userRoleEnum('rol').notNull(),
+  token: text('token').notNull().unique(),
+  invitadoPor: uuid('invitado_por').references(() => usuarios.id),
+  aceptada: boolean('aceptada').default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+});
+
+// 10. Miembros de Proyecto (RBAC)
+export const proyectoMiembros = pgTable('proyecto_miembros', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  proyectoId: uuid('proyecto_id').references(() => proyectos.id, { onDelete: 'cascade' }).notNull(),
+  usuarioId: uuid('usuario_id').references(() => usuarios.id, { onDelete: 'cascade' }).notNull(),
+  rol: userRoleEnum('rol').notNull(), // admin, edit (constructor), read-only (cliente)
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
 // Types for Select and Insert
 export type UsuarioSelect = typeof usuarios.$inferSelect;
 export type ProyectoSelect = typeof proyectos.$inferSelect;
@@ -111,3 +135,33 @@ export type TareaSelect = typeof tareas.$inferSelect;
 export type PagoSelect = typeof pagos.$inferSelect;
 export type PlanoSelect = typeof planos.$inferSelect;
 export type PresupuestoVersionSelect = typeof presupuestoVersiones.$inferSelect;
+export type InvitacionSelect = typeof invitaciones.$inferSelect;
+export type ProyectoMiembroSelect = typeof proyectoMiembros.$inferSelect;
+
+// Relations
+export const proyectosRelations = relations(proyectos, ({ many }) => ({
+  miembros: many(proyectoMiembros),
+  invitaciones: many(invitaciones),
+}));
+
+export const invitacionesRelations = relations(invitaciones, ({ one }) => ({
+  proyecto: one(proyectos, {
+    fields: [invitaciones.proyectoId],
+    references: [proyectos.id],
+  }),
+}));
+
+export const proyectoMiembrosRelations = relations(proyectoMiembros, ({ one }) => ({
+  proyecto: one(proyectos, {
+    fields: [proyectoMiembros.proyectoId],
+    references: [proyectos.id],
+  }),
+  usuario: one(usuarios, {
+    fields: [proyectoMiembros.usuarioId],
+    references: [usuarios.id],
+  }),
+}));
+
+export const usuariosRelations = relations(usuarios, ({ many }) => ({
+  membresias: many(proyectoMiembros),
+}));

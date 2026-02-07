@@ -18,7 +18,7 @@ import { useUserRole } from '@/contexts/UserRoleContext';
 export default function PlanosPage() {
   const [selectedPlan, setSelectedPlan] = useState<Plano | null>(null);
   const { role } = useUserRole();
-  const canUpload = role === 'admin' || role === 'constructor';
+  const canUpload = role === 'admin' || role === 'editor';
   const { selectedProjectId } = useProjectSelection();
   const projectId = selectedProjectId;
   

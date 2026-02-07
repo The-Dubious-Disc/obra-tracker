@@ -1,10 +1,17 @@
 import { db } from '@/lib/db';
-import { pagos, proyectos, etapas, tareas, planos, presupuestoVersiones } from '@/lib/db/schema';
+import { pagos, proyectos, etapas, tareas, planos, presupuestoVersiones, proyectoMiembros } from '@/lib/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 
 // Projects & Summary
-export async function getProjectSummary(projectId: string) {
+export async function getProjectSummary(projectId: string, userId?: string) {
   try {
+    if (userId) {
+      const access = await db.query.proyectoMiembros.findFirst({
+        where: and(eq(proyectoMiembros.usuarioId, userId), eq(proyectoMiembros.proyectoId, projectId)),
+      });
+      if (!access) return null;
+    }
+
     // 1. Get Project
     const project = await db.query.proyectos.findFirst({
       where: eq(proyectos.id, projectId),
@@ -168,8 +175,23 @@ export async function getProjectPlanos(proyectoId: string) {
 
 // Missing functions restoration
 
-export async function getAllProjects() {
+export async function getAllProjects(userId?: string) {
   try {
+    if (userId) {
+      const userProjects = await db.select({
+        id: proyectos.id,
+        nombre: proyectos.nombre,
+        descripcion: proyectos.descripcion,
+        createdAt: proyectos.createdAt,
+        updatedAt: proyectos.updatedAt,
+      })
+      .from(proyectos)
+      .innerJoin(proyectoMiembros, eq(proyectos.id, proyectoMiembros.proyectoId))
+      .where(eq(proyectoMiembros.usuarioId, userId))
+      .orderBy(desc(proyectos.createdAt));
+      
+      return userProjects;
+    }
     return await db.select().from(proyectos).orderBy(desc(proyectos.createdAt));
   } catch (error) {
     console.error('Error in getAllProjects:', error);
@@ -187,7 +209,8 @@ export async function createProject(
     duracionEstimadaJornales: number;
     hitoVerificacion?: string | null;
     tareas: Array<{ descripcion: string }>;
-  }> = []
+  }> = [],
+  ownerId?: string
 ) {
   try {
     const [newProject] = await db.insert(proyectos).values({
@@ -196,6 +219,14 @@ export async function createProject(
       presupuestoTotalUsd: presupuestoTotal.toString(),
       montoTotalActivo: presupuestoTotal.toString(),
     }).returning();
+
+    if (ownerId) {
+      await db.insert(proyectoMiembros).values({
+        proyectoId: newProject.id,
+        usuarioId: ownerId,
+        rol: 'admin',
+      });
+    }
 
     await db.insert(presupuestoVersiones).values({
       proyectoId: newProject.id,

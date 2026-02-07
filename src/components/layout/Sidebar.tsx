@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { LayoutDashboard, ListChecks, DraftingCompass, PlusCircle, X } from 'lucide-react'
+import { LayoutDashboard, ListChecks, DraftingCompass, PlusCircle, Users, X } from 'lucide-react'
 import { useProjects } from '@/hooks/useProject'
 import { useProjectSelection } from '@/contexts/ProjectContext'
 import { useUserRole } from '@/contexts/UserRoleContext'
@@ -41,6 +41,11 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         <Button variant="ghost" className="w-full justify-start gap-2" asChild>
           <Link href="/planos"><DraftingCompass className="h-4 w-4" />Planos</Link>
         </Button>
+        {selectedProjectId && (
+          <Button variant="ghost" className="w-full justify-start gap-2" asChild>
+            <Link href={`/projects/${selectedProjectId}/users`}><Users className="h-4 w-4" />Equipo</Link>
+          </Button>
+        )}
 
         <Separator className="my-3" />
 
@@ -79,8 +84,8 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="admin">Administrador</SelectItem>
-              <SelectItem value="constructor">Constructor</SelectItem>
-              <SelectItem value="cliente">Cliente</SelectItem>
+              <SelectItem value="editor">Editor</SelectItem>
+              <SelectItem value="viewer">Viewer</SelectItem>
             </SelectContent>
           </Select>
         </div>

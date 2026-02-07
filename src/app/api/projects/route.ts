@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllProjects, createProject } from '@/lib/services/projectService';
+import { cookies } from 'next/headers';
 
 export async function GET() {
   try {
-    const projects = await getAllProjects();
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('userId')?.value;
+
+    const projects = await getAllProjects(userId);
     return NextResponse.json(projects);
   } catch (error) {
     console.error('Error fetching projects:', error);
@@ -16,6 +20,13 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('userId')?.value;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { nombre, moneda, presupuestoTotal, etapas } = body;
 
@@ -63,7 +74,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const result = await createProject(nombre.trim(), moneda, presupuestoTotal, etapas);
+    const result = await createProject(nombre.trim(), moneda, presupuestoTotal, etapas, userId);
 
     if (!result.success) {
       return NextResponse.json(

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-type UserRole = 'admin' | 'constructor' | 'cliente';
+type UserRole = 'admin' | 'editor' | 'viewer';
 
 interface UserRoleContextType {
   role: UserRole;
@@ -12,7 +12,7 @@ interface UserRoleContextType {
 const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined);
 
 export function UserRoleProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<UserRole>('admin');
+  const [role, setRole] = useState<UserRole>('viewer');
 
   return (
     <UserRoleContext.Provider value={{ role, setRole }}>

@@ -11,7 +11,7 @@ export type Json =
 
 export type TareaEstado = 'pendiente' | 'en_progreso' | 'completada'
 export type PagoEstado = 'pendiente' | 'confirmado'
-export type UserRole = 'admin' | 'constructor' | 'cliente'
+export type UserRole = 'admin' | 'editor' | 'viewer'
 
 export interface Database {
   public: {
@@ -136,7 +136,9 @@ export interface Database {
           orden: number
           nombre: string
           porcentaje_total: number
+          porcentaje_peso: number
           monto_usd: number
+          monto_etapa: number
           duracion_estimada_jornales: number | null
           hito_verificacion: string | null
           created_at: string
@@ -147,7 +149,9 @@ export interface Database {
           orden: number
           nombre: string
           porcentaje_total: number
+          porcentaje_peso: number
           monto_usd: number
+          monto_etapa: number
           duracion_estimada_jornales?: number | null
           hito_verificacion?: string | null
           created_at?: string
@@ -158,7 +162,9 @@ export interface Database {
           orden?: number
           nombre?: string
           porcentaje_total?: number
+          porcentaje_peso?: number
           monto_usd?: number
+          monto_etapa?: number
           duracion_estimada_jornales?: number | null
           hito_verificacion?: string | null
           created_at?: string
@@ -359,6 +365,92 @@ export interface Database {
           }
         ]
       }
+      invitaciones: {
+        Row: {
+          id: string
+          proyecto_id: string
+          email: string
+          rol: UserRole
+          token: string
+          invitado_por: string | null
+          aceptada: boolean
+          created_at: string
+          expires_at: string
+        }
+        Insert: {
+          id?: string
+          proyecto_id: string
+          email: string
+          rol: UserRole
+          token: string
+          invitado_por?: string | null
+          aceptada?: boolean
+          created_at?: string
+          expires_at: string
+        }
+        Update: {
+          id?: string
+          proyecto_id?: string
+          email?: string
+          rol?: UserRole
+          token?: string
+          invitado_por?: string | null
+          aceptada?: boolean
+          created_at?: string
+          expires_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitaciones_proyecto_id_fkey"
+            columns: ["proyecto_id"]
+            referencedRelation: "proyectos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitaciones_invitado_por_fkey"
+            columns: ["invitado_por"]
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      proyecto_miembros: {
+        Row: {
+          id: string
+          proyecto_id: string
+          usuario_id: string
+          rol: UserRole
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          proyecto_id: string
+          usuario_id: string
+          rol: UserRole
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          proyecto_id?: string
+          usuario_id?: string
+          rol?: UserRole
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proyecto_miembros_proyecto_id_fkey"
+            columns: ["proyecto_id"]
+            referencedRelation: "proyectos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proyecto_miembros_usuario_id_fkey"
+            columns: ["usuario_id"]
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -386,6 +478,8 @@ export type Tarea = Database['public']['Tables']['tareas']['Row']
 export type Pago = Database['public']['Tables']['pagos']['Row']
 export type Plano = Database['public']['Tables']['planos']['Row']
 export type AnotacionPlano = Database['public']['Tables']['anotaciones_planos']['Row']
+export type Invitacion = Database['public']['Tables']['invitaciones']['Row']
+export type ProyectoMiembro = Database['public']['Tables']['proyecto_miembros']['Row']
 
 // Extended types for business logic
 export interface EtapaConProgreso extends Etapa {

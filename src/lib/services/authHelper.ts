@@ -5,10 +5,10 @@ import { eq } from "drizzle-orm";
 /**
  * Checks if a user has a specific role.
  * @param userId - The UUID of the user.
- * @param role - The role to check ('admin', 'constructor', 'cliente').
+ * @param role - The role to check ('admin', 'editor', 'viewer').
  * @returns Promise<boolean>
  */
-export async function userHasRole(userId: string, role: 'admin' | 'constructor' | 'cliente'): Promise<boolean> {
+export async function userHasRole(userId: string, role: 'admin' | 'editor' | 'viewer'): Promise<boolean> {
   const user = await db.query.usuarios.findFirst({
     where: eq(usuarios.id, userId),
   });

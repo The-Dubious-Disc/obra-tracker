@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProjectSummary } from '@/lib/services/projectService';
+import { cookies } from 'next/headers';
 
 export async function GET(
   request: NextRequest,
@@ -7,7 +8,10 @@ export async function GET(
 ) {
   try {
     const { id: projectId } = await params;
-    const project = await getProjectSummary(projectId);
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('userId')?.value;
+
+    const project = await getProjectSummary(projectId, userId);
 
     if (!project) {
       return NextResponse.json(
