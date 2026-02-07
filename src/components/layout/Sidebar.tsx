@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { LayoutDashboard, ListChecks, DraftingCompass, PlusCircle, Users, X } from 'lucide-react'
-import { useProjects } from '@/hooks/useProject'
+import { useProjects, usePendingCount } from '@/hooks/useProject'
 import { useProjectSelection } from '@/contexts/ProjectContext'
 // role selector removed
 
@@ -17,6 +17,7 @@ interface SidebarProps {
 export function Sidebar({ open = false, onClose }: SidebarProps) {
   const { projects, isLoading } = useProjects()
   const { selectedProjectId, setSelectedProjectId } = useProjectSelection()
+  const pendingCount = usePendingCount(selectedProjectId)
 
   const content = (
     <div className="w-64 border-r bg-background h-full p-4 flex flex-col shadow-lg md:shadow-none">
@@ -32,6 +33,16 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       <nav className="space-y-2 flex-1">
         <Button variant="ghost" className="w-full justify-start gap-2" asChild>
           <Link href="/"><LayoutDashboard className="h-4 w-4" />Dashboard</Link>
+        </Button>
+        <Button variant="ghost" className="w-full justify-start gap-2" asChild>
+          <Link href="/pendientes" className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-2">
+              <ListChecks className="h-4 w-4" />Pendientes
+            </span>
+            {pendingCount > 0 && (
+              <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />
+            )}
+          </Link>
         </Button>
         <Button variant="ghost" className="w-full justify-start gap-2" asChild>
           <Link href="/builder"><ListChecks className="h-4 w-4" />Tareas</Link>

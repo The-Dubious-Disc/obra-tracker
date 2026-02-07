@@ -5,6 +5,7 @@ import { relations } from 'drizzle-orm';
 export const tareaEstadoEnum = pgEnum('tarea_estado', ['pendiente', 'en_progreso', 'completada']);
 export const pagoEstadoEnum = pgEnum('pago_estado', ['pendiente', 'confirmado']);
 export const userRoleEnum = pgEnum('user_role', ['admin', 'editor', 'viewer']);
+export const pendienteEstadoEnum = pgEnum('pendiente_estado', ['pendiente', 'completado']);
 
 // 1. Usuarios (Nuevo)
 export const usuarios = pgTable('usuarios', {
@@ -66,7 +67,19 @@ export const tareas = pgTable('tareas', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
-// 6. Pagos (Mejorado)
+// 6. Pendientes
+export const pendientes = pgTable('pendientes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  proyectoId: uuid('proyecto_id').references(() => proyectos.id, { onDelete: 'cascade' }).notNull(),
+  titulo: text('titulo').notNull(),
+  descripcion: text('descripcion'),
+  fechaVencimiento: date('fecha_vencimiento').notNull(),
+  estado: pendienteEstadoEnum('estado').default('pendiente'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+// 7. Pagos (Mejorado)
 export const pagos = pgTable('pagos', {
   id: uuid('id').primaryKey().defaultRandom(),
   proyectoId: uuid('proyecto_id').references(() => proyectos.id, { onDelete: 'cascade' }).notNull(),
@@ -132,6 +145,7 @@ export type UsuarioSelect = typeof usuarios.$inferSelect;
 export type ProyectoSelect = typeof proyectos.$inferSelect;
 export type EtapaSelect = typeof etapas.$inferSelect;
 export type TareaSelect = typeof tareas.$inferSelect;
+export type PendienteSelect = typeof pendientes.$inferSelect;
 export type PagoSelect = typeof pagos.$inferSelect;
 export type PlanoSelect = typeof planos.$inferSelect;
 export type PresupuestoVersionSelect = typeof presupuestoVersiones.$inferSelect;

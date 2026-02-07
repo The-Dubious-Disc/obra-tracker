@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { pagos, proyectos, etapas, tareas, planos, presupuestoVersiones, proyectoMiembros } from '@/lib/db/schema';
+import { pagos, proyectos, etapas, tareas, planos, presupuestoVersiones, proyectoMiembros, pendientes } from '@/lib/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 
 // Projects & Summary
@@ -130,6 +130,88 @@ export async function getProjectPayments(proyectoId: string) {
   } catch (error) {
     console.error('Error in getProjectPayments:', error);
     return [];
+  }
+}
+
+// Pendientes
+export async function getProjectPendientes(proyectoId: string, onlyPending = false) {
+  try {
+    const whereClause = onlyPending
+      ? and(eq(pendientes.proyectoId, proyectoId), eq(pendientes.estado, 'pendiente'))
+      : eq(pendientes.proyectoId, proyectoId);
+
+    return await db.select()
+      .from(pendientes)
+      .where(whereClause)
+      .orderBy(pendientes.fechaVencimiento);
+  } catch (error) {
+    console.error('Error in getProjectPendientes:', error);
+    return [];
+  }
+}
+
+export async function createPendiente(data: {
+  proyectoId: string;
+  titulo: string;
+  descripcion?: string | null;
+  fechaVencimiento: string;
+}) {
+  try {
+    const [newPendiente] = await db.insert(pendientes).values({
+      proyectoId: data.proyectoId,
+      titulo: data.titulo,
+      descripcion: data.descripcion || null,
+      fechaVencimiento: data.fechaVencimiento,
+    }).returning();
+
+    return { success: true, pendienteId: newPendiente.id };
+  } catch (error) {
+    console.error('Error in createPendiente:', error);
+    return { success: false, error: 'Database error' };
+  }
+}
+
+export async function updatePendiente(pendienteId: string, data: {
+  titulo?: string;
+  descripcion?: string | null;
+  fechaVencimiento?: string;
+  estado?: 'pendiente' | 'completado';
+}) {
+  try {
+    await db.update(pendientes)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(pendientes.id, pendienteId));
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error in updatePendiente:', error);
+    return { success: false, error: 'Database error' };
+  }
+}
+
+export async function deletePendiente(pendienteId: string) {
+  try {
+    await db.delete(pendientes)
+      .where(eq(pendientes.id, pendienteId));
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error in deletePendiente:', error);
+    return { success: false, error: 'Database error' };
+  }
+}
+
+export async function getPendienteById(pendienteId: string) {
+  try {
+    return await db.query.pendientes.findFirst({
+      where: eq(pendientes.id, pendienteId),
+    });
+  } catch (error) {
+    console.error('Error in getPendienteById:', error);
+    return null;
   }
 }
 

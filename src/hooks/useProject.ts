@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import type { ProjectSummary, Proyecto, PresupuestoVersion, Pago, Plano, Tarea } from '@/types/database.types'
+import type { ProjectSummary, Proyecto, PresupuestoVersion, Pago, Plano, Tarea, Pendiente } from '@/types/database.types'
 
 async function uploadToR2(params: {
   projectId: string
@@ -499,6 +499,191 @@ export function useUploadPlano(): UseUploadPlanoResult {
   )
 
   return { uploadPlano, isUploading, error }
+}
+
+// ============================================
+// usePendientes - Fetch project pendientes
+// ============================================
+interface UsePendientesResult {
+  pendientes: Pendiente[]
+  isLoading: boolean
+  error: string | null
+  refetch: () => Promise<void>
+}
+
+export function usePendientes(projectId: string | null): UsePendientesResult {
+  const [pendientes, setPendientes] = useState<Pendiente[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchData = useCallback(async () => {
+    if (!projectId) {
+      setPendientes([])
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}/pendientes`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const result = await response.json()
+      setPendientes(result)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch pendientes')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [projectId])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  return { pendientes, isLoading, error, refetch: fetchData }
+}
+
+export function usePendingCount(projectId: string | null) {
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchCount() {
+      if (!projectId) {
+        setCount(0)
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/projects/${projectId}/pendientes?estado=pendiente`)
+        if (!response.ok) return
+        const result = await response.json()
+        if (!cancelled) setCount(Array.isArray(result) ? result.length : 0)
+      } catch {
+        if (!cancelled) setCount(0)
+      }
+    }
+
+    fetchCount()
+    return () => {
+      cancelled = true
+    }
+  }, [projectId])
+
+  return count
+}
+
+export function useCreatePendiente() {
+  const [isCreating, setIsCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const createPendiente = useCallback(async (params: {
+    projectId: string
+    titulo: string
+    descripcion?: string
+    fechaVencimiento: string
+  }) => {
+    setIsCreating(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/projects/${params.projectId}/pendientes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titulo: params.titulo,
+          descripcion: params.descripcion,
+          fechaVencimiento: params.fechaVencimiento,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || `HTTP error! status: ${response.status}`)
+      }
+
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create pendiente')
+      return false
+    } finally {
+      setIsCreating(false)
+    }
+  }, [])
+
+  return { createPendiente, isCreating, error }
+}
+
+export function useUpdatePendiente() {
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const updatePendiente = useCallback(async (pendienteId: string, data: {
+    titulo?: string
+    descripcion?: string | null
+    fechaVencimiento?: string
+    estado?: 'pendiente' | 'completado'
+  }) => {
+    setIsUpdating(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/pendientes/${pendienteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        const payload = await response.json()
+        throw new Error(payload.error || `HTTP error! status: ${response.status}`)
+      }
+
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update pendiente')
+      return false
+    } finally {
+      setIsUpdating(false)
+    }
+  }, [])
+
+  return { updatePendiente, isUpdating, error }
+}
+
+export function useDeletePendiente() {
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const deletePendiente = useCallback(async (pendienteId: string) => {
+    setIsDeleting(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/pendientes/${pendienteId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const payload = await response.json()
+        throw new Error(payload.error || `HTTP error! status: ${response.status}`)
+      }
+
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete pendiente')
+      return false
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [])
+
+  return { deletePendiente, isDeleting, error }
 }
 
 // ============================================

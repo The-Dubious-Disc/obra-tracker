@@ -10,6 +10,7 @@ export type Json =
   | Json[]
 
 export type TareaEstado = 'pendiente' | 'en_progreso' | 'completada'
+export type PendienteEstado = 'pendiente' | 'completado'
 export type PagoEstado = 'pendiente' | 'confirmado'
 export type UserRole = 'admin' | 'editor' | 'viewer'
 
@@ -208,6 +209,46 @@ export interface Database {
             foreignKeyName: "tareas_etapa_id_fkey"
             columns: ["etapa_id"]
             referencedRelation: "etapas"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      pendientes: {
+        Row: {
+          id: string
+          proyecto_id: string
+          titulo: string
+          descripcion: string | null
+          fecha_vencimiento: string
+          estado: PendienteEstado
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          proyecto_id: string
+          titulo: string
+          descripcion?: string | null
+          fecha_vencimiento: string
+          estado?: PendienteEstado
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          proyecto_id?: string
+          titulo?: string
+          descripcion?: string | null
+          fecha_vencimiento?: string
+          estado?: PendienteEstado
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pendientes_proyecto_id_fkey"
+            columns: ["proyecto_id"]
+            referencedRelation: "proyectos"
             referencedColumns: ["id"]
           }
         ]
@@ -475,6 +516,7 @@ export type Proyecto = Database['public']['Tables']['proyectos']['Row']
 export type PresupuestoVersion = Database['public']['Tables']['presupuesto_versiones']['Row']
 export type Etapa = Database['public']['Tables']['etapas']['Row']
 export type Tarea = Database['public']['Tables']['tareas']['Row']
+export type Pendiente = Database['public']['Tables']['pendientes']['Row']
 export type Pago = Database['public']['Tables']['pagos']['Row']
 export type Plano = Database['public']['Tables']['planos']['Row']
 export type AnotacionPlano = Database['public']['Tables']['anotaciones_planos']['Row']
