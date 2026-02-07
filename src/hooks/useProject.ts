@@ -570,3 +570,92 @@ export function useUpdateTask(): UseUpdateTaskResult {
 
   return { updateTask, isUpdating, error }
 }
+
+// ============================================
+// useAddEtapa - Add a new stage to a project
+// ============================================
+interface UseAddEtapaResult {
+  addEtapa: (projectId: string, payload: {
+    nombre: string;
+    porcentajeTotal: number;
+    duracionEstimadaJornales: number;
+    hitoVerificacion?: string | null;
+    tareas: Array<{ descripcion: string }>;
+  }) => Promise<boolean>
+  isAdding: boolean
+  error: string | null
+}
+
+export function useAddEtapa(): UseAddEtapaResult {
+  const [isAdding, setIsAdding] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const addEtapa = useCallback(async (projectId: string, payload: {
+    nombre: string;
+    porcentajeTotal: number;
+    duracionEstimadaJornales: number;
+    hitoVerificacion?: string | null;
+    tareas: Array<{ descripcion: string }>;
+  }) => {
+    setIsAdding(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/projects/${projectId}/etapas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to add stage')
+      }
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add stage')
+      return false
+    } finally {
+      setIsAdding(false)
+    }
+  }, [])
+
+  return { addEtapa, isAdding, error }
+}
+
+// ============================================
+// useAddTask - Add a new task to a stage
+// ============================================
+interface UseAddTaskResult {
+  addTask: (etapaId: string, descripcion: string) => Promise<boolean>
+  isAdding: boolean
+  error: string | null
+}
+
+export function useAddTask(): UseAddTaskResult {
+  const [isAdding, setIsAdding] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const addTask = useCallback(async (etapaId: string, descripcion: string) => {
+    setIsAdding(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/etapas/${etapaId}/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ descripcion })
+      })
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to add task')
+      }
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add task')
+      return false
+    } finally {
+      setIsAdding(false)
+    }
+  }, [])
+
+  return { addTask, isAdding, error }
+}
+

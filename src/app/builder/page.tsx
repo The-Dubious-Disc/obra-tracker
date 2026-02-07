@@ -1,13 +1,16 @@
 'use client'
 
 import React, { useRef, useState } from 'react'
-import { useProjects, useProjectSummary, useStageTasks, useUpdateTask } from '@/hooks/useProject'
+import { useProjects, useProjectSummary, useStageTasks, useUpdateTask, useAddEtapa, useAddTask } from '@/hooks/useProject'
 import { useProjectSelection } from '@/contexts/ProjectContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { Camera, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Camera, Loader2, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 function StageTasks({
   etapaId,
@@ -25,8 +28,10 @@ function StageTasks({
   onUpdated: () => void;
 }) {
   const [open, setOpen] = useState(false)
+  const [newTaskDesc, setNewTaskDesc] = useState('')
   const { tasks, isLoading, refetch } = useStageTasks(open ? etapaId : null)
   const { updateTask } = useUpdateTask()
+  const { addTask, isAdding } = useAddTask()
 
   const total = open ? tasks.length : tareasTotal
   const completed = open ? tasks.filter(t => t.estado === 'completada').length : tareasCompletadas
@@ -35,6 +40,18 @@ function StageTasks({
   const handleToggle = async (taskId: string, next: 'pendiente' | 'en_progreso' | 'completada') => {
     const ok = await updateTask(taskId, next)
     if (ok) {
+      await refetch()
+      onUpdated()
+    }
+  }
+
+  const handleAddTask = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newTaskDesc.trim()) return
+    
+    const ok = await addTask(etapaId, newTaskDesc.trim())
+    if (ok) {
+      setNewTaskDesc('')
       await refetch()
       onUpdated()
     }
@@ -59,32 +76,46 @@ function StageTasks({
         <Progress value={progress} className="h-2" />
 
         {open && (
-          <div className="space-y-2 pt-2">
-            {isLoading ? (
-              <p className="text-sm text-muted-foreground">Cargando tareas...</p>
-            ) : tasks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No hay tareas registradas.</p>
-            ) : (
-              tasks.map((task) => (
-                <div key={task.id} className="flex items-start gap-3 rounded-md border p-3">
-                  <Checkbox
-                    checked={task.estado === 'completada'}
-                    onCheckedChange={(checked) =>
-                      handleToggle(task.id, checked ? 'completada' : 'pendiente')
-                    }
-                  />
-                  <div className="flex-1">
-                    <p className={`text-sm ${task.estado === 'completada' ? 'line-through text-muted-foreground' : ''}`}>
-                      {task.descripcion}
-                    </p>
-                    <div className="text-xs text-muted-foreground">
-                      Estado: {task.estado}
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              {isLoading ? (
+                <p className="text-sm text-muted-foreground">Cargando tareas...</p>
+              ) : tasks.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No hay tareas registradas.</p>
+              ) : (
+                tasks.map((task) => (
+                  <div key={task.id} className="flex items-start gap-3 rounded-md border p-3">
+                    <Checkbox
+                      checked={task.estado === 'completada'}
+                      onCheckedChange={(checked) =>
+                        handleToggle(task.id, checked ? 'completada' : 'pendiente')
+                      }
+                    />
+                    <div className="flex-1">
+                      <p className={`text-sm ${task.estado === 'completada' ? 'line-through text-muted-foreground' : ''}`}>
+                        {task.descripcion}
+                      </p>
+                      <div className="text-xs text-muted-foreground">
+                        Estado: {task.estado}
+                      </div>
                     </div>
                   </div>
-                  {/* botón iniciar/pausar removido */}
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
+            
+            <form onSubmit={handleAddTask} className="flex gap-2">
+              <Input
+                placeholder="Nueva tarea..."
+                value={newTaskDesc}
+                onChange={(e) => setNewTaskDesc(e.target.value)}
+                disabled={isAdding}
+                className="h-8 text-sm"
+              />
+              <Button type="submit" size="sm" disabled={isAdding || !newTaskDesc.trim()}>
+                {isAdding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+              </Button>
+            </form>
           </div>
         )}
       </CardContent>
@@ -92,7 +123,163 @@ function StageTasks({
   )
 }
 
+function AddStageDialog({ projectId, onCreated }: { projectId: string, onCreated: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [nombre, setNombre] = useState('')
+  const [porcentaje, setPorcentaje] = useState('')
+  const [jornales, setJornales] = useState('')
+  const [hito, setHito] = useState('')
+  const [tareas, setTareas] = useState<string[]>([''])
+  const { addEtapa, isAdding, error } = useAddEtapa()
+
+  const handleAddTareaInput = () => setTareas([...tareas, ''])
+  const handleTareaChange = (index: number, value: string) => {
+    const newTareas = [...tareas]
+    newTareas[index] = value
+    setTareas(newTareas)
+  }
+  const handleRemoveTareaInput = (index: number) => {
+    if (tareas.length > 1) {
+      setTareas(tareas.filter((_, i) => i !== index))
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    const payload = {
+      nombre,
+      porcentajeTotal: parseFloat(porcentaje),
+      duracionEstimadaJornales: parseInt(jornales),
+      hitoVerificacion: hito || null,
+      tareas: tareas
+        .filter(t => t.trim() !== '')
+        .map(t => ({ descripcion: t.trim() }))
+    }
+
+    const ok = await addEtapa(projectId, payload)
+    if (ok) {
+      setOpen(false)
+      resetForm()
+      onCreated()
+    }
+  }
+
+  const resetForm = () => {
+    setNombre('')
+    setPorcentaje('')
+    setJornales('')
+    setHito('')
+    setTareas([''])
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-2">
+          <Plus className="h-4 w-4" />
+          Agregar etapa
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Nueva Etapa de Obra</DialogTitle>
+          <DialogDescription>
+            Agrega una nueva etapa al proyecto actual.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-2">
+          <div className="grid gap-2">
+            <Label htmlFor="nombre">Nombre de la etapa</Label>
+            <Input 
+              id="nombre" 
+              placeholder="Ej: Cimentación" 
+              value={nombre} 
+              onChange={e => setNombre(e.target.value)}
+              required 
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="porcentaje">% Presupuesto</Label>
+              <Input 
+                id="porcentaje" 
+                type="number" 
+                placeholder="0" 
+                value={porcentaje} 
+                onChange={e => setPorcentaje(e.target.value)}
+                required 
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="jornales">Jornales est.</Label>
+              <Input 
+                id="jornales" 
+                type="number" 
+                placeholder="0" 
+                value={jornales} 
+                onChange={e => setJornales(e.target.value)}
+                required 
+              />
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="hito">Hito de verificación (opcional)</Label>
+            <Input 
+              id="hito" 
+              placeholder="Ej: Llenado de platea" 
+              value={hito} 
+              onChange={e => setHito(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Tareas (al menos una)</Label>
+            {tareas.map((tarea, index) => (
+              <div key={index} className="flex gap-2">
+                <Input 
+                  placeholder={`Tarea ${index + 1}`} 
+                  value={tarea} 
+                  onChange={e => handleTareaChange(index, e.target.value)}
+                  required={index === 0}
+                />
+                {tareas.length > 1 && (
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => handleRemoveTareaInput(index)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            <Button 
+              type="button" 
+              variant="link" 
+              size="sm" 
+              className="px-0 h-auto" 
+              onClick={handleAddTareaInput}
+            >
+              + Agregar otra tarea
+            </Button>
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button type="submit" disabled={isAdding}>
+              {isAdding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Crear Etapa
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function TasksPage() {
+
   const { projects, isLoading: projectsLoading } = useProjects()
   const { selectedProjectId } = useProjectSelection()
   const activeProjectId = selectedProjectId || (projects.length > 0 ? projects[0].id : null)
@@ -136,10 +323,13 @@ export default function TasksPage() {
           <h1 className="text-3xl font-bold">Panel de Tareas</h1>
           <p className="text-muted-foreground">{summary.proyecto.nombre}</p>
         </div>
-        <Button className="gap-2" onClick={handleUploadClick}>
-          <Camera className="h-4 w-4" />
-          Subir reporte
-        </Button>
+        <div className="flex items-center gap-2">
+          <AddStageDialog projectId={summary.proyecto.id} onCreated={refetch} />
+          <Button className="gap-2" onClick={handleUploadClick}>
+            <Camera className="h-4 w-4" />
+            Subir reporte
+          </Button>
+        </div>
       </div>
 
       <Card>

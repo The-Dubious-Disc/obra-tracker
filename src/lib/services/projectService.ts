@@ -279,3 +279,68 @@ export async function updateBudget(
     return { success: false, error: 'Database error' };
   }
 }
+
+export async function addEtapa(
+  projectId: string,
+  etapaPayload: {
+    nombre: string;
+    porcentajeTotal: number;
+    duracionEstimadaJornales: number;
+    hitoVerificacion?: string | null;
+    tareas: Array<{ descripcion: string }>;
+  }
+) {
+  try {
+    const project = await db.query.proyectos.findFirst({
+      where: eq(proyectos.id, projectId),
+    });
+
+    if (!project) return { success: false, error: 'Project not found' };
+
+    const existingStages = await db.select().from(etapas).where(eq(etapas.proyectoId, projectId));
+    const nextOrder = existingStages.length + 1;
+
+    const montoTotal = Number(project.montoTotalActivo);
+    const montoEtapa = (montoTotal * (etapaPayload.porcentajeTotal / 100)).toFixed(2);
+
+    const [newStage] = await db.insert(etapas).values({
+      proyectoId: projectId,
+      orden: nextOrder,
+      nombre: etapaPayload.nombre,
+      porcentajeTotal: etapaPayload.porcentajeTotal.toString(),
+      porcentajePeso: etapaPayload.porcentajeTotal.toString(),
+      montoUsd: montoEtapa,
+      montoEtapa: montoEtapa,
+      duracionEstimadaJornales: etapaPayload.duracionEstimadaJornales,
+      hitoVerificacion: etapaPayload.hitoVerificacion || null,
+    }).returning();
+
+    const tareasValues = etapaPayload.tareas.map((t) => ({
+      etapaId: newStage.id,
+      descripcion: t.descripcion,
+    }));
+
+    if (tareasValues.length > 0) {
+      await db.insert(tareas).values(tareasValues);
+    }
+
+    return { success: true, etapaId: newStage.id };
+  } catch (error) {
+    console.error('Error in addEtapa:', error);
+    return { success: false, error: 'Database error' };
+  }
+}
+
+export async function addTask(etapaId: string, descripcion: string) {
+  try {
+    const [newTask] = await db.insert(tareas).values({
+      etapaId,
+      descripcion,
+    }).returning();
+
+    return { success: true, taskId: newTask.id };
+  } catch (error) {
+    console.error('Error in addTask:', error);
+    return { success: false, error: 'Database error' };
+  }
+}
