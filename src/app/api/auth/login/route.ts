@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     const { email, password } = await request.json();
 
     if (!email || !password) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+      return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 });
     }
 
     const hashedPassword = await hashPassword(password);
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 });
     }
 
     const cookieStore = await cookies();
@@ -34,6 +34,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ userId: user.id, nombre: user.nombre, rol: user.rol });
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
 }

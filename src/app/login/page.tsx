@@ -1,12 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const registered = searchParams.get('registered');
+  const redirectParam = searchParams.get('redirect');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,7 +22,8 @@ export default function LoginPage() {
     });
     const data = await res.json();
     if (res.ok) {
-      window.location.href = '/projects';
+      const target = redirectParam ? decodeURIComponent(redirectParam) : '/';
+      router.replace(target);
     } else {
       setMessage(data.error);
     }
@@ -26,7 +32,7 @@ export default function LoginPage() {
   return (
     <div className="flex items-center justify-center min-h-screen">
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow-md">
-        <h1 className="text-2xl mb-4">Login</h1>
+        <h1 className="text-2xl mb-4">Iniciar sesión</h1>
         <input
           type="email"
           placeholder="Email"
@@ -44,13 +50,24 @@ export default function LoginPage() {
           required
         />
         <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
-          Login
+          Iniciar sesión
         </button>
+        {registered && (
+          <p className="mt-4 text-sm text-emerald-600">Registro exitoso. Iniciá sesión.</p>
+        )}
         <p className="mt-4 text-sm text-muted-foreground">
           ¿No tenés cuenta? <Link href="/register" className="text-blue-600 hover:underline">Registrate</Link>
         </p>
-        {message && <p className="mt-4">{message}</p>}
+        {message && <p className="mt-4 text-destructive">{message}</p>}
       </form>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }
