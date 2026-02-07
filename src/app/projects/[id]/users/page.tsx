@@ -46,13 +46,13 @@ export default function ProjectUsersPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage('Invitation sent successfully!');
+        setMessage('Invitación enviada correctamente.');
         setInviteEmail('');
       } else {
-        setMessage(data.error || 'Failed to send invitation');
+        setMessage(data.error || 'No se pudo enviar la invitación');
       }
     } catch {
-      setMessage('Error sending invitation');
+      setMessage('Error al enviar la invitación');
     } finally {
       setInviting(false);
     }
@@ -73,23 +73,23 @@ export default function ProjectUsersPage() {
     }
   };
 
-  if (loading) return <div className="p-8">Loading members...</div>;
+  if (loading) return <div className="p-8">Cargando miembros...</div>;
 
   return (
     <div className="p-8 space-y-8">
-      <h1 className="text-3xl font-bold">Project Team</h1>
+      <h1 className="text-3xl font-bold">Equipo del proyecto</h1>
 
       <Card>
         <CardHeader>
-          <CardTitle>Members</CardTitle>
+          <CardTitle>Miembros</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
             <div className="grid grid-cols-4 font-medium p-4 border-b bg-muted/50">
-              <div>Name</div>
+              <div>Nombre</div>
               <div>Email</div>
-              <div>Role</div>
-              <div>Actions</div>
+              <div>Rol</div>
+              <div>Acciones</div>
             </div>
             <div className="divide-y">
               {members.map((member) => (
@@ -105,7 +105,7 @@ export default function ProjectUsersPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="admin">Administrador</SelectItem>
                         <SelectItem value="editor">Editor</SelectItem>
                         <SelectItem value="viewer">Viewer</SelectItem>
                       </SelectContent>
@@ -123,7 +123,7 @@ export default function ProjectUsersPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Invite New Member</CardTitle>
+          <CardTitle>Invitar nuevo miembro</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleInvite} className="flex gap-4 items-end">
@@ -131,27 +131,27 @@ export default function ProjectUsersPage() {
               <label className="text-sm font-medium">Email</label>
               <Input 
                 type="email" 
-                placeholder="colleague@example.com" 
+                placeholder="colega@ejemplo.com" 
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 required
               />
             </div>
             <div className="w-48 space-y-2">
-              <label className="text-sm font-medium">Role</label>
+              <label className="text-sm font-medium">Rol</label>
               <Select value={inviteRol} onValueChange={setInviteRol}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="admin">Administrador</SelectItem>
                   <SelectItem value="editor">Editor</SelectItem>
                   <SelectItem value="viewer">Viewer</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <Button type="submit" disabled={inviting}>
-              {inviting ? 'Sending...' : 'Send Invitation'}
+              {inviting ? 'Enviando...' : 'Enviar invitación'}
             </Button>
           </form>
           {message && <p className="mt-4 text-sm font-medium">{message}</p>}
