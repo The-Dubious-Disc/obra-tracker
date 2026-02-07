@@ -81,13 +81,7 @@ function StageTasks({
                       Estado: {task.estado}
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleToggle(task.id, task.estado === 'en_progreso' ? 'pendiente' : 'en_progreso')}
-                  >
-                    {task.estado === 'en_progreso' ? 'Pausar' : 'Iniciar'}
-                  </Button>
+                  {/* botón iniciar/pausar removido */}
                 </div>
               ))
             )}
