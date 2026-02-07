@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useProjectSelection } from '@/contexts/ProjectContext';
 
 type UserRole = 'admin' | 'editor' | 'viewer';
 
@@ -13,6 +14,35 @@ const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined
 
 export function UserRoleProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole>('viewer');
+  const { selectedProjectId } = useProjectSelection();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchRole() {
+      if (!selectedProjectId) {
+        setRole('viewer');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/projects/${selectedProjectId}/membership`);
+        if (!res.ok) {
+          if (!cancelled) setRole('viewer');
+          return;
+        }
+        const data = await res.json();
+        if (!cancelled) setRole(data.rol as UserRole);
+      } catch {
+        if (!cancelled) setRole('viewer');
+      }
+    }
+
+    fetchRole();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProjectId]);
 
   return (
     <UserRoleContext.Provider value={{ role, setRole }}>
