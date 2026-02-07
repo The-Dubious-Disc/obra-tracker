@@ -11,6 +11,10 @@ export async function GET(
     const cookieStore = await cookies();
     const userId = cookieStore.get('userId')?.value;
 
+    if (!userId) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
     const project = await getProjectSummary(projectId, userId);
 
     if (!project) {

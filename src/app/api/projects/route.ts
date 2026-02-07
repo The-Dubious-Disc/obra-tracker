@@ -7,6 +7,10 @@ export async function GET() {
     const cookieStore = await cookies();
     const userId = cookieStore.get('userId')?.value;
 
+    if (!userId) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
     const projects = await getAllProjects(userId);
     return NextResponse.json(projects);
   } catch (error) {
