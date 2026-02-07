@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { format } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +21,7 @@ export function RegisterPaymentDialog({ projectId, etapas, children, onPaymentCr
   const [formData, setFormData] = useState({
     montoPagado: '',
     moneda: 'USD',
-    fechaPago: new Date().toISOString().split('T')[0],
+    fechaPago: format(new Date(), 'yyyy-MM-dd'),
     comentario: '',
     etapaId: 'none',
   });
@@ -46,7 +47,7 @@ export function RegisterPaymentDialog({ projectId, etapas, children, onPaymentCr
       setFormData({
         montoPagado: '',
         moneda: 'USD',
-        fechaPago: new Date().toISOString().split('T')[0],
+        fechaPago: format(new Date(), 'yyyy-MM-dd'),
         comentario: '',
         etapaId: 'none',
       });

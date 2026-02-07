@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import React from 'react'
+import { format, parseISO, isValid } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -32,13 +33,9 @@ function formatCurrency(amount: number, currency: string = 'UYU'): string {
 }
 
 function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return 'Fecha inválida';
-  return date.toLocaleDateString('es-UY', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
-  });
+  const date = parseISO(dateString);
+  if (!isValid(date)) return 'Fecha inválida';
+  return format(date, 'dd/MM/yyyy');
 }
 
 function getStatusFromProgress(progress: number): string {
