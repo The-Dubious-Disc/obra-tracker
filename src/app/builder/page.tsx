@@ -287,17 +287,58 @@ export default function TasksPage() {
   const { selectedProjectId } = useProjectSelection()
   const activeProjectId = selectedProjectId || (projects.length > 0 ? projects[0].id : null)
   const { data: summary, isLoading: summaryLoading, refetch } = useProjectSummary(activeProjectId)
+  const [isUploadingReport, setIsUploadingReport] = useState(false)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleUploadClick = () => {
+    if (isUploadingReport) return
     fileInputRef.current?.click()
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      alert(`Foto seleccionada: ${file.name}\n(Funcionalidad de subida en Fase 4)`)
+    if (!file || !summary?.proyecto?.id) return
+
+    setIsUploadingReport(true)
+
+    try {
+      const presignRes = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: summary.proyecto.id,
+          filename: file.name,
+          contentType: file.type || 'application/octet-stream',
+          kind: 'adjuntos',
+        }),
+      })
+
+      if (!presignRes.ok) {
+        const data = await presignRes.json()
+        throw new Error(data.error || 'No se pudo generar la URL de subida')
+      }
+
+      const { uploadUrl } = await presignRes.json()
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+      })
+
+      if (!uploadRes.ok) {
+        throw new Error('No se pudo subir el reporte')
+      }
+
+      alert('Reporte subido correctamente')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error al subir el reporte'
+      alert(message)
+    } finally {
+      setIsUploadingReport(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
@@ -328,9 +369,9 @@ export default function TasksPage() {
         </div>
         <div className="flex items-center gap-2">
           <AddStageDialog projectId={summary.proyecto.id} onCreated={refetch} />
-          <Button className="gap-2" onClick={handleUploadClick}>
-            <Camera className="h-4 w-4" />
-            Subir reporte
+          <Button className="gap-2" onClick={handleUploadClick} disabled={isUploadingReport}>
+            {isUploadingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+            {isUploadingReport ? 'Subiendo...' : 'Subir reporte'}
           </Button>
         </div>
       </div>
