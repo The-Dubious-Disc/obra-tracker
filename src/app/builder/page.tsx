@@ -62,7 +62,7 @@ function StageTasks({
       <CardHeader className="flex items-center justify-between gap-2 sm:flex-row">
         <div>
           <CardTitle className="text-lg">{nombre}</CardTitle>
-          <CardDescription>{hito ? `Hito: ${hito}` : 'Sin hito'}</CardDescription>
+          <CardDescription>{hito ? `Hito: ${String(hito)}` : 'Sin hito'}</CardDescription>
         </div>
         <Button variant="ghost" size="sm" onClick={() => setOpen(v => !v)}>
           {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -72,6 +72,9 @@ function StageTasks({
         <div className="flex items-center justify-between text-sm">
           <span>Progreso</span>
           <span className="font-medium">{Math.round(progress)}%</span>
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {completed}/{total} tareas completadas
         </div>
         <Progress value={progress} className="h-2" />
 
@@ -352,7 +355,7 @@ export default function TasksPage() {
             key={etapa.id}
             etapaId={etapa.id}
             nombre={etapa.nombre}
-            hito={etapa.hito_verificacion}
+            hito={String((etapa as unknown as Record<string, unknown>).hitoVerificacion ?? (etapa as unknown as Record<string, unknown>).hito_verificacion ?? '')}
             tareasTotal={etapa.tareasTotal}
             tareasCompletadas={etapa.tareasCompletadas}
             onUpdated={refetch}
