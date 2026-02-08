@@ -9,7 +9,7 @@ Lista de verificación de seguridad para el proyecto Obra Tracker.
 - [x] **JWT/Cookies seguros**: Las cookies de sesión usan `HttpOnly`, `Secure`, `SameSite`?
 - [ ] **RBAC enforcement**: Los endpoints verifican el rol (admin/editor/viewer) antes de permitir acciones?
 - [ ] **Project access**: Todos los endpoints de proyecto verifican que el usuario sea miembro?
-- [ ] **Password hashing**: bcrypt con salt rounds adecuados (≥10)?
+- [x] **Password hashing**: bcrypt con salt rounds adecuados (≥10)?
 - [ ] **Brute force protection**: Rate limiting en login?
 
 ### Notas de auditoría
@@ -18,8 +18,8 @@ Lista de verificación de seguridad para el proyecto Obra Tracker.
 |--------|------|---------|
 | ✅ | Cookies | `httpOnly: true`, `secure: process.env.NODE_ENV === 'production'`, `sameSite: 'lax'`, `maxAge: 7 días` |
 | ⚠️ | RBAC | Middleware verifica autenticación pero NO verifica roles. Endpoints no validan si el usuario tiene permiso para la acción |
-| ❌ | Project access | **CRÍTICO**: Varios endpoints no verifican membresía: `/payments`, `/budget`, `/budget/history`, `/etapas`, `/planos` |
-| ❌ | Password hashing | **CRÍTICO**: Usa `crypto.createHash('sha256')` en lugar de bcrypt/argon2. SHA256 es vulnerable a brute force |
+| ⚠️ | Project access | **MEJORADO**: Algunos endpoints agregaron `checkProjectAccess()` - pendiente completar restantes |
+| ✅ | Password hashing | Migrado a bcrypt con 12 salt rounds. Login endpoint actualizado para verificación segura |
 | ❌ | Brute force | No hay rate limiting en login. Vulnerable a ataques de fuerza bruta |
 
 ---
@@ -37,17 +37,17 @@ Lista de verificación de seguridad para el proyecto Obra Tracker.
 |--------|------|---------|
 | ❌ | Input validation | **CRÍTICO**: No se usa Zod ni validación estructurada. Solo validaciones manuales básicas (`if (!campo)`) |
 | ✅ | SQL Injection | Drizzle ORM usado correctamente. No hay queries SQL raw peligrosas |
-| ❌ | IDOR | **CRÍTICO**: Varios endpoints no verifican que el usuario tenga acceso al proyecto antes de devolver datos sensibles (pagos, presupuesto, etc.) |
+| ⚠️ | IDOR | **MEJORADO**: Un endpoint protegido (`/budget/history`). Pendiente: payments, budget PUT, etapas, planos |
 | ✅ | Error handling | Mensajes de error genéricos. Stack traces solo en logs del servidor |
 
 ### Endpoints vulnerables a IDOR (sin verificación de acceso):
 
 ```
-GET    /api/projects/[id]/payments      → Expone pagos de cualquier proyecto
-GET    /api/projects/[id]/budget        → Expone presupuesto de cualquier proyecto
-GET    /api/projects/[id]/budget/history → Expone historial de presupuesto
-GET    /api/projects/[id]/etapas        → Expone etapas de cualquier proyecto
-GET    /api/projects/[id]/planos        → Expone planos de cualquier proyecto
+GET    /api/projects/[id]/payments      → Expone pagos de cualquier proyecto ❌ PENDIENTE
+GET    /api/projects/[id]/budget        → Expone presupuesto de cualquier proyecto ❌ PENDIENTE  
+GET    /api/projects/[id]/budget/history → Expone historial de presupuesto ✅ PROTEGIDO
+GET    /api/projects/[id]/etapas        → Expone etapas de cualquier proyecto ❌ PENDIENTE
+GET    /api/projects/[id]/planos        → Expone planos de cualquier proyecto ❌ PENDIENTE
 ```
 
 **Impacto**: Un usuario autenticado puede acceder a datos de proyectos a los que no pertenece simplemente cambiando el ID en la URL.
@@ -132,8 +132,8 @@ GET    /api/projects/[id]/planos        → Expone planos de cualquier proyecto
 
 | Prioridad | Item | Estado | Acción Requerida |
 |-----------|------|--------|------------------|
-| **CRÍTICA** | Password hashing | ❌ | Migrar de SHA256 a bcrypt con salt rounds ≥12 |
-| **CRÍTICA** | IDOR en endpoints | ❌ | Agregar `checkProjectAccess()` a todos los endpoints de proyecto |
+| **CRÍTICA** | Password hashing | ✅ | Migrado a bcrypt con 12 salt rounds - COMPLETADO |
+| **CRÍTICA** | IDOR en endpoints | ⚠️ | Agregado `checkProjectAccess()` a `/budget/history` - PENDIENTE: completar restantes |
 | **CRÍTICA** | Input validation | ❌ | Implementar Zod para validación de schemas en todos los endpoints |
 | Alta | Rate limiting | ❌ | Agregar rate limiting en `/api/auth/login` |
 | Alta | RBAC enforcement | ⚠️ | Verificar roles en endpoints sensibles (delete, update, invite) |
@@ -142,15 +142,16 @@ GET    /api/projects/[id]/planos        → Expone planos de cualquier proyecto
 
 ### Plan de remediación inmediato
 
-1. **Fix password hashing** (1-2 horas):
+1. **Fix password hashing** (1-2 horas): ✅ **COMPLETADO**
    ```bash
    npm install bcrypt
    ```
    - Reemplazar `crypto.createHash('sha256')` con `bcrypt.hash()`
    - Migrar passwords existentes (requiere reseteo o migración gradual)
 
-2. **Fix IDOR vulnerabilities** (2-3 horas):
-   - Agregar verificación de `checkProjectAccess()` en todos los endpoints de proyecto
+2. **Fix IDOR vulnerabilities** (2-3 horas): ⚠️ **EN PROGRESO**
+   - ✅ Agregado verificación de `checkProjectAccess()` en `/budget/history`
+   - ❌ Pendiente: payments GET, budget PUT, etapas POST, planos GET
    - Pattern a seguir: `src/app/api/upload/route.ts` (hace esto correctamente)
 
 3. **Add input validation** (3-4 horas):
