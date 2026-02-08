@@ -38,7 +38,7 @@ export function buildObjectKey(options: {
   filename: string;
 }) {
   const safeName = options.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-  return `projects/${options.projectId}/${options.kind}/${Date.now()}-${safeName}`;
+  return `obratracker/projects/${options.projectId}/${options.kind}/${Date.now()}-${safeName}`;
 }
 
 export async function getPresignedUploadUrl(options: {
