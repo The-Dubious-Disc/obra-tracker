@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { usuarios } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { hashPassword } from '@/lib/services/authService';
+import { eq } from 'drizzle-orm';
+import { verifyPassword } from '@/lib/services/authService';
 import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
@@ -13,12 +13,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 });
     }
 
-    const hashedPassword = await hashPassword(password);
     const user = await db.query.usuarios.findFirst({
-      where: and(eq(usuarios.email, email), eq(usuarios.passwordHash, hashedPassword)),
+      where: eq(usuarios.email, email),
     });
 
-    if (!user) {
+    if (!user || !(await verifyPassword(password, user.passwordHash))) {
       return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 });
     }
 
