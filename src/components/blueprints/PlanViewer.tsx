@@ -127,11 +127,7 @@ export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
   return (
     <div ref={containerRef} className={`relative flex flex-col gap-4 ${isFullscreen ? 'fixed inset-0 z-50 bg-white p-4' : ''}`}>
       <div className="flex justify-between items-center bg-slate-50 p-2 rounded-t-lg border border-b-0">
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={toggleFullscreen}>
-            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </Button>
-        </div>
+        <div className="flex gap-2" />
         <div className="flex gap-2 items-center text-xs text-muted-foreground">
           <span>{pins.length} anotaciones</span>
         </div>
