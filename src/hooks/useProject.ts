@@ -746,7 +746,7 @@ export function useUpdateTask(): UseUpdateTaskResult {
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const updateTask = useCallback(async (taskId: string, estado: 'pendiente' | 'en_progreso' | 'completada') => {
+  const updateTask = useCallback(async (taskId: string, estado: 'pendiente' | 'en_progreso' | 'completada', descripcion?: string) => {
     setIsUpdating(true)
     setError(null)
 
@@ -754,7 +754,7 @@ export function useUpdateTask(): UseUpdateTaskResult {
       const response = await fetch(`/api/tasks/${taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ estado })
+        body: JSON.stringify({ estado, descripcion })
       })
 
       if (!response.ok) {
@@ -772,6 +772,39 @@ export function useUpdateTask(): UseUpdateTaskResult {
   }, [])
 
   return { updateTask, isUpdating, error }
+}
+
+// ============================================
+// useDeleteTask - Delete a task
+// ============================================
+export function useDeleteTask() {
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const deleteTask = useCallback(async (taskId: string) => {
+    setIsDeleting(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Delete failed')
+      }
+
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed')
+      return false
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [])
+
+  return { deleteTask, isDeleting, error }
 }
 
 // ============================================
@@ -822,6 +855,66 @@ export function useAddEtapa(): UseAddEtapaResult {
   }, [])
 
   return { addEtapa, isAdding, error }
+}
+
+export function useUpdateStage() {
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const updateStage = useCallback(async (etapaId: string, data: {
+    nombre?: string;
+    duracionEstimadaJornales?: number;
+    hitoVerificacion?: string | null;
+  }) => {
+    setIsUpdating(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/etapas/${etapaId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update stage')
+      }
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update stage')
+      return false
+    } finally {
+      setIsUpdating(false)
+    }
+  }, [])
+
+  return { updateStage, isUpdating, error }
+}
+
+export function useDeleteStage() {
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const deleteStage = useCallback(async (etapaId: string) => {
+    setIsDeleting(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/etapas/${etapaId}`, {
+        method: 'DELETE',
+      })
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete stage')
+      }
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete stage')
+      return false
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [])
+
+  return { deleteStage, isDeleting, error }
 }
 
 // ============================================

@@ -47,10 +47,13 @@ export async function getProjectSummary(projectId: string, userId?: string) {
     const allPayments = await db.select().from(pagos).where(eq(pagos.proyectoId, projectId));
     const totalPagado = allPayments.reduce((sum, p) => sum + Number(p.montoPagado), 0);
     
-    // Weighted progress
-    const weightedProgress = etapasWithProgress.reduce((acc, curr) => {
-      return acc + (curr.porcentajeCompletado * (Number(curr.porcentajeTotal) || 0) / 100);
-    }, 0);
+    // Weighted progress based on jornales
+    const totalJornales = etapasWithProgress.reduce((sum, e) => sum + (e.duracionEstimadaJornales || 0), 0);
+    const weightedProgress = totalJornales > 0 
+      ? etapasWithProgress.reduce((acc, curr) => {
+          return acc + (curr.porcentajeCompletado * (curr.duracionEstimadaJornales || 0) / totalJornales);
+        }, 0)
+      : 0;
 
     const activeBudget = await db.query.presupuestoVersiones.findFirst({
       where: and(eq(presupuestoVersiones.proyectoId, projectId), eq(presupuestoVersiones.esActiva, true)),

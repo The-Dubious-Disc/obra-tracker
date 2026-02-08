@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useRef, useState } from 'react'
-import { useProjects, useProjectSummary, useStageTasks, useUpdateTask, useAddEtapa, useAddTask } from '@/hooks/useProject'
+import { useProjects, useProjectSummary, useStageTasks, useUpdateTask, useDeleteTask, useAddEtapa, useAddTask, useDeleteStage } from '@/hooks/useProject'
 import { useProjectSelection } from '@/contexts/ProjectContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -29,18 +29,56 @@ function StageTasks({
 }) {
   const [open, setOpen] = useState(false)
   const [newTaskDesc, setNewTaskDesc] = useState('')
+  const [localTasks, setLocalTasks] = useState<{ id: string; estado: string; descripcion: string }[]>([])
   const { tasks, isLoading, refetch } = useStageTasks(open ? etapaId : null)
   const { updateTask } = useUpdateTask()
+  const { deleteTask } = useDeleteTask()
+  const { deleteStage } = useDeleteStage()
   const { addTask, isAdding } = useAddTask()
 
-  const total = open ? tasks.length : tareasTotal
-  const completed = open ? tasks.filter(t => t.estado === 'completada').length : tareasCompletadas
+  // Sync local tasks when fetched
+  React.useEffect(() => {
+    if (tasks) setLocalTasks(tasks)
+  }, [tasks])
+
+  const total = open ? localTasks.length : tareasTotal
+  const completed = open ? localTasks.filter(t => t.estado === 'completada').length : tareasCompletadas
   const progress = total > 0 ? (completed / total) * 100 : 0
 
   const handleToggle = async (taskId: string, next: 'pendiente' | 'en_progreso' | 'completada') => {
+    // Optimistic update
+    const previousTasks = [...localTasks]
+    setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, estado: next } : t))
+
     const ok = await updateTask(taskId, next)
     if (ok) {
-      await refetch()
+      onUpdated()
+    } else {
+      // Rollback
+      setLocalTasks(previousTasks)
+    }
+  }
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('¿Eliminar esta tarea?')) return
+    
+    // Optimistic update
+    const previousTasks = [...localTasks]
+    setLocalTasks(prev => prev.filter(t => t.id !== taskId))
+
+    const ok = await deleteTask(taskId)
+    if (ok) {
+      onUpdated()
+    } else {
+      setLocalTasks(previousTasks)
+    }
+  }
+
+  const handleDeleteStage = async () => {
+    if (!confirm(`¿Eliminar la etapa "${nombre}" y todas sus tareas?`)) return
+    
+    const ok = await deleteStage(etapaId)
+    if (ok) {
       onUpdated()
     }
   }
@@ -64,9 +102,14 @@ function StageTasks({
           <CardTitle className="text-lg">{nombre}</CardTitle>
           <CardDescription>{hito ? `Hito: ${String(hito)}` : 'Sin hito'}</CardDescription>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => setOpen(v => !v)}>
-          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={handleDeleteStage}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setOpen(v => !v)}>
+            {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-center justify-between text-sm">
@@ -81,12 +124,12 @@ function StageTasks({
         {open && (
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
-              {isLoading ? (
+              {isLoading && localTasks.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Cargando tareas...</p>
-              ) : tasks.length === 0 ? (
+              ) : localTasks.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No hay tareas registradas.</p>
               ) : (
-                tasks.map((task) => (
+                localTasks.map((task) => (
                   <div key={task.id} className="flex items-start gap-3 rounded-md border p-3">
                     <Checkbox
                       checked={task.estado === 'completada'}
@@ -102,6 +145,14 @@ function StageTasks({
                         Estado: {task.estado}
                       </div>
                     </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDeleteTask(task.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 ))
               )}
