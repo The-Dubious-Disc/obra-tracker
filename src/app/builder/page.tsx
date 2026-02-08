@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
 import { Camera, Loader2, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -45,6 +46,8 @@ function StageTasks({
   const completed = open ? localTasks.filter(t => t.estado === 'completada').length : tareasCompletadas
   const progress = total > 0 ? (completed / total) * 100 : 0
 
+  const status = progress >= 100 ? 'Completado' : progress > 0 ? 'En Proceso' : 'Pendiente'
+
   const handleToggle = async (taskId: string, next: 'pendiente' | 'en_progreso' | 'completada') => {
     // Optimistic update
     const previousTasks = [...localTasks]
@@ -76,9 +79,6 @@ function StageTasks({
       <CardHeader className="flex items-center justify-between gap-2 sm:flex-row">
         <div>
           <CardTitle className="text-lg">{nombre}</CardTitle>
-          <CardDescription>
-            {hito ? `Hito: ${hito}` : 'Sin hito'}
-          </CardDescription>
         </div>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" onClick={() => setOpen(v => !v)}>
@@ -94,7 +94,15 @@ function StageTasks({
           </div>
         )}
         <div className="flex items-center justify-between text-sm">
-          <span>Progreso</span>
+          <Badge 
+            variant={
+              status === "Completado" ? "default" : 
+              status === "En Proceso" ? "secondary" : 
+              "outline"
+            }
+          >
+            {status}
+          </Badge>
           <span className="font-medium">{Math.round(progress)}%</span>
         </div>
         <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -392,7 +400,7 @@ export default function TasksPage() {
           <h1 className="text-3xl font-bold">Panel de Tareas</h1>
           <p className="text-muted-foreground">{summary.proyecto.nombre}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col items-end gap-2">
           <AddStageDialog projectId={summary.proyecto.id} onCreated={refetch} />
           <Button className="gap-2" onClick={handleUploadClick} disabled={isUploadingReport}>
             {isUploadingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
