@@ -36,8 +36,8 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         </Button>
         <Button variant="ghost" className="w-full justify-start gap-2" asChild>
           <Link href="/pendientes" className="flex items-center w-full">
-            <ListChecks className="h-4 w-4 mr-2" />
-            <span>Pendientes</span>
+            <ListChecks className="h-4 w-4" />
+            <span className="ml-2">Pendientes</span>
             {pendingCount > 0 && (
               <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />
             )}

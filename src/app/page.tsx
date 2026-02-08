@@ -440,36 +440,6 @@ function DashboardContent() {
         )}
       </div>
 
-      {/* Money Cards (Admin Only) */}
-      {showMoney && (
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Monto Total</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(montoTotal, moneda)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pagado</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{formatCurrency(totalPagado, moneda)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pendiente</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">{formatCurrency(pendiente, moneda)}</div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
       <div className={`grid gap-4 ${showMoney ? 'md:grid-cols-3' : 'md:grid-cols-1'}`}>
         <div className={`${showMoney ? 'md:col-span-2' : ''} space-y-4`}>
           <Card>
@@ -511,6 +481,30 @@ function DashboardContent() {
 
         {showMoney && (
           <div className="md:col-span-1 space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Resumen Financiero</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Monto Total</span>
+                  <span className="font-bold">{formatCurrency(montoTotal, moneda)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Pagado</span>
+                  <span className="font-bold text-green-600">{formatCurrency(totalPagadoNum, moneda)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Pendiente</span>
+                  <span className="font-bold text-destructive">{formatCurrency(pendiente, moneda)}</span>
+                </div>
+                <Progress 
+                  value={(totalPagadoNum / (montoTotal || 1)) * 100} 
+                  className="h-2" 
+                />
+              </CardContent>
+            </Card>
+            
             <BudgetHistoryCard projectId={proyecto.id} onUpdated={() => {
               refetch();
               setPaymentsRefresh((v) => v + 1);
