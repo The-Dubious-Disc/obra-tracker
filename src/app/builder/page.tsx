@@ -76,7 +76,9 @@ function StageTasks({
       <CardHeader className="flex items-center justify-between gap-2 sm:flex-row">
         <div>
           <CardTitle className="text-lg">{nombre}</CardTitle>
-          <CardDescription>{hito ? `Hito: ${String(hito)}` : 'Sin hito'}</CardDescription>
+          <CardDescription>
+            {hito ? `Hito: ${hito}` : 'Sin hito'}
+          </CardDescription>
         </div>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" onClick={() => setOpen(v => !v)}>
@@ -85,6 +87,12 @@ function StageTasks({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {open && hito && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-900 mb-2">
+            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Hito de Verificación</span>
+            <p className="text-sm font-medium mt-1">{hito}</p>
+          </div>
+        )}
         <div className="flex items-center justify-between text-sm">
           <span>Progreso</span>
           <span className="font-medium">{Math.round(progress)}%</span>
