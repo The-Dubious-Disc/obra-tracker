@@ -536,5 +536,7 @@ export interface ProjectSummary {
   etapas: EtapaConProgreso[]
   totalPagado: number
   porcentajeAvance: number
+  totalJornales: number
+  jornalesCompletados: number
   presupuestoActivo: PresupuestoVersion | null
 }

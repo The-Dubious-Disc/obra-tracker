@@ -55,6 +55,10 @@ export async function getProjectSummary(projectId: string, userId?: string) {
         }, 0)
       : 0;
 
+    const jornalesCompletados = totalJornales > 0
+      ? (weightedProgress / 100) * totalJornales
+      : 0;
+
     const activeBudget = await db.query.presupuestoVersiones.findFirst({
       where: and(eq(presupuestoVersiones.proyectoId, projectId), eq(presupuestoVersiones.esActiva, true)),
     });
@@ -64,6 +68,8 @@ export async function getProjectSummary(projectId: string, userId?: string) {
       etapas: etapasWithProgress,
       totalPagado,
       porcentajeAvance: weightedProgress,
+      totalJornales,
+      jornalesCompletados,
       presupuestoActivo: activeBudget || null,
     };
 

@@ -328,7 +328,7 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
                   <p className="text-lg font-semibold">{formatCurrency(Number((etapa as unknown as Record<string, unknown>).montoUsd ?? (etapa as unknown as Record<string, unknown>).monto_usd ?? 0), moneda)}</p>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-xs text-muted-foreground">Ejecutado</span>
+                  <span className="text-xs text-muted-foreground">Aportado</span>
                   <p className={`text-lg font-semibold ${etapa.pagosTotales > Number((etapa as unknown as Record<string, unknown>).montoUsd ?? (etapa as unknown as Record<string, unknown>).monto_usd ?? 0) ? 'text-red-500' : 'text-green-600'}`}>
                     {formatCurrency(etapa.pagosTotales, moneda)}
                   </p>
@@ -406,7 +406,7 @@ function DashboardContent() {
   }
 
   // Project selected and data loaded - show dashboard
-  const { proyecto, etapas, totalPagado, porcentajeAvance, presupuestoActivo } = data;
+  const { proyecto, etapas, totalPagado, porcentajeAvance, presupuestoActivo, totalJornales, jornalesCompletados } = data;
   const projectAny = proyecto as Record<string, unknown>;
   const montoActivo = projectAny.montoTotalActivo ?? projectAny.monto_total_activo ?? 0;
   const presupuestoTotal = projectAny.presupuestoTotalUsd ?? projectAny.presupuesto_total_usd ?? montoActivo;
@@ -482,6 +482,10 @@ function DashboardContent() {
                 <span className="font-bold">{Math.round(porcentajeAvance)}%</span>
               </div>
               <Progress value={porcentajeAvance} className="h-3" />
+              <div className="flex justify-between text-xs text-muted-foreground pt-1">
+                <span>Jornales: {Math.round(jornalesCompletados)} / {totalJornales}</span>
+                <span>Restantes: {Math.max(0, Math.round(totalJornales - jornalesCompletados))}</span>
+              </div>
             </CardContent>
           </Card>
 
