@@ -13,6 +13,7 @@ export type TareaEstado = 'pendiente' | 'en_progreso' | 'completada'
 export type PendienteEstado = 'pendiente' | 'completado'
 export type PagoEstado = 'pendiente' | 'confirmado'
 export type UserRole = 'admin' | 'editor' | 'viewer'
+export type AnotacionEstado = 'abierta' | 'resuelta'
 
 export interface Database {
   public: {
@@ -297,6 +298,7 @@ export interface Database {
           coordX: number
           coordY: number
           comentario: string
+          estado: AnotacionEstado | null
           creadoPor: string | null
           createdAt: string
         }
@@ -306,6 +308,7 @@ export interface Database {
           coordX: number
           coordY: number
           comentario: string
+          estado?: AnotacionEstado | null
           creadoPor: string | null
           createdAt?: string
         }
@@ -315,7 +318,32 @@ export interface Database {
           coordX?: number
           coordY?: number
           comentario?: string
+          estado?: AnotacionEstado | null
           creadoPor?: string | null
+          createdAt?: string
+        }
+        Relationships: []
+      }
+      comentarios_anotaciones: {
+        Row: {
+          id: string
+          anotacionId: string
+          usuarioId: string
+          texto: string
+          createdAt: string
+        }
+        Insert: {
+          id?: string
+          anotacionId: string
+          usuarioId: string
+          texto: string
+          createdAt?: string
+        }
+        Update: {
+          id?: string
+          anotacionId?: string
+          usuarioId?: string
+          texto?: string
           createdAt?: string
         }
         Relationships: []
@@ -391,6 +419,7 @@ export interface Database {
       tarea_estado: TareaEstado
       pago_estado: PagoEstado
       user_role: UserRole
+      anotacion_estado: AnotacionEstado
     }
     CompositeTypes: {
       [_ in never]: never
@@ -408,6 +437,7 @@ export type Pendiente = Database['public']['Tables']['pendientes']['Row']
 export type Pago = Database['public']['Tables']['pagos']['Row']
 export type Plano = Database['public']['Tables']['planos']['Row']
 export type AnotacionPlano = Database['public']['Tables']['anotaciones_planos']['Row']
+export type ComentarioAnotacion = Database['public']['Tables']['comentarios_anotaciones']['Row']
 export type Invitacion = Database['public']['Tables']['invitaciones']['Row']
 export type ProyectoMiembro = Database['public']['Tables']['proyecto_miembros']['Row']
 

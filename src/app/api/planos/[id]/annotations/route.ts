@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { anotacionesPlanos } from '@/lib/db/schema';
+import { anotacionesPlanos, planos } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { cookies } from 'next/headers';
+import { checkProjectAccess } from '@/lib/services/authService';
 
 export async function GET(
   request: NextRequest,
@@ -9,7 +11,31 @@ export async function GET(
 ) {
   try {
     const { id: planoId } = await params;
-    const data = await db.select().from(anotacionesPlanos).where(eq(anotacionesPlanos.planoId, planoId));
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('userId')?.value;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const plano = await db.query.planos.findFirst({
+      where: eq(planos.id, planoId),
+      columns: { proyectoId: true },
+    });
+
+    if (!plano) {
+      return NextResponse.json({ error: 'Plano not found' }, { status: 404 });
+    }
+
+    const member = await checkProjectAccess(userId, plano.proyectoId);
+    if (!member) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const data = await db
+      .select()
+      .from(anotacionesPlanos)
+      .where(eq(anotacionesPlanos.planoId, planoId));
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching annotations:', error);
@@ -23,20 +49,44 @@ export async function POST(
 ) {
   try {
     const { id: planoId } = await params;
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('userId')?.value;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const plano = await db.query.planos.findFirst({
+      where: eq(planos.id, planoId),
+      columns: { proyectoId: true },
+    });
+
+    if (!plano) {
+      return NextResponse.json({ error: 'Plano not found' }, { status: 404 });
+    }
+
+    const member = await checkProjectAccess(userId, plano.proyectoId);
+    if (!member) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const body = await request.json();
-    const { coord_x, coord_y, comentario, creado_por } = body;
+    const { coord_x, coord_y, comentario } = body;
 
     if (coord_x === undefined || coord_y === undefined || !comentario) {
       return NextResponse.json({ error: 'coord_x, coord_y, comentario are required' }, { status: 400 });
     }
 
-    const [newPin] = await db.insert(anotacionesPlanos).values({
-      planoId,
-      coordX: coord_x,
-      coordY: coord_y,
-      comentario,
-      creadoPor: creado_por || null,
-    }).returning();
+    const [newPin] = await db
+      .insert(anotacionesPlanos)
+      .values({
+        planoId,
+        coordX: coord_x,
+        coordY: coord_y,
+        comentario,
+        creadoPor: userId,
+      })
+      .returning();
 
     return NextResponse.json(newPin);
   } catch (error) {

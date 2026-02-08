@@ -1,19 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { anotacionesPlanos } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { anotacionesPlanos, planos } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
+import { cookies } from 'next/headers';
+import { checkProjectAccess } from '@/lib/services/authService';
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; annotationId: string }> }
 ) {
   try {
-    const { annotationId } = await params;
+    const { id: planoId, annotationId } = await params;
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('userId')?.value;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const annotation = await db.query.anotacionesPlanos.findFirst({
+      where: and(eq(anotacionesPlanos.id, annotationId), eq(anotacionesPlanos.planoId, planoId)),
+    });
+
+    if (!annotation) {
+      return NextResponse.json({ error: 'Annotation not found' }, { status: 404 });
+    }
+
+    const plano = await db.query.planos.findFirst({
+      where: eq(planos.id, annotation.planoId),
+      columns: { proyectoId: true },
+    });
+
+    if (!plano) {
+      return NextResponse.json({ error: 'Plano not found' }, { status: 404 });
+    }
+
+    const member = await checkProjectAccess(userId, plano.proyectoId);
+    if (!member) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { estado } = body;
 
-    if (!estado) {
-      return NextResponse.json({ error: 'estado is required' }, { status: 400 });
+    if (!estado || !['abierta', 'resuelta'].includes(estado)) {
+      return NextResponse.json({ error: 'estado is invalid' }, { status: 400 });
     }
 
     const [updated] = await db
