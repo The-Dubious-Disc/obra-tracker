@@ -6,6 +6,7 @@ export const tareaEstadoEnum = pgEnum('tarea_estado', ['pendiente', 'en_progreso
 export const pagoEstadoEnum = pgEnum('pago_estado', ['pendiente', 'confirmado']);
 export const userRoleEnum = pgEnum('user_role', ['admin', 'editor', 'viewer']);
 export const pendienteEstadoEnum = pgEnum('pendiente_estado', ['pendiente', 'completado']);
+export const anotacionEstadoEnum = pgEnum('anotacion_estado', ['abierta', 'resuelta']);
 
 // 1. Usuarios (Nuevo)
 export const usuarios = pgTable('usuarios', {
@@ -114,11 +115,21 @@ export const anotacionesPlanos = pgTable('anotaciones_planos', {
   coordX: doublePrecision('coord_x').notNull(),
   coordY: doublePrecision('coord_y').notNull(),
   comentario: text('comentario').notNull(),
+  estado: anotacionEstadoEnum('estado').default('abierta'),
   creadoPor: uuid('creado_por').references(() => usuarios.id),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
-// 9. Invitaciones
+// 9. Comentarios en Anotaciones
+export const comentariosAnotaciones = pgTable('comentarios_anotaciones', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  anotacionId: uuid('anotacion_id').references(() => anotacionesPlanos.id, { onDelete: 'cascade' }).notNull(),
+  usuarioId: uuid('usuario_id').references(() => usuarios.id).notNull(),
+  texto: text('texto').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+// 10. Invitaciones
 export const invitaciones = pgTable('invitaciones', {
   id: uuid('id').primaryKey().defaultRandom(),
   proyectoId: uuid('proyecto_id').references(() => proyectos.id, { onDelete: 'cascade' }).notNull(),
@@ -140,7 +151,7 @@ export const proyectoMiembros = pgTable('proyecto_miembros', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
-// Types for Select and Insert
+// 11. Relaciones... (continuar con export type)
 export type UsuarioSelect = typeof usuarios.$inferSelect;
 export type ProyectoSelect = typeof proyectos.$inferSelect;
 export type EtapaSelect = typeof etapas.$inferSelect;
@@ -148,6 +159,8 @@ export type TareaSelect = typeof tareas.$inferSelect;
 export type PendienteSelect = typeof pendientes.$inferSelect;
 export type PagoSelect = typeof pagos.$inferSelect;
 export type PlanoSelect = typeof planos.$inferSelect;
+export type AnotacionPlanoSelect = typeof anotacionesPlanos.$inferSelect;
+export type ComentarioAnotacionSelect = typeof comentariosAnotaciones.$inferSelect;
 export type PresupuestoVersionSelect = typeof presupuestoVersiones.$inferSelect;
 export type InvitacionSelect = typeof invitaciones.$inferSelect;
 export type ProyectoMiembroSelect = typeof proyectoMiembros.$inferSelect;

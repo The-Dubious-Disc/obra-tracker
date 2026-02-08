@@ -1,8 +1,19 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import Image from 'next/image';
-import type { AnotacionPlano } from '@/types/database.types';
+import React, { useState,  useEffect } from 'react';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+import { Button } from '@/components/ui/button';
+import { Maximize2, Minimize2, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { AnnotationThread } from './AnnotationThread';
+import { MessageSquare } from 'lucide-react';
+
+interface Pin {
+  id: string;
+  coordX: number;
+  coordY: number;
+  comentario: string;
+  estado: 'abierta' | 'resuelta';
+}
 
 interface PlanViewerProps {
   planoId: string;
@@ -10,50 +21,42 @@ interface PlanViewerProps {
 }
 
 export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
-  const [pins, setPins] = useState<AnotacionPlano[]>([]);
+  const [pins, setPins] = useState<Pin[]>([]);
   const [loading, setLoading] = useState(true);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
-
     const fetchPins = async () => {
-      if (!planoId) {
-        if (isMounted) setLoading(false);
-        return;
-      }
-
-      setLoading(true);
+      if (!planoId) return;
       try {
         const res = await fetch(`/api/planos/${planoId}/annotations`);
-        if (!res.ok) throw new Error('Failed to fetch annotations');
-        const data = await res.json();
-        if (isMounted) setPins(data || []);
+        if (res.ok) {
+          const data = await res.json();
+          setPins(data || []);
+        }
       } catch (error) {
         console.error('Error fetching pins:', error);
       } finally {
-        if (isMounted) setLoading(false);
+        setLoading(false);
       }
     };
-
     fetchPins();
-
-    return () => {
-      isMounted = false;
-    };
   }, [planoId]);
 
   const handleImageClick = async (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current) return;
-
-    if (!planoId) {
-      alert('No hay plano asociado para guardar anotaciones');
+    // Si el clic fue en un pin existente, no crear uno nuevo
+    if ((e.target as HTMLElement).closest('.pin-marker')) return;
+    
+    // Si el hilo está abierto, cerrarlo en lugar de crear un pin
+    if (selectedPin) {
+      setSelectedPin(null);
       return;
     }
 
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const coordX = ((e.clientX - rect.left) / rect.width) * 100;
+    const coordY = ((e.clientY - rect.top) / rect.height) * 100;
 
     const comentario = prompt('Ingrese comentario técnico para este punto:');
     if (!comentario) return;
@@ -63,58 +66,114 @@ export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          coord_x: x,
-          coord_y: y,
+          coord_x: coordX,
+          coord_y: coordY,
           comentario,
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to save annotation');
-      const data = await res.json();
-      if (data) setPins((prev) => [...prev, data]);
+      if (res.ok) {
+        const data = await res.json();
+        setPins((prev) => [...prev, data]);
+      }
     } catch (error) {
       console.error('Error saving pin:', error);
-      alert('Error al guardar la anotación');
+    }
+  };
+
+  const updatePinStatus = (pinId: string, newStatus: 'abierta' | 'resuelta') => {
+    setPins(prev => prev.map(p => p.id === pinId ? { ...p, estado: newStatus } : p));
+    if (selectedPin?.id === pinId) {
+      setSelectedPin({ ...selectedPin, estado: newStatus });
     }
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div
-        ref={containerRef}
-        className="relative border rounded-lg overflow-hidden cursor-crosshair bg-slate-100"
-        onClick={handleImageClick}
-        style={{ width: '100%', aspectRatio: '16/9' }}
-      >
-        <Image
-          src={imageUrl}
-          alt="Plano"
-          fill
-          className="object-contain pointer-events-none"
-          unoptimized
-        />
+    <div className={`relative flex flex-col gap-4 ${isFullscreen ? 'fixed inset-0 z-50 bg-white p-4' : ''}`}>
+      <div className="flex justify-between items-center bg-slate-50 p-2 rounded-t-lg border border-b-0">
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setIsFullscreen(!isFullscreen)}>
+            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </Button>
+        </div>
+        <div className="flex gap-2 items-center text-xs text-muted-foreground">
+          <span>{pins.length} anotaciones</span>
+        </div>
+      </div>
 
-        {!loading && pins.map((pin) => (
-          <div
-            key={pin.id}
-            className="absolute w-4 h-4 bg-red-500 rounded-full border-2 border-white -translate-x-1/2 -translate-y-1/2 group"
-            style={{ left: `${pin.coordX}%`, top: `${pin.coordY}%` }}
-          >
-            <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-white text-xs rounded shadow-lg z-10">
-              {pin.comentario}
-            </div>
+      <div className="relative flex flex-1 border rounded-b-lg overflow-hidden bg-slate-100" style={{ height: isFullscreen ? 'calc(100vh - 120px)' : '600px' }}>
+        <TransformWrapper
+          initialScale={1}
+          minScale={0.5}
+          maxScale={8}
+          centerOnInit
+          limitToBounds={false}
+        >
+          {({ zoomIn, zoomOut, resetTransform }) => (
+            <>
+              <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+                <Button variant="secondary" size="icon" onClick={() => zoomIn()}><ZoomIn className="h-4 w-4" /></Button>
+                <Button variant="secondary" size="icon" onClick={() => zoomOut()}><ZoomOut className="h-4 w-4" /></Button>
+                <Button variant="secondary" size="icon" onClick={() => resetTransform()}><RotateCcw className="h-4 w-4" /></Button>
+              </div>
+
+              <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }}>
+                <div 
+                  className="relative cursor-crosshair"
+                  onClick={(e) => handleImageClick(e)}
+                >
+                  <img
+                    src={imageUrl}
+                    alt="Plano"
+                    className="max-w-none block"
+                    style={{ height: '560px', width: 'auto' }} // Reference height for coordinates
+                  />
+
+                  {pins.map((pin) => (
+                    <div
+                      key={pin.id}
+                      className={`pin-marker absolute w-6 h-6 rounded-full border-2 border-white -translate-x-1/2 -translate-y-1/2 flex items-center justify-center cursor-pointer transition-transform hover:scale-125 z-20 ${
+                        pin.estado === 'resuelta' ? 'bg-green-500' : 'bg-red-500'
+                      } ${selectedPin?.id === pin.id ? 'ring-4 ring-blue-400' : ''}`}
+                      style={{ left: `${pin.coordX}%`, top: `${pin.coordY}%` }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedPin(pin);
+                      }}
+                    >
+                      <MessageSquare className="h-3 w-3 text-white" />
+                    </div>
+                  ))}
+                </div>
+              </TransformComponent>
+            </>
+          )}
+        </TransformWrapper>
+
+        {selectedPin && (
+          <div className="absolute right-0 top-0 h-full z-30 animate-in slide-in-from-right">
+            <AnnotationThread
+              annotationId={selectedPin.id}
+              planoId={planoId}
+              initialComment={selectedPin.comentario}
+              status={selectedPin.estado}
+              onClose={() => setSelectedPin(null)}
+              onStatusChange={(status) => updatePinStatus(selectedPin.id, status)}
+            />
           </div>
-        ))}
+        )}
 
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/50">
-            <span>Cargando anotaciones...</span>
+          <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-40">
+            <span>Cargando plano y anotaciones...</span>
           </div>
         )}
       </div>
-      <p className="text-sm text-muted-foreground italic">
-        * Haz click en cualquier parte del plano para agregar una anotación técnica.
-      </p>
+      {!isFullscreen && (
+        <p className="text-sm text-muted-foreground italic">
+          * Usa la rueda del mouse para hacer zoom y arrastra para navegar. Click para anotar.
+        </p>
+      )}
     </div>
   );
 }
