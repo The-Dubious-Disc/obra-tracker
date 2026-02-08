@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import React, { useState,  useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { Button } from '@/components/ui/button';
 import { Maximize2, Minimize2, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
@@ -27,6 +27,7 @@ export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
   const [loading, setLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchPins = async () => {
@@ -90,11 +91,44 @@ export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
     }
   };
 
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+        return;
+      }
+
+      if (containerRef.current?.requestFullscreen) {
+        await containerRef.current.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        setIsFullscreen((prev) => !prev);
+      }
+    } catch (error) {
+      console.error('Error toggling fullscreen:', error);
+      setIsFullscreen((prev) => !prev);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setIsFullscreen(false);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   return (
-    <div className={`relative flex flex-col gap-4 ${isFullscreen ? 'fixed inset-0 z-50 bg-white p-4' : ''}`}>
+    <div ref={containerRef} className={`relative flex flex-col gap-4 ${isFullscreen ? 'fixed inset-0 z-50 bg-white p-4' : ''}`}>
       <div className="flex justify-between items-center bg-slate-50 p-2 rounded-t-lg border border-b-0">
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setIsFullscreen(!isFullscreen)}>
+          <Button variant="outline" size="sm" onClick={toggleFullscreen}>
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </Button>
         </div>
@@ -122,7 +156,7 @@ export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
                 <Button
                   variant="secondary"
                   size="icon"
-                  onClick={() => setIsFullscreen(!isFullscreen)}
+                  onClick={toggleFullscreen}
                   aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
                 >
                   {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
