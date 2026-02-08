@@ -118,6 +118,16 @@ export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
                 <Button variant="secondary" size="icon" onClick={() => zoomOut()}><ZoomOut className="h-4 w-4" /></Button>
                 <Button variant="secondary" size="icon" onClick={() => resetTransform()}><RotateCcw className="h-4 w-4" /></Button>
               </div>
+              <div className="absolute top-4 right-4 z-10">
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  onClick={() => setIsFullscreen(!isFullscreen)}
+                  aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+                >
+                  {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </Button>
+              </div>
 
               <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }}>
                 <div 
