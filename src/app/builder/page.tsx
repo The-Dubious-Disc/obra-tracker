@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useRef, useState } from 'react'
-import { useProjects, useProjectSummary, useStageTasks, useUpdateTask, useDeleteTask, useAddEtapa, useAddTask, useDeleteStage } from '@/hooks/useProject'
+import { useProjects, useProjectSummary, useStageTasks, useUpdateTask, useAddEtapa, useAddTask } from '@/hooks/useProject'
 import { useProjectSelection } from '@/contexts/ProjectContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -18,6 +18,7 @@ function StageTasks({
   hito,
   tareasTotal,
   tareasCompletadas,
+  duracionEstimadaJornales,
   onUpdated,
 }: {
   etapaId: string;
@@ -25,6 +26,7 @@ function StageTasks({
   hito?: string | null;
   tareasTotal: number;
   tareasCompletadas: number;
+  duracionEstimadaJornales: number;
   onUpdated: () => void;
 }) {
   const [open, setOpen] = useState(false)
@@ -32,8 +34,6 @@ function StageTasks({
   const [localTasks, setLocalTasks] = useState<{ id: string; estado: string; descripcion: string }[]>([])
   const { tasks, isLoading, refetch } = useStageTasks(open ? etapaId : null)
   const { updateTask } = useUpdateTask()
-  const { deleteTask } = useDeleteTask()
-  const { deleteStage } = useDeleteStage()
   const { addTask, isAdding } = useAddTask()
 
   // Sync local tasks when fetched
@@ -59,30 +59,6 @@ function StageTasks({
     }
   }
 
-  const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('¿Eliminar esta tarea?')) return
-    
-    // Optimistic update
-    const previousTasks = [...localTasks]
-    setLocalTasks(prev => prev.filter(t => t.id !== taskId))
-
-    const ok = await deleteTask(taskId)
-    if (ok) {
-      onUpdated()
-    } else {
-      setLocalTasks(previousTasks)
-    }
-  }
-
-  const handleDeleteStage = async () => {
-    if (!confirm(`¿Eliminar la etapa "${nombre}" y todas sus tareas?`)) return
-    
-    const ok = await deleteStage(etapaId)
-    if (ok) {
-      onUpdated()
-    }
-  }
-
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newTaskDesc.trim()) return
@@ -103,9 +79,6 @@ function StageTasks({
           <CardDescription>{hito ? `Hito: ${String(hito)}` : 'Sin hito'}</CardDescription>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={handleDeleteStage}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
           <Button variant="ghost" size="sm" onClick={() => setOpen(v => !v)}>
             {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
@@ -116,8 +89,9 @@ function StageTasks({
           <span>Progreso</span>
           <span className="font-medium">{Math.round(progress)}%</span>
         </div>
-        <div className="text-xs text-muted-foreground">
-          {completed}/{total} tareas completadas
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>{completed}/{total} tareas completadas</span>
+          <span>Jornales: {Math.round((progress / 100) * duracionEstimadaJornales)} / {duracionEstimadaJornales}</span>
         </div>
         <Progress value={progress} className="h-2" />
 
@@ -145,14 +119,6 @@ function StageTasks({
                         Estado: {task.estado}
                       </div>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDeleteTask(task.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
                 ))
               )}
@@ -450,6 +416,7 @@ export default function TasksPage() {
             hito={String((etapa as unknown as Record<string, unknown>).hitoVerificacion ?? (etapa as unknown as Record<string, unknown>).hito_verificacion ?? '')}
             tareasTotal={etapa.tareasTotal}
             tareasCompletadas={etapa.tareasCompletadas}
+            duracionEstimadaJornales={etapa.duracionEstimadaJornales || 0}
             onUpdated={refetch}
           />
         ))}
