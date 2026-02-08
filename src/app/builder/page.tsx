@@ -352,7 +352,7 @@ export default function TasksPage() {
         throw new Error(data.error || 'No se pudo generar la URL de subida')
       }
 
-      const { uploadUrl } = await presignRes.json()
+      const { uploadUrl, key } = await presignRes.json()
       const uploadRes = await fetch(uploadUrl, {
         method: 'PUT',
         headers: { 'Content-Type': file.type || 'application/octet-stream' },
@@ -361,6 +361,12 @@ export default function TasksPage() {
 
       if (!uploadRes.ok) {
         throw new Error('No se pudo subir el reporte')
+      }
+
+      const downloadRes = await fetch(`/api/download?key=${encodeURIComponent(key)}`)
+      if (downloadRes.ok) {
+        const { downloadUrl } = await downloadRes.json()
+        window.open(downloadUrl, '_blank')
       }
 
       alert('Reporte subido correctamente')
