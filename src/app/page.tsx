@@ -306,7 +306,7 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
               <span>Progreso: {Math.round(etapa.porcentajeCompletado)}%</span>
               <Progress value={etapa.porcentajeCompletado} className="w-24 h-2" />
               <span className="text-xs">
-                Jornales: {Math.round((etapa.porcentajeCompletado / 100) * (etapa.duracionEstimadaJornales || 0))} / {etapa.duracionEstimadaJornales || 0}
+                Jornales: {Math.round((etapa.porcentajeCompletado / 100) * (etapa.duracion_estimada_jornales || 0))} / {etapa.duracion_estimada_jornales || 0}
               </span>
             </div>
           </div>

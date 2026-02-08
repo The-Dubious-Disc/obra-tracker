@@ -416,7 +416,7 @@ export default function TasksPage() {
             hito={String((etapa as unknown as Record<string, unknown>).hitoVerificacion ?? (etapa as unknown as Record<string, unknown>).hito_verificacion ?? '')}
             tareasTotal={etapa.tareasTotal}
             tareasCompletadas={etapa.tareasCompletadas}
-            duracionEstimadaJornales={etapa.duracionEstimadaJornales || 0}
+            duracionEstimadaJornales={etapa.duracion_estimada_jornales || 0}
             onUpdated={refetch}
           />
         ))}
