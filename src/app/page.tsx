@@ -306,7 +306,7 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
               <span>Progreso: {Math.round(etapa.porcentajeCompletado)}%</span>
               <Progress value={etapa.porcentajeCompletado} className="w-24 h-2" />
               <span className="text-xs">
-                Jornales: {Math.round((etapa.porcentajeCompletado / 100) * (etapa.duracion_estimada_jornales || 0))} / {etapa.duracion_estimada_jornales || 0}
+                Jornales: {Math.round((etapa.porcentajeCompletado / 100) * (etapa.duracionEstimadaJornales || 0))} / {etapa.duracionEstimadaJornales || 0}
               </span>
             </div>
           </div>
@@ -317,10 +317,10 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
 
         {isExpanded && (
           <div className="mt-4 space-y-4 border-t pt-4">
-            {etapa.hito_verificacion && (
+            {etapa.hitoVerificacion && (
                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-900">
                   <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Hito de Verificación</span>
-                  <p className="text-sm font-medium mt-1">{etapa.hito_verificacion}</p>
+                  <p className="text-sm font-medium mt-1">{etapa.hitoVerificacion}</p>
                </div>
             )}
 
@@ -328,11 +328,11 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <span className="text-xs text-muted-foreground">Presupuesto Etapa</span>
-                  <p className="text-lg font-semibold">{formatCurrency(Number((etapa as unknown as Record<string, unknown>).montoUsd ?? (etapa as unknown as Record<string, unknown>).monto_usd ?? 0), moneda)}</p>
+                  <p className="text-lg font-semibold">{formatCurrency(Number(etapa.montoUsd || 0), moneda)}</p>
                 </div>
                 <div className="space-y-1">
                   <span className="text-xs text-muted-foreground">Aportado</span>
-                  <p className={`text-lg font-semibold ${etapa.pagosTotales > Number((etapa as unknown as Record<string, unknown>).montoUsd ?? (etapa as unknown as Record<string, unknown>).monto_usd ?? 0) ? 'text-red-500' : 'text-green-600'}`}>
+                  <p className={`text-lg font-semibold ${etapa.pagosTotales > Number(etapa.montoUsd || 0) ? 'text-red-500' : 'text-green-600'}`}>
                     {formatCurrency(etapa.pagosTotales, moneda)}
                   </p>
                 </div>
@@ -410,10 +410,7 @@ function DashboardContent() {
 
   // Project selected and data loaded - show dashboard
   const { proyecto, etapas, totalPagado, porcentajeAvance, presupuestoActivo, totalJornales, jornalesCompletados } = data;
-  const projectAny = proyecto as Record<string, unknown>;
-  const montoActivo = projectAny.montoTotalActivo ?? projectAny.monto_total_activo ?? 0;
-  const presupuestoTotal = projectAny.presupuestoTotalUsd ?? projectAny.presupuesto_total_usd ?? montoActivo;
-  const montoTotal = Number(presupuestoActivo?.monto ?? montoActivo ?? presupuestoTotal ?? 0);
+  const montoTotal = Number(presupuestoActivo?.monto ?? proyecto.montoTotalActivo ?? proyecto.presupuestoTotalUsd ?? 0);
   const totalPagadoNum = Number(totalPagado ?? 0);
   const pendiente = montoTotal - totalPagadoNum;
   const moneda = proyecto.moneda;

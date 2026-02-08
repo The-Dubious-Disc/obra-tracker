@@ -404,6 +404,10 @@ export default function TasksPage() {
             <span className="font-medium">{summary.porcentajeAvance.toFixed(0)}%</span>
           </div>
           <Progress value={summary.porcentajeAvance} className="h-2" />
+          <div className="flex justify-between text-xs text-muted-foreground pt-1">
+            <span>Jornales: {Math.round(summary.jornalesCompletados)} / {summary.totalJornales}</span>
+            <span>Restantes: {Math.max(0, Math.round(summary.totalJornales - summary.jornalesCompletados))}</span>
+          </div>
         </CardContent>
       </Card>
 
@@ -413,10 +417,10 @@ export default function TasksPage() {
             key={etapa.id}
             etapaId={etapa.id}
             nombre={etapa.nombre}
-            hito={String((etapa as unknown as Record<string, unknown>).hitoVerificacion ?? (etapa as unknown as Record<string, unknown>).hito_verificacion ?? '')}
+            hito={etapa.hitoVerificacion}
             tareasTotal={etapa.tareasTotal}
             tareasCompletadas={etapa.tareasCompletadas}
-            duracionEstimadaJornales={etapa.duracion_estimada_jornales || 0}
+            duracionEstimadaJornales={etapa.duracionEstimadaJornales || 0}
             onUpdated={refetch}
           />
         ))}

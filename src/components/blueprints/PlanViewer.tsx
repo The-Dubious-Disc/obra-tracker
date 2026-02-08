@@ -58,17 +58,15 @@ export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
     const comentario = prompt('Ingrese comentario técnico para este punto:');
     if (!comentario) return;
 
-    const newPin = {
-      coord_x: x,
-      coord_y: y,
-      comentario,
-    };
-
     try {
       const res = await fetch(`/api/planos/${planoId}/annotations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPin),
+        body: JSON.stringify({
+          coord_x: x,
+          coord_y: y,
+          comentario,
+        }),
       });
 
       if (!res.ok) throw new Error('Failed to save annotation');
@@ -100,7 +98,7 @@ export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
           <div
             key={pin.id}
             className="absolute w-4 h-4 bg-red-500 rounded-full border-2 border-white -translate-x-1/2 -translate-y-1/2 group"
-            style={{ left: `${pin.coord_x}%`, top: `${pin.coord_y}%` }}
+            style={{ left: `${pin.coordX}%`, top: `${pin.coordY}%` }}
           >
             <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black text-white text-xs rounded shadow-lg z-10">
               {pin.comentario}

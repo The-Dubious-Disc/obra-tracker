@@ -23,21 +23,21 @@ export interface Database {
           email: string
           nombre: string
           rol: UserRole
-          created_at: string
+          createdAt: string
         }
         Insert: {
           id?: string
           email: string
           nombre: string
           rol?: UserRole
-          created_at?: string
+          createdAt?: string
         }
         Update: {
           id?: string
           email?: string
           nombre?: string
           rol?: UserRole
-          created_at?: string
+          createdAt?: string
         }
         Relationships: []
       }
@@ -46,451 +46,339 @@ export interface Database {
           id: string
           nombre: string
           descripcion: string | null
-          sistema_constructivo: string | null
-          presupuesto_total_usd: number
-          monto_total_activo: number
+          sistemaConstructivo: string | null
+          presupuestoTotalUsd: number
+          montoTotalActivo: number
           moneda: string
-          cliente_id: string | null
-          constructor_id: string | null
-          created_at: string
-          updated_at: string
+          clienteId: string | null
+          constructorId: string | null
+          createdAt: string
+          updatedAt: string
         }
         Insert: {
           id?: string
           nombre: string
           descripcion?: string | null
-          sistema_constructivo?: string | null
-          presupuesto_total_usd?: number
-          monto_total_activo?: number
+          sistemaConstructivo?: string | null
+          presupuestoTotalUsd?: number
+          montoTotalActivo?: number
           moneda?: string
-          cliente_id?: string | null
-          constructor_id?: string | null
-          created_at?: string
-          updated_at?: string
+          clienteId?: string | null
+          constructorId?: string | null
+          createdAt?: string
+          updatedAt?: string
         }
         Update: {
           id?: string
           nombre?: string
           descripcion?: string | null
-          sistema_constructivo?: string | null
-          presupuesto_total_usd?: number
-          monto_total_activo?: number
+          sistemaConstructivo?: string | null
+          presupuestoTotalUsd?: number
+          montoTotalActivo?: number
           moneda?: string
-          cliente_id?: string | null
-          constructor_id?: string | null
-          created_at?: string
-          updated_at?: string
+          clienteId?: string | null
+          constructorId?: string | null
+          createdAt?: string
+          updatedAt?: string
         }
-        Relationships: [
-           {
-            foreignKeyName: "proyectos_cliente_id_fkey"
-            columns: ["cliente_id"]
-            referencedRelation: "usuarios"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "proyectos_constructor_id_fkey"
-            columns: ["constructor_id"]
-            referencedRelation: "usuarios"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       presupuesto_versiones: {
         Row: {
           id: string
-          proyecto_id: string
+          proyectoId: string
           monto: number
-          notas_cambio: string
-          es_activa: boolean
-          fecha_creacion: string
+          notasCambio: string
+          esActiva: boolean
+          fechaCreacion: string
         }
         Insert: {
           id?: string
-          proyecto_id: string
+          proyectoId: string
           monto: number
-          notas_cambio: string
-          es_activa?: boolean
-          fecha_creacion?: string
+          notasCambio: string
+          esActiva?: boolean
+          fechaCreacion?: string
         }
         Update: {
           id?: string
-          proyecto_id?: string
+          proyectoId?: string
           monto?: number
-          notas_cambio?: string
-          es_activa?: boolean
-          fecha_creacion?: string
+          notasCambio?: string
+          esActiva?: boolean
+          fechaCreacion?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "presupuesto_versiones_proyecto_id_fkey"
-            columns: ["proyecto_id"]
-            referencedRelation: "proyectos"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       etapas: {
         Row: {
           id: string
-          proyecto_id: string
+          proyectoId: string
           orden: number
           nombre: string
-          porcentaje_total: number
-          porcentaje_peso: number
-          monto_usd: number
-          monto_etapa: number
-          duracion_estimada_jornales: number | null
-          hito_verificacion: string | null
-          created_at: string
+          porcentajeTotal: number
+          porcentajePeso: number
+          montoUsd: number
+          montoEtapa: number
+          duracionEstimadaJornales: number | null
+          hitoVerificacion: string | null
+          createdAt: string
         }
         Insert: {
           id?: string
-          proyecto_id: string
+          proyectoId: string
           orden: number
           nombre: string
-          porcentaje_total: number
-          porcentaje_peso: number
-          monto_usd: number
-          monto_etapa: number
-          duracion_estimada_jornales?: number | null
-          hito_verificacion?: string | null
-          created_at?: string
+          porcentajeTotal: number
+          porcentajePeso: number
+          montoUsd: number
+          montoEtapa: number
+          duracionEstimadaJornales?: number | null
+          hitoVerificacion?: string | null
+          createdAt?: string
         }
         Update: {
           id?: string
-          proyecto_id?: string
+          proyectoId?: string
           orden?: number
           nombre?: string
-          porcentaje_total?: number
-          porcentaje_peso?: number
-          monto_usd?: number
-          monto_etapa?: number
-          duracion_estimada_jornales?: number | null
-          hito_verificacion?: string | null
-          created_at?: string
+          porcentajeTotal?: number
+          porcentajePeso?: number
+          montoUsd?: number
+          montoEtapa?: number
+          duracionEstimadaJornales?: number | null
+          hitoVerificacion?: string | null
+          createdAt?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "etapas_proyecto_id_fkey"
-            columns: ["proyecto_id"]
-            referencedRelation: "proyectos"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       tareas: {
         Row: {
           id: string
-          etapa_id: string
+          etapaId: string
           descripcion: string
           estado: TareaEstado
-          fecha_finalizacion: string | null
-          created_at: string
+          fechaFinalizacion: string | null
+          createdAt: string
         }
         Insert: {
           id?: string
-          etapa_id: string
+          etapaId: string
           descripcion: string
           estado?: TareaEstado
-          fecha_finalizacion?: string | null
-          created_at?: string
+          fechaFinalizacion?: string | null
+          createdAt?: string
         }
         Update: {
           id?: string
-          etapa_id?: string
+          etapaId?: string
           descripcion?: string
           estado?: TareaEstado
-          fecha_finalizacion?: string | null
-          created_at?: string
+          fechaFinalizacion?: string | null
+          createdAt?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "tareas_etapa_id_fkey"
-            columns: ["etapa_id"]
-            referencedRelation: "etapas"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       pendientes: {
         Row: {
           id: string
-          proyecto_id: string
+          proyectoId: string
           titulo: string
           descripcion: string | null
-          fecha_vencimiento: string
+          fechaVencimiento: string
           estado: PendienteEstado
-          created_at: string
-          updated_at: string
+          createdAt: string
+          updatedAt: string
         }
         Insert: {
           id?: string
-          proyecto_id: string
+          proyectoId: string
           titulo: string
           descripcion?: string | null
-          fecha_vencimiento: string
+          fechaVencimiento: string
           estado?: PendienteEstado
-          created_at?: string
-          updated_at?: string
+          createdAt?: string
+          updatedAt?: string
         }
         Update: {
           id?: string
-          proyecto_id?: string
+          proyectoId?: string
           titulo?: string
           descripcion?: string | null
-          fecha_vencimiento?: string
+          fechaVencimiento?: string
           estado?: PendienteEstado
-          created_at?: string
-          updated_at?: string
+          createdAt?: string
+          updatedAt?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "pendientes_proyecto_id_fkey"
-            columns: ["proyecto_id"]
-            referencedRelation: "proyectos"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       pagos: {
         Row: {
           id: string
-          proyecto_id: string
-          etapa_id: string | null
-          monto_pagado: number
+          proyectoId: string
+          etapaId: string | null
+          montoPagado: number
           moneda: string
-          fecha_pago: string
+          fechaPago: string
           comentario: string | null
-          comprobante_url: string | null
-          registrado_por: string | null
+          comprobanteUrl: string | null
+          registradoPor: string | null
           estado: PagoEstado
-          created_at: string
+          createdAt: string
         }
         Insert: {
           id?: string
-          proyecto_id: string
-          etapa_id?: string | null
-          monto_pagado: number
+          proyectoId: string
+          etapaId?: string | null
+          montoPagado: number
           moneda?: string
-          fecha_pago?: string
+          fechaPago?: string
           comentario?: string | null
-          comprobante_url?: string | null
-          registrado_por?: string | null
+          comprobanteUrl?: string | null
+          registradoPor?: string | null
           estado?: PagoEstado
-          created_at?: string
+          createdAt?: string
         }
         Update: {
           id?: string
-          proyecto_id?: string
-          etapa_id?: string | null
-          monto_pagado?: number
+          proyectoId?: string
+          etapaId?: string | null
+          montoPagado?: number
           moneda?: string
-          fecha_pago?: string
+          fechaPago?: string
           comentario?: string | null
-          comprobante_url?: string | null
-          registrado_por?: string | null
+          comprobanteUrl?: string | null
+          registradoPor?: string | null
           estado?: PagoEstado
-          created_at?: string
+          createdAt?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "pagos_proyecto_id_fkey"
-            columns: ["proyecto_id"]
-            referencedRelation: "proyectos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pagos_etapa_id_fkey"
-            columns: ["etapa_id"]
-            referencedRelation: "etapas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pagos_registrado_por_fkey"
-            columns: ["registrado_por"]
-            referencedRelation: "usuarios"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       planos: {
         Row: {
           id: string
-          proyecto_id: string
+          proyectoId: string
           nombre: string
           descripcion: string | null
           url: string
           tipo: string
           orden: number
-          uploaded_by: string | null
-          created_at: string
+          uploadedBy: string | null
+          createdAt: string
         }
         Insert: {
           id?: string
-          proyecto_id: string
+          proyectoId: string
           nombre: string
           descripcion?: string | null
           url: string
           tipo: string
           orden?: number
-          uploaded_by?: string | null
-          created_at?: string
+          uploadedBy?: string | null
+          createdAt?: string
         }
         Update: {
           id?: string
-          proyecto_id?: string
+          proyectoId?: string
           nombre?: string
           descripcion?: string | null
           url?: string
           tipo?: string
           orden?: number
-          uploaded_by?: string | null
-          created_at?: string
+          uploadedBy?: string | null
+          createdAt?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "planos_proyecto_id_fkey"
-            columns: ["proyecto_id"]
-            referencedRelation: "proyectos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "planos_uploaded_by_fkey"
-            columns: ["uploaded_by"]
-            referencedRelation: "usuarios"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       anotaciones_planos: {
         Row: {
           id: string
-          plano_id: string
-          coord_x: number
-          coord_y: number
+          planoId: string
+          coordX: number
+          coordY: number
           comentario: string
-          creado_por: string | null
-          created_at: string
+          creadoPor: string | null
+          createdAt: string
         }
         Insert: {
           id?: string
-          plano_id: string
-          coord_x: number
-          coord_y: number
+          planoId: string
+          coordX: number
+          coordY: number
           comentario: string
-          creado_por: string | null
-          created_at?: string
+          creadoPor: string | null
+          createdAt?: string
         }
         Update: {
           id?: string
-          plano_id?: string
-          coord_x?: number
-          coord_y?: number
+          planoId?: string
+          coordX?: number
+          coordY?: number
           comentario?: string
-          creado_por?: string | null
-          created_at?: string
+          creadoPor?: string | null
+          createdAt?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "anotaciones_planos_plano_id_fkey"
-            columns: ["plano_id"]
-            referencedRelation: "planos"
-            referencedColumns: ["id"]
-          },
-           {
-            foreignKeyName: "anotaciones_planos_creado_por_fkey"
-            columns: ["creado_por"]
-            referencedRelation: "usuarios"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       invitaciones: {
         Row: {
           id: string
-          proyecto_id: string
+          proyectoId: string
           email: string
           rol: UserRole
           token: string
-          invitado_por: string | null
+          invitadoPor: string | null
           aceptada: boolean
-          created_at: string
-          expires_at: string
+          createdAt: string
+          expiresAt: string
         }
         Insert: {
           id?: string
-          proyecto_id: string
+          proyectoId: string
           email: string
           rol: UserRole
           token: string
-          invitado_por?: string | null
+          invitadoPor?: string | null
           aceptada?: boolean
-          created_at?: string
-          expires_at: string
+          createdAt?: string
+          expiresAt: string
         }
         Update: {
           id?: string
-          proyecto_id?: string
+          proyectoId?: string
           email?: string
           rol?: UserRole
           token?: string
-          invitado_por?: string | null
+          invitadoPor?: string | null
           aceptada?: boolean
-          created_at?: string
-          expires_at?: string
+          createdAt?: string
+          expiresAt?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "invitaciones_proyecto_id_fkey"
-            columns: ["proyecto_id"]
-            referencedRelation: "proyectos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "invitaciones_invitado_por_fkey"
-            columns: ["invitado_por"]
-            referencedRelation: "usuarios"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       proyecto_miembros: {
         Row: {
           id: string
-          proyecto_id: string
-          usuario_id: string
+          proyectoId: string
+          usuarioId: string
           rol: UserRole
-          created_at: string
+          createdAt: string
         }
         Insert: {
           id?: string
-          proyecto_id: string
-          usuario_id: string
+          proyectoId: string
+          usuarioId: string
           rol: UserRole
-          created_at?: string
+          createdAt?: string
         }
         Update: {
           id?: string
-          proyecto_id?: string
-          usuario_id?: string
+          proyectoId?: string
+          usuarioId?: string
           rol?: UserRole
-          created_at?: string
+          createdAt?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "proyecto_miembros_proyecto_id_fkey"
-            columns: ["proyecto_id"]
-            referencedRelation: "proyectos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "proyecto_miembros_usuario_id_fkey"
-            columns: ["usuario_id"]
-            referencedRelation: "usuarios"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
     }
     Views: {
