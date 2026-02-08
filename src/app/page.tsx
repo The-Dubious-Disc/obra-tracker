@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import React from 'react'
 import { format, parseISO, isValid } from 'date-fns'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -128,7 +128,6 @@ function PaymentSummary({ projectId, refreshKey }: { projectId: string; refreshK
     <Card>
       <CardHeader>
         <CardTitle>Pagos Recientes</CardTitle>
-        <CardDescription>Últimos movimientos registrados</CardDescription>
       </CardHeader>
       <CardContent>
         {payments.length === 0 ? (
@@ -144,7 +143,6 @@ function PaymentSummary({ projectId, refreshKey }: { projectId: string; refreshK
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-sm">{formatCurrency(monto, payment.moneda)}</p>
-                      <Badge variant="outline" className="text-xs">{payment.estado}</Badge>
                     </div>
                     <div className="flex items-center text-xs text-muted-foreground gap-2">
                       <Calendar className="h-3 w-3" />
@@ -166,7 +164,7 @@ function PaymentSummary({ projectId, refreshKey }: { projectId: string; refreshK
   );
 }
 
-function BudgetHistoryCard({ projectId, onUpdated }: { projectId: string; onUpdated: () => void }) {
+function BudgetHistoryCard({ projectId, presupuestoActivo, onUpdated }: { projectId: string; presupuestoActivo?: { id: string; monto: number; fechaCreacion?: string; fecha_creacion?: string } | null; onUpdated: () => void }) {
   const { history, isLoading, refetch } = useBudgetHistory(projectId);
   const { updateProjectBudget, isUpdating, error } = useBudgetUpdate();
   const [open, setOpen] = useState(false);
@@ -178,7 +176,7 @@ function BudgetHistoryCard({ projectId, onUpdated }: { projectId: string; onUpda
     const newAmount = parseFloat(amount);
     if (!newAmount || newAmount <= 0) return;
 
-    const ok = await updateProjectBudget(projectId, newAmount, note || 'Nuevo presupuesto');
+    const ok = await updateProjectBudget(projectId, newAmount, note || 'Nuevo');
     if (ok) {
       setOpen(false);
       setAmount('');
@@ -188,23 +186,24 @@ function BudgetHistoryCard({ projectId, onUpdated }: { projectId: string; onUpda
     }
   };
 
+  const versionsAnteriores = history.filter(h => h.id !== presupuestoActivo?.id);
+
   return (
     <Card>
       <CardHeader className="flex items-center justify-between gap-2 sm:flex-row">
         <div>
           <CardTitle>Presupuestos</CardTitle>
-          <CardDescription>Historial de versiones</CardDescription>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-2">
               <Plus className="h-4 w-4" />
-              Nuevo presupuesto
+              Nuevo
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[480px]">
             <DialogHeader>
-              <DialogTitle>Nuevo presupuesto</DialogTitle>
+              <DialogTitle>Nuevo</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -252,25 +251,51 @@ function BudgetHistoryCard({ projectId, onUpdated }: { projectId: string; onUpda
               <Skeleton key={i} className="h-8 w-full" />
             ))}
           </div>
-        ) : history.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No hay versiones de presupuesto.</p>
         ) : (
-          <div className="space-y-3">
-            {history.map((item) => {
-              const itemAny = item as Record<string, unknown>;
-              const monto = Number(itemAny.monto ?? 0);
-              const notas = String(itemAny.notasCambio ?? itemAny.notas_cambio ?? '');
-              const fecha = String(itemAny.fechaCreacion ?? itemAny.fecha_creacion ?? '');
-              return (
-                <div key={item.id} className="flex items-center justify-between border-b pb-2 last:border-0">
+          <div className="space-y-4">
+            {presupuestoActivo && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-medium">{formatCurrency(monto, 'USD')}</div>
-                    <div className="text-xs text-muted-foreground">{notas}</div>
+                    <div className="text-sm font-bold text-blue-600 dark:text-blue-400">{formatCurrency(Number(presupuestoActivo.monto), 'USD')}</div>
+                    <div className="text-[10px] text-blue-500 dark:text-blue-300 uppercase font-semibold">Presupuesto activo</div>
                   </div>
-                  <div className="text-xs text-muted-foreground">{formatDate(fecha)}</div>
+                  <div className="text-[10px] text-muted-foreground">{formatDate(String(presupuestoActivo.fechaCreacion ?? presupuestoActivo.fecha_creacion ?? ''))}</div>
                 </div>
-              )
-            })}
+              </div>
+            )}
+
+            {versionsAnteriores.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1">Versiones anteriores</h4>
+                <div className="space-y-2">
+                  {versionsAnteriores.slice(0, 3).map((item) => {
+                    const itemAny = item as Record<string, unknown>;
+                    const monto = Number(itemAny.monto ?? 0);
+                    const notas = String(itemAny.notasCambio ?? itemAny.notas_cambio ?? '');
+                    const fecha = String(itemAny.fechaCreacion ?? itemAny.fecha_creacion ?? '');
+                    return (
+                      <div key={item.id} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
+                        <div>
+                          <div className="text-sm font-medium">{formatCurrency(monto, 'USD')}</div>
+                          <div className="text-xs text-muted-foreground truncate max-w-[120px]">{notas}</div>
+                        </div>
+                        <div className="text-xs text-muted-foreground">{formatDate(fecha)}</div>
+                      </div>
+                    )
+                  })}
+                  {versionsAnteriores.length > 3 && (
+                    <Button variant="ghost" size="sm" className="w-full text-xs h-7">
+                      Ver más ({versionsAnteriores.length - 3})
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {history.length === 0 && !presupuestoActivo && (
+              <p className="text-sm text-muted-foreground text-center py-2">No hay presupuestos registrados.</p>
+            )}
           </div>
         )}
       </CardContent>
@@ -287,7 +312,7 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
 
   return (
     <Card>
-      <CardContent className="p-4">
+      <CardContent className="p-4 py-3">
         <div className="flex items-center justify-between cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
           <div className="space-y-1 flex-1">
             <div className="flex items-center gap-2">
@@ -505,7 +530,7 @@ function DashboardContent() {
               </CardContent>
             </Card>
             
-            <BudgetHistoryCard projectId={proyecto.id} onUpdated={() => {
+            <BudgetHistoryCard projectId={proyecto.id} presupuestoActivo={presupuestoActivo} onUpdated={() => {
               refetch();
               setPaymentsRefresh((v) => v + 1);
             }} />
