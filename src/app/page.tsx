@@ -157,6 +157,11 @@ function PaymentSummary({ projectId, refreshKey }: { projectId: string; refreshK
                 </div>
               )
             })}
+            {payments.length > 5 && (
+              <Button variant="ghost" size="sm" className="w-full text-xs h-7">
+                Ver más ({payments.length - 5})
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
@@ -315,8 +320,8 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
       <CardContent className="p-4 py-3">
         <div className="flex items-center justify-between cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
           <div className="space-y-1 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="font-medium leading-none">{etapa.nombre}</p>
+            <p className="font-medium leading-none">{etapa.nombre}</p>
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <Badge 
                 variant={
                   status === "Completado" ? "default" : 
@@ -326,9 +331,7 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
               >
                 {status}
               </Badge>
-            </div>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span>Progreso: {Math.round(etapa.porcentajeCompletado)}%</span>
+              <span>{Math.round(etapa.porcentajeCompletado)}%</span>
               <Progress value={etapa.porcentajeCompletado} className="w-24 h-2" />
               <span className="text-xs">
                 Jornales: {Math.round((etapa.porcentajeCompletado / 100) * (etapa.duracionEstimadaJornales || 0))} / {etapa.duracionEstimadaJornales || 0}
