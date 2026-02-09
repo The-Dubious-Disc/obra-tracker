@@ -8,14 +8,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Progress } from "@/components/ui/progress";
+import { SegmentedProgress } from "@/components/ui/segmented-progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProjectSummary, useProjects, usePayments, useStageTasks, useBudgetUpdate, useBudgetHistory } from "@/hooks/useProject";
 import { useProjectSelection } from '@/contexts/ProjectContext';
 import type { EtapaConProgreso } from '@/types/database.types';
-import { AlertCircle, RefreshCw, Plus, DollarSign, ChevronDown, ChevronUp, CheckCircle2, Circle, TrendingUp, Wallet } from "lucide-react";
+import { AlertCircle, RefreshCw, Plus, DollarSign, ChevronDown, ChevronUp, CheckCircle2, TrendingUp, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { RegisterPaymentDialog } from "@/components/RegisterPaymentDialog";
 import { useUserRole } from '@/contexts/UserRoleContext';
 
@@ -32,6 +33,18 @@ function formatDate(dateString: string): string {
   const date = parseISO(dateString);
   if (!isValid(date)) return 'Fecha inválida';
   return format(date, 'dd/MM/yyyy');
+}
+
+function TechnicalValue({ value, label, unit }: { value: string | number, label?: string, unit?: string }) {
+  return (
+    <div className="flex flex-col">
+      {label && <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest leading-none mb-1">{label}</span>}
+      <div className="flex items-baseline gap-1">
+        <span className="mono-data text-lg font-black leading-none">{value}</span>
+        {unit && <span className="text-[10px] font-bold text-muted-foreground uppercase">{unit}</span>}
+      </div>
+    </div>
+  )
 }
 
 
@@ -97,7 +110,7 @@ function PaymentSummary({ projectId, refreshKey, etapas, onPaymentCreated }: { p
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <DollarSign className="h-4 w-4 text-primary" />
-          <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Pagos</h4>
+          <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground italic">Pagos</h4>
         </div>
         <RegisterPaymentDialog
           projectId={projectId}
@@ -117,17 +130,17 @@ function PaymentSummary({ projectId, refreshKey, etapas, onPaymentCreated }: { p
       ) : payments.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-4 italic border rounded-lg border-dashed">Sin movimientos registrados</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {payments.slice(0, 5).map((payment) => {
             const paymentAny = payment as Record<string, unknown>;
             return (
-              <div key={payment.id} className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
+              <div key={payment.id} className="group p-3 rounded-sm bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-colors">
                 <div className="flex items-center justify-between">
-                  <p className="font-bold text-sm text-slate-900 dark:text-slate-100">{formatCurrency(Number(paymentAny.montoPagado || paymentAny.monto_pagado || 0), payment.moneda)}</p>
-                  <p className="text-[10px] text-muted-foreground">{formatDate(String(paymentAny.fechaPago || paymentAny.fecha_pago || ''))}</p>
+                  <p className="mono-data font-black text-sm text-slate-900 dark:text-slate-100">{formatCurrency(Number(paymentAny.montoPagado || paymentAny.monto_pagado || 0), payment.moneda)}</p>
+                  <p className="mono-data text-[10px] text-muted-foreground">{formatDate(String(paymentAny.fechaPago || paymentAny.fecha_pago || ''))}</p>
                 </div>
                 {payment.comentario && (
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 truncate">{payment.comentario}</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">{payment.comentario}</p>
                 )}
               </div>
             )
@@ -166,7 +179,7 @@ function BudgetHistoryCard({ projectId, presupuestoActivo, onUpdated }: { projec
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <Wallet className="h-4 w-4 text-primary" />
-          <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Presupuesto</h4>
+          <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground italic">Presupuesto</h4>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -197,18 +210,21 @@ function BudgetHistoryCard({ projectId, presupuestoActivo, onUpdated }: { projec
 
       <div className="space-y-3">
         {presupuestoActivo && (
-          <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-            <p className="text-[10px] uppercase font-bold text-primary mb-1">Presupuesto Actual</p>
-            <p className="text-xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(Number(presupuestoActivo.monto), 'USD')}</p>
+          <div className="p-3 rounded-sm bg-primary/5 border border-primary/20 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-1 opacity-20">
+              <Wallet className="h-8 w-8 text-primary" />
+            </div>
+            <p className="text-[10px] uppercase font-black text-primary mb-1 tracking-widest">Presupuesto Actual</p>
+            <p className="mono-data text-2xl font-black text-slate-900 dark:text-slate-100 leading-none">{formatCurrency(Number(presupuestoActivo.monto), 'USD')}</p>
           </div>
         )}
 
         {versionsAnteriores.length > 0 && (
-          <div className="space-y-2 max-h-[120px] overflow-y-auto pr-2">
+          <div className="space-y-1 max-h-[100px] overflow-y-auto pr-2 custom-scrollbar">
             {versionsAnteriores.map((item) => (
-              <div key={item.id} className="flex items-center justify-between text-xs py-1 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                <span className="font-medium text-slate-600 dark:text-slate-400">{formatCurrency(Number(item.monto), 'USD')}</span>
-                <span className="text-[10px] text-muted-foreground">{formatDate(String(item.fechaCreacion || ''))}</span>
+              <div key={item.id} className="flex items-center justify-between text-[11px] py-1 border-b border-slate-100 dark:border-slate-800/50 last:border-0 opacity-60 hover:opacity-100 transition-opacity">
+                <span className="mono-data font-medium text-slate-600 dark:text-slate-400">{formatCurrency(Number(item.monto), 'USD')}</span>
+                <span className="mono-data text-[9px] text-muted-foreground">{formatDate(String(item.fechaCreacion || ''))}</span>
               </div>
             ))}
           </div>
@@ -224,49 +240,70 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
   const { role } = useUserRole();
 
   return (
-    <div className={`glass-card p-4 transition-all duration-300 ${isExpanded ? 'ring-1 ring-primary/20' : ''}`}>
+    <div className={`glass-card p-4 transition-all duration-300 relative group ${isExpanded ? 'border-primary/40 bg-card/90' : 'hover:bg-card/70'}`}>
       <div className="flex items-center justify-between cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
-        <div className="space-y-1.5 flex-1">
-          <div className="flex items-center gap-2">
-             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-600 tracking-tighter">{etapa.orden}</span>
-             <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100">{etapa.nombre}</h4>
-          </div>
-          <div className="flex items-center gap-4">
-             <div className="flex-1 max-w-[120px]">
-                <Progress value={etapa.porcentajeCompletado} className="h-1.5" />
+        <div className="space-y-2 flex-1">
+          <div className="flex items-center gap-3">
+             <div className="flex items-center justify-center h-5 w-5 rounded-sm bg-slate-100 dark:bg-slate-800 border border-border text-[10px] font-black text-slate-500 mono-data">
+               {String(etapa.orden).padStart(2, '0')}
              </div>
-             <span className="text-[11px] font-bold text-primary">{Math.round(etapa.porcentajeCompletado)}%</span>
-             <span className="text-[10px] text-muted-foreground">{etapa.duracionEstimadaJornales || 0} jornales</span>
+             <h4 className="font-black text-sm text-slate-900 dark:text-slate-100 uppercase tracking-tight">{etapa.nombre}</h4>
           </div>
+          <div className="flex items-center gap-6">
+             <div className="flex-1 max-w-[140px]">
+                <SegmentedProgress value={etapa.porcentajeCompletado} segments={8} />
+             </div>
+             <div className="flex gap-4">
+               <TechnicalValue value={Math.round(etapa.porcentajeCompletado)} unit="%" />
+               <TechnicalValue value={etapa.duracionEstimadaJornales || 0} unit="jor" />
+             </div>
           </div>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
+        </div>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 group-hover:text-primary transition-colors">
           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </Button>
       </div>
 
       {isExpanded && (
-        <div className="mt-4 space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2">
+        <div className="mt-4 space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800/50 animate-in fade-in slide-in-from-top-2">
           {etapa.hitoVerificacion && (
-            <div className="bg-blue-500/5 p-2 rounded-lg border border-blue-500/10">
-              <p className="text-[9px] uppercase font-bold text-blue-500 mb-1 tracking-wider">Hito</p>
-              <p className="text-xs text-slate-700 dark:text-slate-300 font-medium">{etapa.hitoVerificacion}</p>
+            <div className="bg-primary/5 p-3 rounded-sm border-l-2 border-primary/40">
+              <p className="text-[9px] uppercase font-black text-primary mb-1 tracking-widest">Hito de Verificación</p>
+              <p className="text-xs text-slate-700 dark:text-slate-300 font-bold italic leading-tight">{etapa.hitoVerificacion}</p>
             </div>
           )}
           
-          <div className="space-y-2">
-            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Tareas ({etapa.tareasCompletadas}/{etapa.tareasTotal})</p>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Registro de Tareas</p>
+              <span className="mono-data text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-sm">
+                {etapa.tareasCompletadas}/{etapa.tareasTotal}
+              </span>
+            </div>
             {isLoading ? (
-               <Skeleton className="h-12 w-full" />
+               <div className="space-y-1">
+                 <Skeleton className="h-8 w-full rounded-sm" />
+                 <Skeleton className="h-8 w-full rounded-sm" />
+               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-1">
+              <div className="grid grid-cols-1 gap-1.5">
                 {tasks.map(task => (
-                  <div key={task.id} className="flex items-center gap-2 p-1.5 rounded-md hover:bg-slate-50 dark:hover:bg-slate-900/50 text-xs">
+                  <div key={task.id} className="flex items-center gap-3 p-2 rounded-sm bg-slate-50/50 dark:bg-slate-900/20 border border-transparent hover:border-border transition-all text-xs">
                     {task.estado === 'completada' ? (
-                      <CheckCircle2 className="h-3 w-3 text-green-500" />
+                      <div className="h-4 w-4 rounded-sm bg-green-500/20 flex items-center justify-center border border-green-500/40">
+                        <CheckCircle2 className="h-2.5 w-2.5 text-green-500" />
+                      </div>
                     ) : (
-                      <Circle className="h-3 w-3 text-slate-300 dark:text-slate-700" />
+                      <div className="h-4 w-4 rounded-sm border border-slate-300 dark:border-slate-700 flex items-center justify-center">
+                        <div className="h-1.5 w-1.5 rounded-full bg-slate-200 dark:bg-slate-800" />
+                      </div>
                     )}
-                    <span className={task.estado === 'completada' ? 'line-through text-slate-400' : 'text-slate-600 dark:text-slate-400'}>{task.descripcion}</span>
+                    <span className={cn(
+                      "font-medium transition-colors",
+                      task.estado === 'completada' ? 'line-through text-slate-400' : 'text-slate-600 dark:text-slate-300'
+                    )}>
+                      {task.descripcion}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -274,9 +311,9 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
           </div>
           
           {role === 'admin' && (
-             <div className="flex justify-between text-[10px] font-mono text-slate-400 pt-2 uppercase">
-                <span>{formatCurrency(Number(etapa.montoUsd), moneda)}</span>
-                <span>{formatCurrency(etapa.pagosTotales, moneda)}</span>
+             <div className="flex justify-between items-center p-2 rounded-sm bg-slate-100 dark:bg-slate-900/50 border border-border/50">
+                <TechnicalValue value={formatCurrency(Number(etapa.montoUsd), moneda)} label="Presupuesto" />
+                <TechnicalValue value={formatCurrency(etapa.pagosTotales, moneda)} label="Aportado" />
              </div>
           )}
         </div>
@@ -313,45 +350,77 @@ function DashboardContent() {
   const showMoney = role === 'admin';
 
   return (
-    <div className="space-y-8 p-4 md:p-8 animate-in fade-in duration-500">
+    <div className="space-y-8 p-4 md:p-8 animate-in fade-in duration-700">
       {/* Header Sección */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="space-y-1">
-          <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 text-[10px] uppercase font-bold tracking-widest">Resumen</Badge>
-          <h2 className="text-4xl font-black text-slate-900 dark:text-slate-50 tracking-tight">{proyecto.nombre}</h2>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border/50 pb-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.5)]" />
+            <span className="text-[10px] uppercase font-black text-primary tracking-[0.2em]">Sincronizado / Live</span>
+          </div>
+          <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-slate-50 tracking-tighter uppercase italic">
+            {proyecto.nombre}
+          </h2>
+        </div>
+        <div className="flex gap-2">
+          <Badge variant="outline" className="border-border px-3 py-1 font-black mono-data text-[10px] uppercase tracking-widest bg-card">
+            ID: {proyecto.id.slice(0,8)}
+          </Badge>
         </div>
       </div>
 
       {/* Layout: 2 columnas en desktop, 1 en mobile */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Columna Principal Izquierda (2/3) */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-8">
           
           {/* Card: Avance General */}
-          <div className="glass-card p-6 flex flex-col justify-between border-l-4 border-l-primary">
-            <div className="flex justify-between items-start mb-4">
+          <div className="glass-card p-8 flex flex-col justify-between relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+              <TrendingUp className="h-32 w-32 text-primary" />
+            </div>
+            
+            <div className="flex justify-between items-start mb-8 relative z-10">
               <div className="space-y-1">
-                <h3 className="text-xs uppercase font-black text-muted-foreground tracking-widest">Avance Total de Obra</h3>
-                <p className="text-5xl font-black text-slate-900 dark:text-slate-50">{Math.round(porcentajeAvance)}%</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <TrendingUp className="h-6 w-6 text-primary" />
+                <h3 className="text-[11px] uppercase font-black text-muted-foreground tracking-[0.3em] mb-4">Avance Técnico Global</h3>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-7xl font-black text-slate-900 dark:text-slate-50 mono-data tracking-tighter italic">
+                    {Math.round(porcentajeAvance)}
+                  </span>
+                  <span className="text-2xl font-black text-primary mono-data">%</span>
+                </div>
               </div>
             </div>
-            <div className="space-y-3">
-               <Progress value={porcentajeAvance} className="h-2.5 bg-slate-100 dark:bg-slate-800" />
-               <div className="flex justify-between text-[11px] font-bold uppercase text-slate-500 tracking-wider">
-                  <span>Jornales {Math.round(jornalesCompletados)}/{totalJornales}</span>
+            
+            <div className="space-y-6 relative z-10">
+               <SegmentedProgress value={porcentajeAvance} segments={20} className="h-3" />
+               <div className="flex justify-between items-center bg-slate-100/50 dark:bg-slate-900/50 p-4 rounded-sm border border-border/50">
+                  <TechnicalValue 
+                    value={`${Math.round(jornalesCompletados)} / ${totalJornales}`} 
+                    label="Jornales Producidos" 
+                    unit="jor" 
+                  />
+                  <div className="h-8 w-[1px] bg-border/50" />
+                  <TechnicalValue 
+                    value={totalJornales - Math.round(jornalesCompletados)} 
+                    label="Restantes" 
+                    unit="jor" 
+                  />
                </div>
             </div>
           </div>
 
           {/* Listado de Etapas */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 px-1">
-               <div className="h-4 w-1 bg-primary rounded-full" />
-               <h3 className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-slate-100 italic">Desglose de etapas</h3>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between px-2">
+               <div className="flex items-center gap-3">
+                  <div className="h-1 w-8 bg-primary shadow-[0_0_8px_rgba(249,115,22,0.5)]" />
+                  <h3 className="text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-slate-100 italic">Cronograma de Obra</h3>
+               </div>
+               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-slate-100 dark:bg-slate-900 px-2 py-1 border border-border">
+                 {etapas.length} Etapas Técnicas
+               </span>
             </div>
             <div className="space-y-4">
               {etapas.sort((a,b) => a.orden - b.orden).map(etapa => (
@@ -362,57 +431,69 @@ function DashboardContent() {
         </div>
 
         {/* Columna Derecha (1/3) */}
-        <div className="lg:col-span-1 space-y-6">
+        <div className="lg:col-span-1 space-y-8">
            
            {/* Resumen Financiero */}
            {showMoney ? (
-             <div className="glass-card p-6">
-               <div className="flex justify-between items-start mb-4">
-                 <div>
-                   <h3 className="text-xs uppercase font-black text-muted-foreground tracking-widest mb-2">Resumen Financiero</h3>
-                   <p className="text-3xl font-black text-slate-900 dark:text-slate-50">{formatCurrency(montoTotal, 'USD')}</p>
-                   <p className="text-xs text-muted-foreground mt-1">Presupuesto Total</p>
-                 </div>
-                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                   <DollarSign className="h-5 w-5 text-primary" />
+             <div className="glass-card p-8 border-t-4 border-t-primary">
+               <div className="flex justify-between items-start mb-8">
+                 <div className="space-y-1">
+                   <h3 className="text-[11px] uppercase font-black text-muted-foreground tracking-[0.3em] mb-4">Estado Financiero</h3>
+                   <div className="flex flex-col">
+                     <span className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Presupuesto Consolidado</span>
+                     <span className="text-3xl font-black text-slate-900 dark:text-slate-50 mono-data tracking-tight">
+                       {formatCurrency(montoTotal, 'USD')}
+                     </span>
+                   </div>
                  </div>
                </div>
-               <div className="mt-4 space-y-3">
-                 <div className="flex justify-between items-center">
-                   <span className="text-sm text-muted-foreground">Aportado</span>
-                   <span className="font-bold text-green-600">{formatCurrency(totalPagadoNum, 'USD')}</span>
+               
+               <div className="space-y-6">
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 rounded-sm bg-green-500/5 border border-green-500/20">
+                      <p className="text-[9px] uppercase font-black text-green-600 mb-1 tracking-widest">Aportado</p>
+                      <p className="mono-data font-black text-lg text-green-600">{formatCurrency(totalPagadoNum, 'USD')}</p>
+                    </div>
+                    <div className="p-3 rounded-sm bg-primary/5 border border-primary/20">
+                      <p className="text-[9px] uppercase font-black text-primary mb-1 tracking-widest">Pendiente</p>
+                      <p className="mono-data font-black text-lg text-primary">{formatCurrency(pendiente, 'USD')}</p>
+                    </div>
                  </div>
-                 <div className="flex justify-between items-center">
-                   <span className="text-sm text-muted-foreground">Pendiente</span>
-                   <span className="font-bold text-primary">{formatCurrency(pendiente, 'USD')}</span>
+                 
+                 <div className="space-y-2">
+                   <div className="flex justify-between items-end">
+                     <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Eficiencia de Pago</span>
+                     <span className="mono-data font-black text-xs text-primary">{Math.round((totalPagadoNum / (montoTotal || 1)) * 100)}%</span>
+                   </div>
+                   <SegmentedProgress value={(totalPagadoNum / (montoTotal || 1)) * 100} segments={15} />
                  </div>
-                 <Progress value={(totalPagadoNum / (montoTotal || 1)) * 100} className="h-2 bg-slate-100 dark:bg-slate-800" />
                </div>
              </div>
            ) : null}
            
-           {/* Presupuesto */}
-           {showMoney && (
-             <div className="glass-card p-5">
-                <BudgetHistoryCard 
-                  projectId={proyecto.id} 
-                  presupuestoActivo={presupuestoActivo} 
-                  onUpdated={() => { refetch(); setPaymentsRefresh(v => v + 1); }} 
-                />
-             </div>
-           )}
-           
-           {/* Pagos */}
-           {showMoney && (
-             <div className="glass-card p-5">
-                <PaymentSummary 
-                  projectId={proyecto.id} 
-                  refreshKey={paymentsRefresh}
-                  etapas={etapas.map(e => ({ id: e.id, nombre: e.nombre, orden: e.orden }))}
-                  onPaymentCreated={() => { refetch(); setPaymentsRefresh(v => v + 1); }}
-                />
-             </div>
-           )}
+           {/* Secciones de Soporte (Presupuesto y Pagos) */}
+           <div className="space-y-6">
+             {showMoney && (
+               <div className="glass-card p-6 border-l-2 border-l-primary/30">
+                  <BudgetHistoryCard 
+                    projectId={proyecto.id} 
+                    presupuestoActivo={presupuestoActivo} 
+                    onUpdated={() => { refetch(); setPaymentsRefresh(v => v + 1); }} 
+                  />
+               </div>
+             )}
+             
+             {showMoney && (
+               <div className="glass-card p-6 border-l-2 border-l-primary/30">
+                  <PaymentSummary 
+                    projectId={proyecto.id} 
+                    refreshKey={paymentsRefresh}
+                    etapas={etapas.map(e => ({ id: e.id, nombre: e.nombre, orden: e.orden }))}
+                    onPaymentCreated={() => { refetch(); setPaymentsRefresh(v => v + 1); }}
+                  />
+               </div>
+             )}
+           </div>
         </div>
 
       </div>
