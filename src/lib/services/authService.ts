@@ -47,6 +47,22 @@ export async function registerUser(nombre: string, email: string, password: stri
   }
 }
 
+export async function getProjectMembership(userId: string, projectId: string) {
+  try {
+    const membership = await db.query.proyectoMiembros.findFirst({
+      where: and(
+        eq(proyectoMiembros.usuarioId, userId),
+        eq(proyectoMiembros.proyectoId, projectId)
+      ),
+    });
+
+    return membership;
+  } catch (error) {
+    console.error('Error getting project membership:', error);
+    return null;
+  }
+}
+
 export async function checkProjectAccess(userId: string, projectId: string): Promise<boolean> {
   try {
     const membership = await db.query.proyectoMiembros.findFirst({

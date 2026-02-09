@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createInvitation, checkProjectAccess } from '@/lib/services/authService';
+import { createInvitation, checkProjectRole } from '@/lib/services/authService';
 import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -14,8 +14,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Check if user has admin access
-    const access = await checkProjectAccess(userId, projectId);
-    if (!access || access.rol !== 'admin') {
+    const hasAdminRole = await checkProjectRole(userId, projectId, ['admin']);
+    if (!hasAdminRole) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

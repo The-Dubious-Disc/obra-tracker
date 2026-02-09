@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { checkProjectAccess } from '@/lib/services/authService';
+import { getProjectMembership } from '@/lib/services/authService';
 
 export async function GET(
   request: Request,
@@ -15,12 +15,12 @@ export async function GET(
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const access = await checkProjectAccess(userId, projectId);
-    if (!access) {
+    const membership = await getProjectMembership(userId, projectId);
+    if (!membership) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    return NextResponse.json({ rol: access.rol });
+    return NextResponse.json({ rol: membership.rol });
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
