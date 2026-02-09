@@ -34,11 +34,6 @@ function formatDate(dateString: string): string {
   return format(date, 'dd/MM/yyyy');
 }
 
-function getStatusFromProgress(progress: number): string {
-  if (progress >= 100) return 'Completado';
-  if (progress > 0) return 'En Proceso';
-  return 'Pendiente';
-}
 
 function DashboardSkeleton() {
   return (
@@ -227,7 +222,6 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
   const [isExpanded, setIsExpanded] = useState(false);
   const { tasks, isLoading } = useStageTasks(isExpanded ? etapa.id : null);
   const { role } = useUserRole();
-  const status = getStatusFromProgress(etapa.porcentajeCompletado);
 
   return (
     <div className={`glass-card p-4 transition-all duration-300 ${isExpanded ? 'ring-1 ring-primary/20' : ''}`}>
@@ -242,11 +236,9 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
                 <Progress value={etapa.porcentajeCompletado} className="h-1.5" />
              </div>
              <span className="text-[11px] font-bold text-primary">{Math.round(etapa.porcentajeCompletado)}%</span>
-             <Badge variant="outline" className={`text-[9px] uppercase px-1.5 h-4 ${status === 'Completado' ? 'bg-green-500/10 text-green-600 border-green-200' : ''}`}>
-                {status}
-             </Badge>
+             <span className="text-[10px] text-muted-foreground">{etapa.duracionEstimadaJornales || 0} jornales</span>
           </div>
-        </div>
+          </div>
         <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </Button>
