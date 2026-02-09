@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useProjectSummary, useProjects, usePayments, useStageTasks, useBudgetUpdate, useBudgetHistory } from "@/hooks/useProject";
 import { useProjectSelection } from '@/contexts/ProjectContext';
 import type { EtapaConProgreso } from '@/types/database.types';
-import { AlertCircle, RefreshCw, Plus, DollarSign, Calendar, ChevronDown, ChevronUp, CheckCircle2, Circle, TrendingUp, Clock, Wallet } from "lucide-react";
+import { AlertCircle, RefreshCw, Plus, DollarSign, ChevronDown, ChevronUp, CheckCircle2, Circle, TrendingUp, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RegisterPaymentDialog } from "@/components/RegisterPaymentDialog";
 import { useUserRole } from '@/contexts/UserRoleContext';
@@ -50,11 +50,10 @@ function DashboardSkeleton() {
         </div>
         <Skeleton className="h-10 w-32" />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Skeleton className="h-40 md:col-span-2 rounded-xl" />
         <Skeleton className="h-40 rounded-xl" />
-        <Skeleton className="h-40 rounded-xl" />
-        <Skeleton className="h-96 md:col-span-3 rounded-xl" />
+        <Skeleton className="h-96 md:col-span-2 rounded-xl" />
         <Skeleton className="h-96 rounded-xl" />
       </div>
     </div>
@@ -88,7 +87,7 @@ function WelcomeScreen() {
   );
 }
 
-function PaymentSummary({ projectId, refreshKey }: { projectId: string; refreshKey: number }) {
+function PaymentSummary({ projectId, refreshKey, etapas, onPaymentCreated }: { projectId: string; refreshKey: number; etapas: { id: string; nombre: string; orden: number }[]; onPaymentCreated: () => void }) {
   const { payments, isLoading, refetch } = usePayments(projectId);
 
   React.useEffect(() => {
@@ -100,13 +99,25 @@ function PaymentSummary({ projectId, refreshKey }: { projectId: string; refreshK
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-2">
-        <Clock className="h-4 w-4 text-primary" />
-        <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Pagos Recientes</h4>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <DollarSign className="h-4 w-4 text-primary" />
+          <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Pagos</h4>
+        </div>
+        <RegisterPaymentDialog
+          projectId={projectId}
+          etapas={etapas}
+          onPaymentCreated={onPaymentCreated}
+        >
+          <Button size="icon" variant="ghost" className="h-6 w-6 text-primary hover:text-primary hover:bg-primary/10">
+            <Plus className="h-4 w-4" />
+          </Button>
+        </RegisterPaymentDialog>
       </div>
+      
       {isLoading ? (
         <div className="space-y-2">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-10 w-full" />)}
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}
         </div>
       ) : payments.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-4 italic border rounded-lg border-dashed">Sin movimientos registrados</p>
@@ -115,17 +126,13 @@ function PaymentSummary({ projectId, refreshKey }: { projectId: string; refreshK
           {payments.slice(0, 5).map((payment) => {
             const paymentAny = payment as Record<string, unknown>;
             return (
-              <div key={payment.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
-                <div className="space-y-0.5">
+              <div key={payment.id} className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between">
                   <p className="font-bold text-sm text-slate-900 dark:text-slate-100">{formatCurrency(Number(paymentAny.montoPagado || paymentAny.monto_pagado || 0), payment.moneda)}</p>
-                  <p className="text-[10px] text-muted-foreground flex items-center gap-1 uppercase tracking-tighter">
-                    <Calendar className="h-2 w-2" /> {formatDate(String(paymentAny.fechaPago || paymentAny.fecha_pago || ''))}
-                  </p>
+                  <p className="text-[10px] text-muted-foreground">{formatDate(String(paymentAny.fechaPago || paymentAny.fecha_pago || ''))}</p>
                 </div>
                 {payment.comentario && (
-                  <Badge variant="outline" className="text-[10px] font-normal max-w-[80px] truncate">
-                    {payment.comentario}
-                  </Badge>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 truncate">{payment.comentario}</p>
                 )}
               </div>
             )
@@ -164,7 +171,7 @@ function BudgetHistoryCard({ projectId, presupuestoActivo, onUpdated }: { projec
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <Wallet className="h-4 w-4 text-primary" />
-          <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Presupuestos</h4>
+          <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Presupuesto</h4>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -227,7 +234,7 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
       <div className="flex items-center justify-between cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="space-y-1.5 flex-1">
           <div className="flex items-center gap-2">
-             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-600 tracking-tighter uppercase">Fase {etapa.orden}</span>
+             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-600 tracking-tighter">{etapa.orden}</span>
              <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100">{etapa.nombre}</h4>
           </div>
           <div className="flex items-center gap-4">
@@ -249,7 +256,7 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
         <div className="mt-4 space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2">
           {etapa.hitoVerificacion && (
             <div className="bg-blue-500/5 p-2 rounded-lg border border-blue-500/10">
-              <p className="text-[9px] uppercase font-bold text-blue-500 mb-1 tracking-wider">Hito Técnico</p>
+              <p className="text-[9px] uppercase font-bold text-blue-500 mb-1 tracking-wider">Hito</p>
               <p className="text-xs text-slate-700 dark:text-slate-300 font-medium">{etapa.hitoVerificacion}</p>
             </div>
           )}
@@ -276,8 +283,8 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
           
           {role === 'admin' && (
              <div className="flex justify-between text-[10px] font-mono text-slate-400 pt-2 uppercase">
-                <span>Presupuesto: {formatCurrency(Number(etapa.montoUsd), moneda)}</span>
-                <span>Aportado: {formatCurrency(etapa.pagosTotales, moneda)}</span>
+                <span>{formatCurrency(Number(etapa.montoUsd), moneda)}</span>
+                <span>{formatCurrency(etapa.pagosTotales, moneda)}</span>
              </div>
           )}
         </div>
@@ -321,117 +328,99 @@ function DashboardContent() {
           <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 text-[10px] uppercase font-bold tracking-widest">Resumen</Badge>
           <h2 className="text-4xl font-black text-slate-900 dark:text-slate-50 tracking-tight">{proyecto.nombre}</h2>
         </div>
-        {showMoney && (
-          <RegisterPaymentDialog
-            projectId={proyecto.id}
-            etapas={etapas.map(e => ({ id: e.id, nombre: e.nombre, orden: e.orden }))}
-            onPaymentCreated={() => { refetch(); setPaymentsRefresh(v => v + 1); }}
-          >
-            <Button className="btn-industrial-primary px-8 h-12 rounded-xl shadow-lg shadow-primary/20 gap-2 text-white">
-              <DollarSign className="h-4 w-4" />
-              Registrar Aporte
-            </Button>
-          </RegisterPaymentDialog>
-        )}
       </div>
 
-      {/* Real Bento Grid Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Layout: 2 columnas en desktop, 1 en mobile */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Card 1: Avance General (2x1) */}
-        <div className="md:col-span-2 glass-card p-6 flex flex-col justify-between border-l-4 border-l-primary">
-          <div className="flex justify-between items-start mb-4">
-            <div className="space-y-1">
-              <h3 className="text-xs uppercase font-black text-muted-foreground tracking-widest">Avance Total de Obra</h3>
-              <p className="text-5xl font-black text-slate-900 dark:text-slate-50">{Math.round(porcentajeAvance)}%</p>
-            </div>
-            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <TrendingUp className="h-6 w-6 text-primary" />
-            </div>
-          </div>
-          <div className="space-y-3">
-             <Progress value={porcentajeAvance} className="h-2.5 bg-slate-100 dark:bg-slate-800" />
-             <div className="flex justify-between text-[11px] font-bold uppercase text-slate-500 tracking-wider">
-                <span>{Math.round(jornalesCompletados)} Jornales Ejecutados</span>
-                <span className="text-primary">{Math.max(0, Math.round(totalJornales - jornalesCompletados))} Restantes</span>
-             </div>
-          </div>
-        </div>
-
-        {/* Card 2: Resumen Financiero Unificado (2x1) - Solo Admin */}
-        {showMoney ? (
-          <div className="md:col-span-2 glass-card p-6 flex flex-col justify-between">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-xs uppercase font-black text-muted-foreground tracking-widest mb-2">Resumen Financiero</h3>
-                <p className="text-3xl font-black text-slate-900 dark:text-slate-50">{formatCurrency(montoTotal, 'USD')}</p>
-                <p className="text-xs text-muted-foreground mt-1">Presupuesto Total</p>
+        {/* Columna Principal Izquierda (2/3) */}
+        <div className="lg:col-span-2 space-y-6">
+          
+          {/* Card: Avance General */}
+          <div className="glass-card p-6 flex flex-col justify-between border-l-4 border-l-primary">
+            <div className="flex justify-between items-start mb-4">
+              <div className="space-y-1">
+                <h3 className="text-xs uppercase font-black text-muted-foreground tracking-widest">Avance Total de Obra</h3>
+                <p className="text-5xl font-black text-slate-900 dark:text-slate-50">{Math.round(porcentajeAvance)}%</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <DollarSign className="h-6 w-6 text-primary" />
+                <TrendingUp className="h-6 w-6 text-primary" />
               </div>
             </div>
-            <div className="mt-6 space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Aportado</span>
-                <span className="font-bold text-green-600">{formatCurrency(totalPagadoNum, 'USD')}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Pendiente</span>
-                <span className="font-bold text-primary">{formatCurrency(pendiente, 'USD')}</span>
-              </div>
-              <Progress value={(totalPagadoNum / (montoTotal || 1)) * 100} className="h-2 bg-slate-100 dark:bg-slate-800" />
+            <div className="space-y-3">
+               <Progress value={porcentajeAvance} className="h-2.5 bg-slate-100 dark:bg-slate-800" />
+               <div className="flex justify-between text-[11px] font-bold uppercase text-slate-500 tracking-wider">
+                  <span>Jornales {Math.round(jornalesCompletados)}/{totalJornales}</span>
+               </div>
             </div>
           </div>
-        ) : (
-          <div className="md:col-span-2 glass-card p-6 flex flex-col justify-center items-center text-center bg-slate-100/30">
-             <CheckCircle2 className="h-10 w-10 text-green-500 mb-3" />
-             <p className="text-sm font-bold uppercase tracking-widest text-slate-500">Planificación Activa</p>
-          </div>
-        )}
 
-        {/* Card 3: Timeline placeholder */}
-        <div className="glass-card p-6 flex flex-col justify-center items-center text-center bg-slate-100/30">
-           <Clock className="h-8 w-8 text-blue-500 mb-2" />
-           <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Timeline en Curso</p>
-        </div>
-
-        {/* Listado de Etapas (Columna Principal Izquierda - 3 cols en Desktop) */}
-        <div className="md:col-span-3 space-y-4">
-          <div className="flex items-center gap-2 px-1">
-             <div className="h-4 w-1 bg-primary rounded-full" />
-             <h3 className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-slate-100 italic">Desglose de Etapas Técnicas</h3>
-          </div>
+          {/* Listado de Etapas */}
           <div className="space-y-4">
-            {etapas.sort((a,b) => a.orden - b.orden).map(etapa => (
-              <StageCard key={etapa.id} etapa={etapa} moneda={proyecto.moneda} />
-            ))}
+            <div className="flex items-center gap-2 px-1">
+               <div className="h-4 w-1 bg-primary rounded-full" />
+               <h3 className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-slate-100 italic">Desglose de etapas</h3>
+            </div>
+            <div className="space-y-4">
+              {etapas.sort((a,b) => a.orden - b.orden).map(etapa => (
+                <StageCard key={etapa.id} etapa={etapa} moneda={proyecto.moneda} />
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Sidebar Derecha - Side Panels (1 col) */}
-        <div className="md:col-span-1 space-y-6">
+        {/* Columna Derecha (1/3) */}
+        <div className="lg:col-span-1 space-y-6">
+           
+           {/* Resumen Financiero */}
+           {showMoney ? (
+             <div className="glass-card p-6">
+               <div className="flex justify-between items-start mb-4">
+                 <div>
+                   <h3 className="text-xs uppercase font-black text-muted-foreground tracking-widest mb-2">Resumen Financiero</h3>
+                   <p className="text-3xl font-black text-slate-900 dark:text-slate-50">{formatCurrency(montoTotal, 'USD')}</p>
+                   <p className="text-xs text-muted-foreground mt-1">Presupuesto Total</p>
+                 </div>
+                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                   <DollarSign className="h-5 w-5 text-primary" />
+                 </div>
+               </div>
+               <div className="mt-4 space-y-3">
+                 <div className="flex justify-between items-center">
+                   <span className="text-sm text-muted-foreground">Aportado</span>
+                   <span className="font-bold text-green-600">{formatCurrency(totalPagadoNum, 'USD')}</span>
+                 </div>
+                 <div className="flex justify-between items-center">
+                   <span className="text-sm text-muted-foreground">Pendiente</span>
+                   <span className="font-bold text-primary">{formatCurrency(pendiente, 'USD')}</span>
+                 </div>
+                 <Progress value={(totalPagadoNum / (montoTotal || 1)) * 100} className="h-2 bg-slate-100 dark:bg-slate-800" />
+               </div>
+             </div>
+           ) : null}
+           
+           {/* Presupuesto */}
            {showMoney && (
-             <>
-               <div className="glass-card p-5">
-                  <BudgetHistoryCard 
-                    projectId={proyecto.id} 
-                    presupuestoActivo={presupuestoActivo} 
-                    onUpdated={() => { refetch(); setPaymentsRefresh(v => v + 1); }} 
-                  />
-               </div>
-               <div className="glass-card p-5">
-                  <PaymentSummary projectId={proyecto.id} refreshKey={paymentsRefresh} />
-               </div>
-             </>
+             <div className="glass-card p-5">
+                <BudgetHistoryCard 
+                  projectId={proyecto.id} 
+                  presupuestoActivo={presupuestoActivo} 
+                  onUpdated={() => { refetch(); setPaymentsRefresh(v => v + 1); }} 
+                />
+             </div>
            )}
-           <div className="p-6 bg-slate-900 dark:bg-primary rounded-xl text-white shadow-xl shadow-slate-200 dark:shadow-none">
-              <h4 className="text-sm font-bold uppercase tracking-widest opacity-80 mb-2">Technical Support</h4>
-              <p className="text-xs font-medium leading-relaxed">Accede a la documentación técnica y planos detallados en el menú lateral para mayor precisión en obra.</p>
-              <Button variant="outline" className="w-full mt-4 border-white/30 hover:bg-white/10 text-white text-[10px] uppercase font-bold tracking-widest">
-                Ver Guía Técnica
-              </Button>
-           </div>
+           
+           {/* Pagos */}
+           {showMoney && (
+             <div className="glass-card p-5">
+                <PaymentSummary 
+                  projectId={proyecto.id} 
+                  refreshKey={paymentsRefresh}
+                  etapas={etapas.map(e => ({ id: e.id, nombre: e.nombre, orden: e.orden }))}
+                  onPaymentCreated={() => { refetch(); setPaymentsRefresh(v => v + 1); }}
+                />
+             </div>
+           )}
         </div>
 
       </div>
