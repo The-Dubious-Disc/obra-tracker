@@ -1,15 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { registerUser } from '@/lib/services/authService';
+import { registerSchema } from '@/lib/schemas';
 
 export async function POST(request: NextRequest) {
   try {
-    const { nombre, email, password } = await request.json();
-    
-    if (!nombre || !email || !password) {
-      return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 });
+    // Parse and validate request body
+    const body = await request.json();
+    const validationResult = registerSchema.safeParse(body);
+
+    if (!validationResult.success) {
+      return NextResponse.json(
+        {
+          error: 'Datos inválidos',
+          details: validationResult.error.issues.map(issue => issue.message),
+        },
+        { status: 400 }
+      );
     }
 
-    const result = await registerUser(nombre, email, password);
+    const { nombre, email, password, rol } = validationResult.data;
+
+    const result = await registerUser(nombre, email, password, rol);
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }

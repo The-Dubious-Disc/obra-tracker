@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllProjects, createProject } from '@/lib/services/projectService';
 import { cookies } from 'next/headers';
+import { createProjectSchema } from '@/lib/schemas';
 
 export async function GET() {
   try {
@@ -32,22 +33,27 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+
+    // Basic validation with Zod
+    const basicValidation = createProjectSchema.safeParse({
+      nombre: body.nombre,
+      presupuestoTotalUsd: body.presupuestoTotal,
+      moneda: body.moneda,
+    });
+
+    if (!basicValidation.success) {
+      return NextResponse.json(
+        {
+          error: 'Datos inválidos',
+          details: basicValidation.error.issues.map(issue => issue.message),
+        },
+        { status: 400 }
+      );
+    }
+
     const { nombre, moneda, presupuestoTotal, etapas } = body;
 
-    if (!nombre || typeof nombre !== 'string' || nombre.trim() === '') {
-      return NextResponse.json(
-        { error: 'Project name is required' },
-        { status: 400 }
-      );
-    }
-
-    if (!presupuestoTotal || typeof presupuestoTotal !== 'number' || presupuestoTotal <= 0) {
-      return NextResponse.json(
-        { error: 'Presupuesto total es obligatorio' },
-        { status: 400 }
-      );
-    }
-
+    // Additional validation for etapas (keeping existing logic for now)
     if (!Array.isArray(etapas) || etapas.length === 0) {
       return NextResponse.json(
         { error: 'Debe incluir al menos una etapa' },

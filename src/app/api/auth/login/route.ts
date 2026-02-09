@@ -4,14 +4,32 @@ import { usuarios } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { verifyPassword } from '@/lib/services/authService';
 import { cookies } from 'next/headers';
+import { loginSchema } from '@/lib/schemas';
+import { checkRateLimit } from '@/lib/middleware/rateLimit';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
-
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 });
+    // Rate limiting check
+    const rateLimitResponse = checkRateLimit(request);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
+
+    // Parse and validate request body
+    const body = await request.json();
+    const validationResult = loginSchema.safeParse(body);
+
+    if (!validationResult.success) {
+      return NextResponse.json(
+        {
+          error: 'Datos inválidos',
+          details: validationResult.error.issues.map(issue => issue.message),
+        },
+        { status: 400 }
+      );
+    }
+
+    const { email, password } = validationResult.data;
 
     const user = await db.query.usuarios.findFirst({
       where: eq(usuarios.email, email),
