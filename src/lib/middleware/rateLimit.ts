@@ -15,7 +15,10 @@ const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
 export function checkRateLimit(request: NextRequest, identifier?: string): NextResponse | null {
   // Use IP address as identifier if not provided
-  const key = identifier || request.ip || request.headers.get('x-forwarded-for') || 'unknown';
+  const reqWithIp = request as NextRequest & { ip?: string };
+  const forwarded = request.headers.get('x-forwarded-for');
+  const ip = reqWithIp.ip ?? (forwarded ? forwarded.split(',')[0]?.trim() : undefined);
+  const key = identifier || ip || 'unknown';
 
   const now = Date.now();
   const entry = rateLimitMap.get(key);

@@ -20,12 +20,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const result = await createInvitation(projectId, email, rol, userId);
-    if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 400 });
+    if (!result.success || !result.invitation) {
+      return NextResponse.json({ error: result.error || 'Failed to create invitation' }, { status: 400 });
     }
 
     // Send email logic here (mocked)
-    console.log(`Invitation sent to ${email} with token ${result.token}`);
+    console.log(`Invitation sent to ${email} with token ${result.invitation.token}`);
 
     return NextResponse.json({ message: 'Invitation sent' });
   } catch {
