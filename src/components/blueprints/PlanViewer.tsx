@@ -125,10 +125,10 @@ export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
   }, []);
 
   return (
-    <div ref={containerRef} className={`relative flex flex-col gap-4 ${isFullscreen ? 'fixed inset-0 z-50 bg-white p-4' : ''}`}>
-      <div className="flex justify-between items-center bg-slate-50 p-2 rounded-t-lg border border-b-0">
+    <div ref={containerRef} className={`relative flex flex-col gap-4 ${isFullscreen ? 'fixed inset-0 z-50 industrial-slate p-4' : ''}`}>
+      <div className="flex justify-between items-center industrial-card p-2 rounded-t-lg border border-b-0">
         <div className="flex gap-2" />
-        <div className="flex gap-2 items-center text-xs text-muted-foreground">
+        <div className="flex gap-2 items-center text-xs industrial-blue">
           <span>{pins.length} anotaciones</span>
         </div>
       </div>
@@ -143,14 +143,14 @@ export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
         >
           {({ zoomIn, zoomOut, resetTransform }) => (
             <>
-              <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-                <Button variant="secondary" size="icon" onClick={() => zoomIn()}><ZoomIn className="h-4 w-4" /></Button>
-                <Button variant="secondary" size="icon" onClick={() => zoomOut()}><ZoomOut className="h-4 w-4" /></Button>
-                <Button variant="secondary" size="icon" onClick={() => resetTransform()}><RotateCcw className="h-4 w-4" /></Button>
+              <div className="absolute top-4 left-4 z-10 glass rounded-lg p-2 flex flex-col gap-1 shadow-lg border">
+                <Button variant="secondary" className="industrial-accent" size="icon" onClick={() => zoomIn()}><ZoomIn className="h-4 w-4" /></Button>
+                <Button variant="secondary" className="industrial-accent" size="icon" onClick={() => zoomOut()}><ZoomOut className="h-4 w-4" /></Button>
+                <Button variant="secondary" className="industrial-accent" size="icon" onClick={() => resetTransform()}><RotateCcw className="h-4 w-4" /></Button>
               </div>
-              <div className="absolute top-4 right-4 z-10">
+              <div className="absolute top-4 right-4 z-10 glass rounded-lg p-2 shadow-lg border">
                 <Button
-                  variant="secondary"
+                  variant="secondary" className="industrial-accent"
                   size="icon"
                   onClick={toggleFullscreen}
                   aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
@@ -206,13 +206,13 @@ export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
         )}
 
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-40">
+          <div className="absolute inset-0 flex items-center justify-center industrial-slate/50 z-40">
             <span>Cargando plano y anotaciones...</span>
           </div>
         )}
       </div>
       {!isFullscreen && (
-        <p className="text-sm text-muted-foreground italic">
+        <p className="text-sm industrial-blue italic">
           * Usa la rueda del mouse para hacer zoom y arrastra para navegar. Click para anotar.
         </p>
       )}

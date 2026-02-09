@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import React from 'react'
 import { format, parseISO, isValid } from 'date-fns'
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,17 +14,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useProjectSummary, useProjects, usePayments, useStageTasks, useBudgetUpdate, useBudgetHistory } from "@/hooks/useProject";
 import { useProjectSelection } from '@/contexts/ProjectContext';
 import type { EtapaConProgreso } from '@/types/database.types';
-import { AlertCircle, RefreshCw, Plus, DollarSign, Calendar, ChevronDown, ChevronUp, CheckCircle2, Circle } from "lucide-react";
+import { AlertCircle, RefreshCw, Plus, DollarSign, Calendar, ChevronDown, ChevronUp, CheckCircle2, Circle, TrendingUp, Clock, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
-// Wizard replaced inline dialog for project creation
 import { RegisterPaymentDialog } from "@/components/RegisterPaymentDialog";
-// role selector moved to sidebar
 import { useUserRole } from '@/contexts/UserRoleContext';
 
-// Project selection is managed via ProjectContext
-
-function formatCurrency(amount: number, currency: string = 'UYU'): string {
-  return new Intl.NumberFormat('es-UY', {
+function formatCurrency(amount: number, currency: string = 'USD'): string {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,
     minimumFractionDigits: 0,
@@ -46,22 +42,20 @@ function getStatusFromProgress(progress: number): string {
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-8">
-      <div>
-        <Skeleton className="h-9 w-48 mb-2" />
-        <Skeleton className="h-5 w-72" />
+    <div className="space-y-8 p-6">
+      <div className="flex justify-between items-end">
+        <div className="space-y-2">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <Skeleton className="h-10 w-32" />
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        {[1, 2, 3].map((i) => (
-          <Card key={i}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <Skeleton className="h-4 w-24" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-8 w-32" />
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Skeleton className="h-40 md:col-span-2 rounded-xl" />
+        <Skeleton className="h-40 rounded-xl" />
+        <Skeleton className="h-40 rounded-xl" />
+        <Skeleton className="h-96 md:col-span-3 rounded-xl" />
+        <Skeleton className="h-96 rounded-xl" />
       </div>
     </div>
   );
@@ -73,7 +67,7 @@ function DashboardError({ error, onRetry }: { error: string; onRetry: () => void
       <AlertCircle className="h-12 w-12 text-destructive" />
       <h2 className="text-xl font-semibold">Error al cargar el proyecto</h2>
       <p className="text-muted-foreground text-center max-w-md">{error}</p>
-      <Button onClick={onRetry} variant="outline" className="gap-2 industrial-accent hover:bg-orange-600">
+      <Button onClick={onRetry} variant="outline" className="gap-2">
         <RefreshCw className="h-4 w-4" />
         Reintentar
       </Button>
@@ -85,19 +79,14 @@ function WelcomeScreen() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[500px] space-y-6 text-center">
       <div className="space-y-2">
-        <h2 className="text-3xl font-bold industrial-accent tracking-tight">Bienvenido a Obra Tracker</h2>
-        <p className="text-muted-foreground max-w-lg">
-          Parece que aún no tienes proyectos activos. Comienza creando tu primer proyecto para realizar el seguimiento de tus obras.
+        <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Obra Tracker</h2>
+        <p className="text-muted-foreground max-w-lg text-lg">
+          Tu centro de control de ingeniería. Crea un proyecto en el menú lateral para comenzar el seguimiento técnico.
         </p>
-      </div>
-      <div className="flex gap-4">
-        {/* Creación solo desde Sidebar */}
       </div>
     </div>
   );
 }
-
-// Project selection handled via Sidebar
 
 function PaymentSummary({ projectId, refreshKey }: { projectId: string; refreshKey: number }) {
   const { payments, isLoading, refetch } = usePayments(projectId);
@@ -105,73 +94,51 @@ function PaymentSummary({ projectId, refreshKey }: { projectId: string; refreshK
   React.useEffect(() => {
     refetch();
   }, [refreshKey, refetch]);
+  
   const { role } = useUserRole();
-
   if (role !== 'admin') return null;
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-32" />
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {[1, 2].map(i => <Skeleton key={i} className="h-12 w-full" />)}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Pagos Recientes</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {payments.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">No hay pagos registrados.</p>
-        ) : (
-          <div className="space-y-4">
-            {payments.slice(0, 5).map((payment) => {
-              const paymentAny = payment as Record<string, unknown>;
-              const monto = Number((paymentAny.montoPagado ?? paymentAny.monto_pagado ?? 0) as number);
-              const fecha = String(paymentAny.fechaPago ?? paymentAny.fecha_pago ?? '');
-              return (
-                <div key={payment.id} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 industrial-accent hover:bg-orange-600">
-                      <p className="font-medium industrial-blue text-sm">{formatCurrency(monto, payment.moneda)}</p>
-                    </div>
-                    <div className="flex items-center text-xs text-muted-foreground gap-2 industrial-accent hover:bg-orange-600">
-                      <Calendar className="h-3 w-3" />
-                      {formatDate(fecha)}
-                    </div>
-                  </div>
-                  {payment.comentario && (
-                    <p className="text-xs text-muted-foreground max-w-[150px] truncate hidden sm:block">
-                      {payment.comentario}
-                    </p>
-                  )}
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Clock className="h-4 w-4 text-primary" />
+        <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Pagos Recientes</h4>
+      </div>
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-10 w-full" />)}
+        </div>
+      ) : payments.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-4 italic border rounded-lg border-dashed">Sin movimientos registrados</p>
+      ) : (
+        <div className="space-y-3">
+          {payments.slice(0, 5).map((payment) => {
+            const paymentAny = payment as Record<string, unknown>;
+            return (
+              <div key={payment.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
+                <div className="space-y-0.5">
+                  <p className="font-bold text-sm text-slate-900 dark:text-slate-100">{formatCurrency(Number(paymentAny.montoPagado || paymentAny.monto_pagado || 0), payment.moneda)}</p>
+                  <p className="text-[10px] text-muted-foreground flex items-center gap-1 uppercase tracking-tighter">
+                    <Calendar className="h-2 w-2" /> {formatDate(String(paymentAny.fechaPago || paymentAny.fecha_pago || ''))}
+                  </p>
                 </div>
-              )
-            })}
-            {payments.length > 5 && (
-              <Button variant="ghost" size="sm" className="w-full text-xs h-7">
-                Ver más ({payments.length - 5})
-              </Button>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                {payment.comentario && (
+                  <Badge variant="outline" className="text-[10px] font-normal max-w-[80px] truncate">
+                    {payment.comentario}
+                  </Badge>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
-function BudgetHistoryCard({ projectId, presupuestoActivo, onUpdated }: { projectId: string; presupuestoActivo?: { id: string; monto: number; fechaCreacion?: string; fecha_creacion?: string } | null; onUpdated: () => void }) {
-  const { history, isLoading, refetch } = useBudgetHistory(projectId);
-  const { updateProjectBudget, isUpdating, error } = useBudgetUpdate();
+function BudgetHistoryCard({ projectId, presupuestoActivo, onUpdated }: { projectId: string; presupuestoActivo?: { monto: number; id: string; fechaCreacion?: string; fecha_creacion?: string } | null; onUpdated: () => void }) {
+  const { history,  refetch } = useBudgetHistory(projectId);
+  const { updateProjectBudget, isUpdating,  } = useBudgetUpdate();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -180,8 +147,7 @@ function BudgetHistoryCard({ projectId, presupuestoActivo, onUpdated }: { projec
     e.preventDefault();
     const newAmount = parseFloat(amount);
     if (!newAmount || newAmount <= 0) return;
-
-    const ok = await updateProjectBudget(projectId, newAmount, note || 'Nuevo');
+    const ok = await updateProjectBudget(projectId, newAmount, note || 'Ajuste de presupuesto');
     if (ok) {
       setOpen(false);
       setAmount('');
@@ -194,117 +160,59 @@ function BudgetHistoryCard({ projectId, presupuestoActivo, onUpdated }: { projec
   const versionsAnteriores = history.filter(h => h.id !== presupuestoActivo?.id);
 
   return (
-    <Card>
-      <CardHeader className="flex items-center justify-between gap-2 industrial-accent hover:bg-orange-600 sm:flex-row">
-        <div>
-          <CardTitle>Presupuestos</CardTitle>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Wallet className="h-4 w-4 text-primary" />
+          <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Presupuestos</h4>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-2 industrial-accent hover:bg-orange-600">
+            <Button size="icon" variant="ghost" className="h-6 w-6 text-primary hover:text-primary hover:bg-primary/10">
               <Plus className="h-4 w-4" />
-              Nuevo
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[480px]">
+          <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Nuevo</DialogTitle>
+              <DialogTitle>Actualizar Presupuesto Total</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="budget-amount">Monto (USD)</Label>
-                <Input
-                  id="budget-amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  required
-                />
+                <Input id="budget-amount" type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="budget-note">Nota del cambio</Label>
-                <Textarea
-                  id="budget-note"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Ej: Ajuste por cambios de materiales"
-                />
+                <Label htmlFor="budget-note">Motivo del ajuste</Label>
+                <Textarea id="budget-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ej: Ampliación de obra, materiales..." />
               </div>
-              {error && (
-                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-                  {error}
-                </div>
-              )}
-              <div className="flex gap-3">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit" className="flex-1" disabled={isUpdating}>
-                  {isUpdating ? 'Guardando...' : 'Guardar'}
-                </Button>
-              </div>
+              <Button type="submit" className="w-full btn-industrial-primary" disabled={isUpdating}>
+                {isUpdating ? 'Actualizando...' : 'Guardar Nuevo Presupuesto'}
+              </Button>
             </form>
           </DialogContent>
         </Dialog>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-8 w-full" />
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {presupuestoActivo && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-bold text-blue-600 dark:text-blue-400">{formatCurrency(Number(presupuestoActivo.monto), 'USD')}</div>
-                    <div className="text-[10px] text-blue-500 dark:text-blue-300 uppercase font-semibold">Presupuesto activo</div>
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">{formatDate(String(presupuestoActivo.fechaCreacion ?? presupuestoActivo.fecha_creacion ?? ''))}</div>
-                </div>
-              </div>
-            )}
+      </div>
 
-            {versionsAnteriores.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-1">Versiones anteriores</h4>
-                <div className="space-y-2">
-                  {versionsAnteriores.slice(0, 3).map((item) => {
-                    const itemAny = item as Record<string, unknown>;
-                    const monto = Number(itemAny.monto ?? 0);
-                    const notas = String(itemAny.notasCambio ?? itemAny.notas_cambio ?? '');
-                    const fecha = String(itemAny.fechaCreacion ?? itemAny.fecha_creacion ?? '');
-                    return (
-                      <div key={item.id} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
-                        <div>
-                          <div className="text-sm font-medium industrial-blue">{formatCurrency(monto, 'USD')}</div>
-                          <div className="text-xs text-muted-foreground truncate max-w-[120px]">{notas}</div>
-                        </div>
-                        <div className="text-xs text-muted-foreground">{formatDate(fecha)}</div>
-                      </div>
-                    )
-                  })}
-                  {versionsAnteriores.length > 3 && (
-                    <Button variant="ghost" size="sm" className="w-full text-xs h-7">
-                      Ver más ({versionsAnteriores.length - 3})
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-            
-            {history.length === 0 && !presupuestoActivo && (
-              <p className="text-sm text-muted-foreground text-center py-2">No hay presupuestos registrados.</p>
-            )}
+      <div className="space-y-3">
+        {presupuestoActivo && (
+          <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+            <p className="text-[10px] uppercase font-bold text-primary mb-1">Presupuesto Actual</p>
+            <p className="text-xl font-black text-slate-900 dark:text-slate-100">{formatCurrency(Number(presupuestoActivo.monto), 'USD')}</p>
           </div>
         )}
-      </CardContent>
-    </Card>
+
+        {versionsAnteriores.length > 0 && (
+          <div className="space-y-2 max-h-[120px] overflow-y-auto pr-2">
+            {versionsAnteriores.map((item) => (
+              <div key={item.id} className="flex items-center justify-between text-xs py-1 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                <span className="font-medium text-slate-600 dark:text-slate-400">{formatCurrency(Number(item.monto), 'USD')}</span>
+                <span className="text-[10px] text-muted-foreground">{formatDate(String(item.fechaCreacion || ''))}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -313,92 +221,68 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
   const { tasks, isLoading } = useStageTasks(isExpanded ? etapa.id : null);
   const { role } = useUserRole();
   const status = getStatusFromProgress(etapa.porcentajeCompletado);
-  const showMoney = role === 'admin';
 
   return (
-    <Card>
-      <CardContent className="p-4 py-3">
-        <div className="flex items-center justify-between cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
-          <div className="space-y-1 flex-1">
-            <p className="font-medium industrial-blue leading-none">{etapa.nombre}</p>
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <Badge 
-                variant={
-                  status === "Completado" ? "default" : 
-                  status === "En Proceso" ? "secondary" : 
-                  "outline"
-                }
-              >
-                {status}
-              </Badge>
-              <span>{Math.round(etapa.porcentajeCompletado)}%</span>
-              <Progress value={etapa.porcentajeCompletado} className="w-24 h-2" />
-              <span className="text-xs">
-                Jornales: {Math.round((etapa.porcentajeCompletado / 100) * (etapa.duracionEstimadaJornales || 0))} / {etapa.duracionEstimadaJornales || 0}
-              </span>
-            </div>
+    <div className={`glass-card p-4 transition-all duration-300 ${isExpanded ? 'ring-1 ring-primary/20' : ''}`}>
+      <div className="flex items-center justify-between cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
+        <div className="space-y-1.5 flex-1">
+          <div className="flex items-center gap-2">
+             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-600 tracking-tighter uppercase">Fase {etapa.orden}</span>
+             <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100">{etapa.nombre}</h4>
           </div>
-          <Button variant="ghost" size="sm">
-            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </Button>
+          <div className="flex items-center gap-4">
+             <div className="flex-1 max-w-[120px]">
+                <Progress value={etapa.porcentajeCompletado} className="h-1.5" />
+             </div>
+             <span className="text-[11px] font-bold text-primary">{Math.round(etapa.porcentajeCompletado)}%</span>
+             <Badge variant="outline" className={`text-[9px] uppercase px-1.5 h-4 ${status === 'Completado' ? 'bg-green-500/10 text-green-600 border-green-200' : ''}`}>
+                {status}
+             </Badge>
+          </div>
         </div>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
+          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+      </div>
 
-        {isExpanded && (
-          <div className="mt-4 space-y-4 border-t pt-4">
-            {etapa.hitoVerificacion && (
-               <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-900">
-                  <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Hito de Verificación</span>
-                  <p className="text-sm font-medium industrial-blue mt-1">{etapa.hitoVerificacion}</p>
-               </div>
-            )}
-
-            {showMoney && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <span className="text-xs text-muted-foreground">Presupuesto Etapa</span>
-                  <p className="text-lg font-semibold">{formatCurrency(Number(etapa.montoUsd || 0), moneda)}</p>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-xs text-muted-foreground">Aportado</span>
-                  <p className={`text-lg font-semibold ${etapa.pagosTotales > Number(etapa.montoUsd || 0) ? 'text-red-500' : 'text-green-600'}`}>
-                    {formatCurrency(etapa.pagosTotales, moneda)}
-                  </p>
-                </div>
+      {isExpanded && (
+        <div className="mt-4 space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2">
+          {etapa.hitoVerificacion && (
+            <div className="bg-blue-500/5 p-2 rounded-lg border border-blue-500/10">
+              <p className="text-[9px] uppercase font-bold text-blue-500 mb-1 tracking-wider">Hito Técnico</p>
+              <p className="text-xs text-slate-700 dark:text-slate-300 font-medium">{etapa.hitoVerificacion}</p>
+            </div>
+          )}
+          
+          <div className="space-y-2">
+            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Tareas ({etapa.tareasCompletadas}/{etapa.tareasTotal})</p>
+            {isLoading ? (
+               <Skeleton className="h-12 w-full" />
+            ) : (
+              <div className="grid grid-cols-1 gap-1">
+                {tasks.map(task => (
+                  <div key={task.id} className="flex items-center gap-2 p-1.5 rounded-md hover:bg-slate-50 dark:hover:bg-slate-900/50 text-xs">
+                    {task.estado === 'completada' ? (
+                      <CheckCircle2 className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <Circle className="h-3 w-3 text-slate-300 dark:text-slate-700" />
+                    )}
+                    <span className={task.estado === 'completada' ? 'line-through text-slate-400' : 'text-slate-600 dark:text-slate-400'}>{task.descripcion}</span>
+                  </div>
+                ))}
               </div>
             )}
-
-            <div className="space-y-2">
-              <h4 className="text-sm font-semibold flex items-center gap-2 industrial-accent hover:bg-orange-600">
-                Tareas ({etapa.tareasCompletadas}/{etapa.tareasTotal})
-              </h4>
-              {isLoading ? (
-                <div className="space-y-2">
-                   <Skeleton className="h-6 w-full" />
-                   <Skeleton className="h-6 w-full" />
-                </div>
-              ) : tasks.length === 0 ? (
-                <p className="text-sm text-muted-foreground italic">No hay tareas registradas.</p>
-              ) : (
-                <div className="space-y-2">
-                  {tasks.map((task) => (
-                    <div key={task.id} className="flex items-start gap-2 industrial-accent hover:bg-orange-600 text-sm">
-                      {task.estado === 'completada' ? (
-                        <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5" />
-                      ) : (
-                        <Circle className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      )}
-                      <span className={task.estado === 'completada' ? 'line-through text-muted-foreground' : ''}>
-                        {task.descripcion}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          
+          {role === 'admin' && (
+             <div className="flex justify-between text-[10px] font-mono text-slate-400 pt-2 uppercase">
+                <span>Presupuesto: {formatCurrency(Number(etapa.montoUsd), moneda)}</span>
+                <span>Aportado: {formatCurrency(etapa.pagosTotales, moneda)}</span>
+             </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -409,137 +293,149 @@ function DashboardContent() {
   const { role } = useUserRole();
   const [paymentsRefresh, setPaymentsRefresh] = useState(0);
 
-  const showMoney = role === 'admin';
+  if (isLoading || projectsLoading) return <DashboardSkeleton />;
+  if (error) return <DashboardError error={error} onRetry={refetch} />;
+  if (projects.length === 0) return <WelcomeScreen />;
 
-  // Loading state
-  if (isLoading || projectsLoading) {
-    return <DashboardSkeleton />;
-  }
-
-  // Error state
-  if (error) {
-    return <DashboardError error={error} onRetry={refetch} />;
-  }
-
-  // No projects at all - show welcome screen
-  if (projects.length === 0) {
-    return <WelcomeScreen />;
-  }
-
-  // Has projects but none selected - show prompt
   if (!selectedProjectId || !data) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-3">
-        <h2 className="text-2xl font-semibold">Selecciona un proyecto</h2>
-        <p className="text-muted-foreground">Usa el selector en la barra superior para elegir un proyecto.</p>
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-6 glass-card mx-6">
+        <TrendingUp className="h-12 w-12 text-slate-300 mb-4" />
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Selecciona un Proyecto</h2>
+        <p className="text-muted-foreground mt-2">Elige una obra en el selector lateral para visualizar los indicadores de ingeniería.</p>
       </div>
     );
   }
 
-  // Project selected and data loaded - show dashboard
   const { proyecto, etapas, totalPagado, porcentajeAvance, presupuestoActivo, totalJornales, jornalesCompletados } = data;
   const montoTotal = Number(presupuestoActivo?.monto ?? proyecto.montoTotalActivo ?? proyecto.presupuestoTotalUsd ?? 0);
   const totalPagadoNum = Number(totalPagado ?? 0);
   const pendiente = montoTotal - totalPagadoNum;
-  const moneda = proyecto.moneda;
+  const showMoney = role === 'admin';
 
   return (
-    <div className="space-y-8">
-      {/* Header & Role Switcher */}
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-2 industrial-accent hover:bg-orange-600">
-          <h2 className="text-3xl font-bold industrial-accent">Dashboard</h2>
-          <p className="text-muted-foreground">Resumen general: <span className="font-medium industrial-blue">{proyecto.nombre}</span></p>
+    <div className="space-y-8 p-4 md:p-8 animate-in fade-in duration-500">
+      {/* Header Sección */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="space-y-1">
+          <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 text-[10px] uppercase font-bold tracking-widest">Technical Hub</Badge>
+          <h2 className="text-4xl font-black text-slate-900 dark:text-slate-50 tracking-tight">{proyecto.nombre}</h2>
+          <p className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
+             <Calendar className="h-3.5 w-3.5" /> Registrado el {formatDate(proyecto.createdAt || '')}
+          </p>
         </div>
         {showMoney && (
           <RegisterPaymentDialog
             projectId={proyecto.id}
             etapas={etapas.map(e => ({ id: e.id, nombre: e.nombre, orden: e.orden }))}
-            onPaymentCreated={() => {
-              refetch();
-              setPaymentsRefresh((v) => v + 1);
-            }}
+            onPaymentCreated={() => { refetch(); setPaymentsRefresh(v => v + 1); }}
           >
-            <Button className="gap-2 industrial-accent hover:bg-orange-600">
+            <Button className="btn-industrial-primary px-8 h-12 rounded-xl shadow-lg shadow-primary/20 gap-2 text-white">
               <DollarSign className="h-4 w-4" />
-              Registrar Pago
+              Registrar Aporte
             </Button>
           </RegisterPaymentDialog>
         )}
       </div>
 
-      <div className={`grid gap-4 ${showMoney ? 'md:grid-cols-3' : 'md:grid-cols-1'}`}>
-        <div className={`${showMoney ? 'md:col-span-2' : ''} space-y-4`}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Avance de Obra</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between text-sm">
-                <span>Progreso General</span>
-                <span className="font-bold">{Math.round(porcentajeAvance)}%</span>
-              </div>
-              <Progress value={porcentajeAvance} className="h-3" />
-              <div className="flex justify-between text-xs text-muted-foreground pt-1">
-                <span>Jornales: {Math.round(jornalesCompletados)} / {totalJornales}</span>
-                <span>Restantes: {Math.max(0, Math.round(totalJornales - jornalesCompletados))}</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="space-y-4">
-            <h3 className="text-xl font-semibold">Etapas del Proyecto</h3>
-            {etapas.length === 0 ? (
-              <Card>
-                <CardContent className="p-4 text-center text-muted-foreground">
-                  No hay etapas definidas para este proyecto.
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4">
-                {etapas
-                  .sort((a, b) => a.orden - b.orden)
-                  .map((etapa) => (
-                    <StageCard key={etapa.id} etapa={etapa} moneda={moneda} />
-                  ))}
-              </div>
-            )}
+      {/* Real Bento Grid Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        
+        {/* Card 1: Avance General (2x1) */}
+        <div className="md:col-span-2 glass-card p-6 flex flex-col justify-between border-l-4 border-l-primary">
+          <div className="flex justify-between items-start mb-4">
+            <div className="space-y-1">
+              <h3 className="text-xs uppercase font-black text-muted-foreground tracking-widest">Avance Total de Obra</h3>
+              <p className="text-5xl font-black text-slate-900 dark:text-slate-50">{Math.round(porcentajeAvance)}%</p>
+            </div>
+            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <TrendingUp className="h-6 w-6 text-primary" />
+            </div>
+          </div>
+          <div className="space-y-3">
+             <Progress value={porcentajeAvance} className="h-2.5 bg-slate-100 dark:bg-slate-800" />
+             <div className="flex justify-between text-[11px] font-bold uppercase text-slate-500 tracking-wider">
+                <span>{Math.round(jornalesCompletados)} Jornales Ejecutados</span>
+                <span className="text-primary">{Math.max(0, Math.round(totalJornales - jornalesCompletados))} Restantes</span>
+             </div>
           </div>
         </div>
 
-        {showMoney && (
-          <div className="md:col-span-1 space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Resumen Financiero</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Monto Total</span>
-                  <span className="font-bold">{formatCurrency(montoTotal, moneda)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Pagado</span>
-                  <span className="font-bold text-green-600">{formatCurrency(totalPagadoNum, moneda)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Pendiente</span>
-                  <span className="font-bold text-destructive">{formatCurrency(pendiente, moneda)}</span>
-                </div>
-                <Progress 
-                  value={(totalPagadoNum / (montoTotal || 1)) * 100} 
-                  className="h-2" 
-                />
-              </CardContent>
-            </Card>
-            
-            <BudgetHistoryCard projectId={proyecto.id} presupuestoActivo={presupuestoActivo} onUpdated={() => {
-              refetch();
-              setPaymentsRefresh((v) => v + 1);
-            }} />
-            <PaymentSummary projectId={proyecto.id} refreshKey={paymentsRefresh} />
+        {/* Card 2: Monto Total (1x1) - Solo Admin */}
+        {showMoney ? (
+          <div className="glass-card p-6 flex flex-col justify-between">
+            <div className="space-y-1">
+               <h3 className="text-xs uppercase font-black text-muted-foreground tracking-widest">Presupuesto USD</h3>
+               <p className="text-3xl font-black text-slate-900 dark:text-slate-50">{formatCurrency(montoTotal, 'USD')}</p>
+            </div>
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2 text-green-600">
+               <CheckCircle2 className="h-4 w-4" />
+               <span className="text-[10px] font-bold uppercase">Base de Datos OK</span>
+            </div>
+          </div>
+        ) : (
+          <div className="glass-card p-6 flex flex-col justify-center items-center text-center bg-slate-100/30">
+             <CheckCircle2 className="h-8 w-8 text-green-500 mb-2" />
+             <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Planificación Activa</p>
           </div>
         )}
+
+        {/* Card 3: Saldo Pendiente (1x1) - Solo Admin */}
+        {showMoney ? (
+          <div className="glass-card p-6 flex flex-col justify-between border-r-4 border-r-primary">
+            <div className="space-y-1">
+               <h3 className="text-xs uppercase font-black text-muted-foreground tracking-widest">Pendiente Cobro</h3>
+               <p className="text-3xl font-black text-primary">{formatCurrency(pendiente, 'USD')}</p>
+            </div>
+            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1 overflow-hidden">
+               <div className="bg-primary h-full" style={{ width: `${(totalPagadoNum / (montoTotal || 1)) * 100}%` }} />
+            </div>
+          </div>
+        ) : (
+          <div className="glass-card p-6 flex flex-col justify-center items-center text-center bg-slate-100/30">
+             <Clock className="h-8 w-8 text-blue-500 mb-2" />
+             <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Timeline en Curso</p>
+          </div>
+        )}
+
+        {/* Listado de Etapas (Columna Principal Izquierda - 3 cols en Desktop) */}
+        <div className="md:col-span-3 space-y-4">
+          <div className="flex items-center gap-2 px-1">
+             <div className="h-4 w-1 bg-primary rounded-full" />
+             <h3 className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-slate-100 italic">Desglose de Etapas Técnicas</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {etapas.sort((a,b) => a.orden - b.orden).map(etapa => (
+              <StageCard key={etapa.id} etapa={etapa} moneda={proyecto.moneda} />
+            ))}
+          </div>
+        </div>
+
+        {/* Sidebar Derecha - Side Panels (1 col) */}
+        <div className="md:col-span-1 space-y-6">
+           {showMoney && (
+             <>
+               <div className="glass-card p-5">
+                  <BudgetHistoryCard 
+                    projectId={proyecto.id} 
+                    presupuestoActivo={presupuestoActivo} 
+                    onUpdated={() => { refetch(); setPaymentsRefresh(v => v + 1); }} 
+                  />
+               </div>
+               <div className="glass-card p-5">
+                  <PaymentSummary projectId={proyecto.id} refreshKey={paymentsRefresh} />
+               </div>
+             </>
+           )}
+           <div className="p-6 bg-slate-900 dark:bg-primary rounded-xl text-white shadow-xl shadow-slate-200 dark:shadow-none">
+              <h4 className="text-sm font-bold uppercase tracking-widest opacity-80 mb-2">Technical Support</h4>
+              <p className="text-xs font-medium leading-relaxed">Accede a la documentación técnica y planos detallados en el menú lateral para mayor precisión en obra.</p>
+              <Button variant="outline" className="w-full mt-4 border-white/30 hover:bg-white/10 text-white text-[10px] uppercase font-bold tracking-widest">
+                Ver Guía Técnica
+              </Button>
+           </div>
+        </div>
+
       </div>
     </div>
   );
