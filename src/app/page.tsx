@@ -361,42 +361,43 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* Card 2: Monto Total (1x1) - Solo Admin */}
+        {/* Card 2: Resumen Financiero Unificado (2x1) - Solo Admin */}
         {showMoney ? (
-          <div className="glass-card p-6 flex flex-col justify-between">
-            <div className="space-y-1">
-               <h3 className="text-xs uppercase font-black text-muted-foreground tracking-widest">Presupuesto USD</h3>
-               <p className="text-3xl font-black text-slate-900 dark:text-slate-50">{formatCurrency(montoTotal, 'USD')}</p>
+          <div className="md:col-span-2 glass-card p-6 flex flex-col justify-between">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-xs uppercase font-black text-muted-foreground tracking-widest mb-2">Resumen Financiero</h3>
+                <p className="text-3xl font-black text-slate-900 dark:text-slate-50">{formatCurrency(montoTotal, 'USD')}</p>
+                <p className="text-xs text-muted-foreground mt-1">Presupuesto Total</p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <DollarSign className="h-6 w-6 text-primary" />
+              </div>
             </div>
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2 text-green-600">
-               <CheckCircle2 className="h-4 w-4" />
-               <span className="text-[10px] font-bold uppercase">Base de Datos OK</span>
+            <div className="mt-6 space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Aportado</span>
+                <span className="font-bold text-green-600">{formatCurrency(totalPagadoNum, 'USD')}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Pendiente</span>
+                <span className="font-bold text-primary">{formatCurrency(pendiente, 'USD')}</span>
+              </div>
+              <Progress value={(totalPagadoNum / (montoTotal || 1)) * 100} className="h-2 bg-slate-100 dark:bg-slate-800" />
             </div>
           </div>
         ) : (
-          <div className="glass-card p-6 flex flex-col justify-center items-center text-center bg-slate-100/30">
-             <CheckCircle2 className="h-8 w-8 text-green-500 mb-2" />
-             <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Planificación Activa</p>
+          <div className="md:col-span-2 glass-card p-6 flex flex-col justify-center items-center text-center bg-slate-100/30">
+             <CheckCircle2 className="h-10 w-10 text-green-500 mb-3" />
+             <p className="text-sm font-bold uppercase tracking-widest text-slate-500">Planificación Activa</p>
           </div>
         )}
 
-        {/* Card 3: Saldo Pendiente (1x1) - Solo Admin */}
-        {showMoney ? (
-          <div className="glass-card p-6 flex flex-col justify-between border-r-4 border-r-primary">
-            <div className="space-y-1">
-               <h3 className="text-xs uppercase font-black text-muted-foreground tracking-widest">Pendiente Cobro</h3>
-               <p className="text-3xl font-black text-primary">{formatCurrency(pendiente, 'USD')}</p>
-            </div>
-            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1 overflow-hidden">
-               <div className="bg-primary h-full" style={{ width: `${(totalPagadoNum / (montoTotal || 1)) * 100}%` }} />
-            </div>
-          </div>
-        ) : (
-          <div className="glass-card p-6 flex flex-col justify-center items-center text-center bg-slate-100/30">
-             <Clock className="h-8 w-8 text-blue-500 mb-2" />
-             <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Timeline en Curso</p>
-          </div>
-        )}
+        {/* Card 3: Timeline placeholder */}
+        <div className="glass-card p-6 flex flex-col justify-center items-center text-center bg-slate-100/30">
+           <Clock className="h-8 w-8 text-blue-500 mb-2" />
+           <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Timeline en Curso</p>
+        </div>
 
         {/* Listado de Etapas (Columna Principal Izquierda - 3 cols en Desktop) */}
         <div className="md:col-span-3 space-y-4">
@@ -404,7 +405,7 @@ function DashboardContent() {
              <div className="h-4 w-1 bg-primary rounded-full" />
              <h3 className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-slate-100 italic">Desglose de Etapas Técnicas</h3>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="space-y-4">
             {etapas.sort((a,b) => a.orden - b.orden).map(etapa => (
               <StageCard key={etapa.id} etapa={etapa} moneda={proyecto.moneda} />
             ))}
