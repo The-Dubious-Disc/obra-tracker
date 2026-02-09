@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Progress } from "@/components/ui/progress";
 import { SegmentedProgress } from "@/components/ui/segmented-progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -255,7 +256,7 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
              </div>
              <div className="flex gap-4">
                <TechnicalValue value={Math.round(etapa.porcentajeCompletado)} unit="%" />
-               <TechnicalValue value={etapa.duracionEstimadaJornales || 0} unit="jor" />
+               <TechnicalValue value={etapa.duracionEstimadaJornales || 0}  />
              </div>
           </div>
         </div>
@@ -356,7 +357,7 @@ function DashboardContent() {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.5)]" />
-            <span className="text-[10px] uppercase font-black text-primary tracking-[0.2em]">Sincronizado / Live</span>
+            <span className="text-[10px] uppercase font-black text-primary tracking-[0.2em]">Resumen</span>
           </div>
           <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-slate-50 tracking-tighter uppercase italic">
             {proyecto.nombre}
@@ -383,7 +384,7 @@ function DashboardContent() {
             
             <div className="flex justify-between items-start mb-8 relative z-10">
               <div className="space-y-1">
-                <h3 className="text-[11px] uppercase font-black text-muted-foreground tracking-[0.3em] mb-4">Avance Técnico Global</h3>
+                <h3 className="text-[11px] uppercase font-black text-muted-foreground tracking-[0.3em] mb-4">Avance de Obra</h3>
                 <div className="flex items-baseline gap-2">
                   <span className="text-7xl font-black text-slate-900 dark:text-slate-50 mono-data tracking-tighter italic">
                     {Math.round(porcentajeAvance)}
@@ -399,13 +400,13 @@ function DashboardContent() {
                   <TechnicalValue 
                     value={`${Math.round(jornalesCompletados)} / ${totalJornales}`} 
                     label="Jornales Producidos" 
-                    unit="jor" 
+                     
                   />
                   <div className="h-8 w-[1px] bg-border/50" />
                   <TechnicalValue 
                     value={totalJornales - Math.round(jornalesCompletados)} 
                     label="Restantes" 
-                    unit="jor" 
+                     
                   />
                </div>
             </div>
@@ -419,7 +420,6 @@ function DashboardContent() {
                   <h3 className="text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-slate-100 italic">Cronograma de Obra</h3>
                </div>
                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-slate-100 dark:bg-slate-900 px-2 py-1 border border-border">
-                 {etapas.length} Etapas Técnicas
                </span>
             </div>
             <div className="space-y-4">
@@ -435,38 +435,27 @@ function DashboardContent() {
            
            {/* Resumen Financiero */}
            {showMoney ? (
-             <div className="glass-card p-8 border-t-4 border-t-primary">
-               <div className="flex justify-between items-start mb-8">
-                 <div className="space-y-1">
-                   <h3 className="text-[11px] uppercase font-black text-muted-foreground tracking-[0.3em] mb-4">Estado Financiero</h3>
-                   <div className="flex flex-col">
-                     <span className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Presupuesto Consolidado</span>
-                     <span className="text-3xl font-black text-slate-900 dark:text-slate-50 mono-data tracking-tight">
-                       {formatCurrency(montoTotal, 'USD')}
-                     </span>
-                   </div>
+             <div className="glass-card p-6">
+               <div className="flex justify-between items-start mb-4">
+                 <div>
+                   <h3 className="text-xs uppercase font-black text-muted-foreground tracking-widest mb-2">Resumen Financiero</h3>
+                   <p className="text-3xl font-black text-slate-900 dark:text-slate-50">{formatCurrency(montoTotal, 'USD')}</p>
+                   <p className="text-xs text-muted-foreground mt-1">Presupuesto Total</p>
+                 </div>
+                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                   <DollarSign className="h-5 w-5 text-primary" />
                  </div>
                </div>
-               
-               <div className="space-y-6">
-                 <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 rounded-sm bg-green-500/5 border border-green-500/20">
-                      <p className="text-[9px] uppercase font-black text-green-600 mb-1 tracking-widest">Aportado</p>
-                      <p className="mono-data font-black text-lg text-green-600">{formatCurrency(totalPagadoNum, 'USD')}</p>
-                    </div>
-                    <div className="p-3 rounded-sm bg-primary/5 border border-primary/20">
-                      <p className="text-[9px] uppercase font-black text-primary mb-1 tracking-widest">Pendiente</p>
-                      <p className="mono-data font-black text-lg text-primary">{formatCurrency(pendiente, 'USD')}</p>
-                    </div>
+               <div className="mt-4 space-y-3">
+                 <div className="flex justify-between items-center">
+                   <span className="text-sm text-muted-foreground">Aportado</span>
+                   <span className="font-bold text-green-600">{formatCurrency(totalPagadoNum, 'USD')}</span>
                  </div>
-                 
-                 <div className="space-y-2">
-                   <div className="flex justify-between items-end">
-                     <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Eficiencia de Pago</span>
-                     <span className="mono-data font-black text-xs text-primary">{Math.round((totalPagadoNum / (montoTotal || 1)) * 100)}%</span>
-                   </div>
-                   <SegmentedProgress value={(totalPagadoNum / (montoTotal || 1)) * 100} segments={15} />
+                 <div className="flex justify-between items-center">
+                   <span className="text-sm text-muted-foreground">Pendiente</span>
+                   <span className="font-bold text-primary">{formatCurrency(pendiente, 'USD')}</span>
                  </div>
+                 <Progress value={(totalPagadoNum / (montoTotal || 1)) * 100} className="h-2 bg-slate-100 dark:bg-slate-800" />
                </div>
              </div>
            ) : null}
