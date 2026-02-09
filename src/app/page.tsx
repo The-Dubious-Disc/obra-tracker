@@ -318,11 +318,8 @@ function DashboardContent() {
       {/* Header Sección */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="space-y-1">
-          <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 text-[10px] uppercase font-bold tracking-widest">Technical Hub</Badge>
+          <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 text-[10px] uppercase font-bold tracking-widest">Resumen</Badge>
           <h2 className="text-4xl font-black text-slate-900 dark:text-slate-50 tracking-tight">{proyecto.nombre}</h2>
-          <p className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-             <Calendar className="h-3.5 w-3.5" /> Registrado el {formatDate(proyecto.createdAt || '')}
-          </p>
         </div>
         {showMoney && (
           <RegisterPaymentDialog
