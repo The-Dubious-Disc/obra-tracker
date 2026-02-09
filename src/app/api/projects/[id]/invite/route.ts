@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createInvitation, checkProjectRole } from '@/lib/services/authService';
+import { getProjectSummary } from '@/lib/services/projectService';
+import { sendProjectInvitationEmail } from '@/lib/services/emailService';
 import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -24,11 +26,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: result.error || 'Failed to create invitation' }, { status: 400 });
     }
 
-    // Send email logic here (mocked)
-    console.log(`Invitation sent to ${email} with token ${result.invitation.token}`);
+    // Get project name for email
+    const projectSummary = await getProjectSummary(projectId);
+    const projectName = projectSummary?.proyecto?.nombre || 'un proyecto';
+
+    // Send real email via Resend
+    await sendProjectInvitationEmail(email, projectName, result.invitation.token);
 
     return NextResponse.json({ message: 'Invitation sent' });
-  } catch {
+  } catch (error) {
+    console.error('Invite error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

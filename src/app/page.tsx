@@ -73,7 +73,7 @@ function DashboardError({ error, onRetry }: { error: string; onRetry: () => void
       <AlertCircle className="h-12 w-12 text-destructive" />
       <h2 className="text-xl font-semibold">Error al cargar el proyecto</h2>
       <p className="text-muted-foreground text-center max-w-md">{error}</p>
-      <Button onClick={onRetry} variant="outline" className="gap-2">
+      <Button onClick={onRetry} variant="outline" className="gap-2 industrial-accent hover:bg-orange-600">
         <RefreshCw className="h-4 w-4" />
         Reintentar
       </Button>
@@ -85,7 +85,7 @@ function WelcomeScreen() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[500px] space-y-6 text-center">
       <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Bienvenido a Obra Tracker</h2>
+        <h2 className="text-3xl font-bold industrial-accent tracking-tight">Bienvenido a Obra Tracker</h2>
         <p className="text-muted-foreground max-w-lg">
           Parece que aún no tienes proyectos activos. Comienza creando tu primer proyecto para realizar el seguimiento de tus obras.
         </p>
@@ -141,10 +141,10 @@ function PaymentSummary({ projectId, refreshKey }: { projectId: string; refreshK
               return (
                 <div key={payment.id} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm">{formatCurrency(monto, payment.moneda)}</p>
+                    <div className="flex items-center gap-2 industrial-accent hover:bg-orange-600">
+                      <p className="font-medium industrial-blue text-sm">{formatCurrency(monto, payment.moneda)}</p>
                     </div>
-                    <div className="flex items-center text-xs text-muted-foreground gap-2">
+                    <div className="flex items-center text-xs text-muted-foreground gap-2 industrial-accent hover:bg-orange-600">
                       <Calendar className="h-3 w-3" />
                       {formatDate(fecha)}
                     </div>
@@ -195,13 +195,13 @@ function BudgetHistoryCard({ projectId, presupuestoActivo, onUpdated }: { projec
 
   return (
     <Card>
-      <CardHeader className="flex items-center justify-between gap-2 sm:flex-row">
+      <CardHeader className="flex items-center justify-between gap-2 industrial-accent hover:bg-orange-600 sm:flex-row">
         <div>
           <CardTitle>Presupuestos</CardTitle>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-2">
+            <Button size="sm" className="gap-2 industrial-accent hover:bg-orange-600">
               <Plus className="h-4 w-4" />
               Nuevo
             </Button>
@@ -282,7 +282,7 @@ function BudgetHistoryCard({ projectId, presupuestoActivo, onUpdated }: { projec
                     return (
                       <div key={item.id} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
                         <div>
-                          <div className="text-sm font-medium">{formatCurrency(monto, 'USD')}</div>
+                          <div className="text-sm font-medium industrial-blue">{formatCurrency(monto, 'USD')}</div>
                           <div className="text-xs text-muted-foreground truncate max-w-[120px]">{notas}</div>
                         </div>
                         <div className="text-xs text-muted-foreground">{formatDate(fecha)}</div>
@@ -320,7 +320,7 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
       <CardContent className="p-4 py-3">
         <div className="flex items-center justify-between cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
           <div className="space-y-1 flex-1">
-            <p className="font-medium leading-none">{etapa.nombre}</p>
+            <p className="font-medium industrial-blue leading-none">{etapa.nombre}</p>
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <Badge 
                 variant={
@@ -348,7 +348,7 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
             {etapa.hitoVerificacion && (
                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-900">
                   <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Hito de Verificación</span>
-                  <p className="text-sm font-medium mt-1">{etapa.hitoVerificacion}</p>
+                  <p className="text-sm font-medium industrial-blue mt-1">{etapa.hitoVerificacion}</p>
                </div>
             )}
 
@@ -368,7 +368,7 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
             )}
 
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
+              <h4 className="text-sm font-semibold flex items-center gap-2 industrial-accent hover:bg-orange-600">
                 Tareas ({etapa.tareasCompletadas}/{etapa.tareasTotal})
               </h4>
               {isLoading ? (
@@ -381,7 +381,7 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
               ) : (
                 <div className="space-y-2">
                   {tasks.map((task) => (
-                    <div key={task.id} className="flex items-start gap-2 text-sm">
+                    <div key={task.id} className="flex items-start gap-2 industrial-accent hover:bg-orange-600 text-sm">
                       {task.estado === 'completada' ? (
                         <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5" />
                       ) : (
@@ -447,9 +447,9 @@ function DashboardContent() {
     <div className="space-y-8">
       {/* Header & Role Switcher */}
       <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-3xl font-bold">Dashboard</h2>
-          <p className="text-muted-foreground">Resumen general: <span className="font-medium">{proyecto.nombre}</span></p>
+        <div className="flex flex-col gap-2 industrial-accent hover:bg-orange-600">
+          <h2 className="text-3xl font-bold industrial-accent">Dashboard</h2>
+          <p className="text-muted-foreground">Resumen general: <span className="font-medium industrial-blue">{proyecto.nombre}</span></p>
         </div>
         {showMoney && (
           <RegisterPaymentDialog
@@ -460,7 +460,7 @@ function DashboardContent() {
               setPaymentsRefresh((v) => v + 1);
             }}
           >
-            <Button className="gap-2">
+            <Button className="gap-2 industrial-accent hover:bg-orange-600">
               <DollarSign className="h-4 w-4" />
               Registrar Pago
             </Button>
