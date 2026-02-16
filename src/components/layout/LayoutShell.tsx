@@ -8,22 +8,16 @@ import { Menu, DraftingCompass } from 'lucide-react'
 import { usePendingCount } from '@/hooks/useProject'
 import { useProjectSelection } from '@/contexts/ProjectContext'
 
-const PUBLIC_ROUTES = ['/login', '/register']
+const PUBLIC_ROUTES = ['/login', '/register', '/recover-password', '/reset-password']
 const PUBLIC_PREFIXES = ['/invitations']
 
 export function LayoutShell({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
-  const { selectedProjectId } = useProjectSelection()
-  const pendingCount = usePendingCount(selectedProjectId)
-
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname) || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))
 
   useEffect(() => {
-    if (isPublicRoute) {
-      return
-    }
+    if (isPublicRoute) return
 
     let cancelled = false
     async function checkAuth() {
@@ -50,6 +44,14 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   if (isPublicRoute) {
     return <main className="min-h-screen bg-background">{children}</main>
   }
+
+  return <PrivateLayout>{children}</PrivateLayout>
+}
+
+function PrivateLayout({ children }: { children: React.ReactNode }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { selectedProjectId } = useProjectSelection()
+  const pendingCount = usePendingCount(selectedProjectId)
 
   return (
     <div className="flex h-screen overflow-hidden">

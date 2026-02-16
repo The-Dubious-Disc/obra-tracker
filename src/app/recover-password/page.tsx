@@ -7,14 +7,32 @@ export default function RecoverPasswordPage() {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setSubmitted(true);
-    setIsLoading(false);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/auth/recover-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al enviar el correo');
+      }
+      
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ocurrió un error inesperado');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -26,6 +44,12 @@ export default function RecoverPasswordPage() {
             Ingresá tu correo electrónico y te enviaremos instrucciones.
           </p>
         </div>
+
+        {error && (
+          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-sm text-center">
+            <p className="text-xs text-destructive font-bold uppercase tracking-widest">{error}</p>
+          </div>
+        )}
 
         {!submitted ? (
           <form className="space-y-6" onSubmit={handleSubmit}>

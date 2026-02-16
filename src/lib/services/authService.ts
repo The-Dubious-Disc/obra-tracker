@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
-import { usuarios, proyectoMiembros, invitaciones } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { usuarios, proyectoMiembros, invitaciones, passwordResetTokens } from '@/lib/db/schema';
+import { eq, and, gt } from 'drizzle-orm';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 
@@ -176,6 +176,64 @@ export async function acceptInvitation(token: string, userId: string) {
     return { success: true, projectId: invitation.proyectoId };
   } catch (error) {
     console.error('Error accepting invitation:', error);
+    return { success: false, error: 'Error interno del servidor' };
+  }
+}
+
+export async function createPasswordResetToken(email: string) {
+  try {
+    const user = await db.query.usuarios.findFirst({
+      where: eq(usuarios.email, email),
+    });
+
+    if (!user) {
+      // For security, don't reveal if user exists
+      return { success: true, message: 'Si el correo existe, se enviará un enlace' };
+    }
+
+    // Generate token
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
+
+    await db.insert(passwordResetTokens).values({
+      usuarioId: user.id,
+      token,
+      expiresAt,
+    });
+
+    return { success: true, token };
+  } catch (error) {
+    console.error('Error creating password reset token:', error);
+    return { success: false, error: 'Error interno del servidor' };
+  }
+}
+
+export async function resetPasswordWithToken(token: string, newPassword: string) {
+  try {
+    const resetToken = await db.query.passwordResetTokens.findFirst({
+      where: and(
+        eq(passwordResetTokens.token, token),
+        gt(passwordResetTokens.expiresAt, new Date())
+      ),
+    });
+
+    if (!resetToken) {
+      return { success: false, error: 'Token inválido o expirado' };
+    }
+
+    const hashedPassword = await hashPassword(newPassword);
+
+    await db.update(usuarios)
+      .set({ passwordHash: hashedPassword })
+      .where(eq(usuarios.id, resetToken.usuarioId));
+
+    // Delete token after use
+    await db.delete(passwordResetTokens)
+      .where(eq(passwordResetTokens.id, resetToken.id));
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error resetting password:', error);
     return { success: false, error: 'Error interno del servidor' };
   }
 }

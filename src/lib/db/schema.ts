@@ -142,7 +142,16 @@ export const invitaciones = pgTable('invitaciones', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
 });
 
-// 10. Miembros de Proyecto (RBAC)
+// 11. Password Reset Tokens
+export const passwordResetTokens = pgTable('password_reset_tokens', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  usuarioId: uuid('usuario_id').references(() => usuarios.id, { onDelete: 'cascade' }).notNull(),
+  token: text('token').notNull().unique(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+});
+
+// 12. Miembros de Proyecto (RBAC)
 export const proyectoMiembros = pgTable('proyecto_miembros', {
   id: uuid('id').primaryKey().defaultRandom(),
   proyectoId: uuid('proyecto_id').references(() => proyectos.id, { onDelete: 'cascade' }).notNull(),
@@ -163,6 +172,7 @@ export type AnotacionPlanoSelect = typeof anotacionesPlanos.$inferSelect;
 export type ComentarioAnotacionSelect = typeof comentariosAnotaciones.$inferSelect;
 export type PresupuestoVersionSelect = typeof presupuestoVersiones.$inferSelect;
 export type InvitacionSelect = typeof invitaciones.$inferSelect;
+export type PasswordResetTokenSelect = typeof passwordResetTokens.$inferSelect;
 export type ProyectoMiembroSelect = typeof proyectoMiembros.$inferSelect;
 
 // Relations
@@ -191,4 +201,12 @@ export const proyectoMiembrosRelations = relations(proyectoMiembros, ({ one }) =
 
 export const usuariosRelations = relations(usuarios, ({ many }) => ({
   membresias: many(proyectoMiembros),
+  passwordResetTokens: many(passwordResetTokens),
+}));
+
+export const passwordResetTokensRelations = relations(passwordResetTokens, ({ one }) => ({
+  usuario: one(usuarios, {
+    fields: [passwordResetTokens.usuarioId],
+    references: [usuarios.id],
+  }),
 }));

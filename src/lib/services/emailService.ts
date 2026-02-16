@@ -79,3 +79,36 @@ export async function sendProjectInvitationEmail(
     `
   });
 }
+
+/**
+ * Enviar correo de recuperación de contraseña
+ */
+export async function sendPasswordResetEmail(email: string, token: string) {
+  const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
+  
+  return sendEmail({
+    to: email,
+    subject: 'Restablecer tu contraseña - Obra Tracker',
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <h2 style="color: #0f172a;">Restablecer tu contraseña</h2>
+        <p style="color: #334155; font-size: 16px; line-height: 1.5;">
+          Has solicitado restablecer tu contraseña en Obra Tracker. Haz clic en el siguiente botón para continuar:
+        </p>
+        <div style="margin: 30px 0;">
+          <a href="${resetUrl}" 
+             style="background-color: #f97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">
+            Restablecer Contraseña
+          </a>
+        </div>
+        <p style="color: #64748b; font-size: 14px;">
+          Este enlace expirará en 1 hora. Si no solicitaste este cambio, puedes ignorar este correo.
+        </p>
+        <hr style="margin: 30px 0; border: 0; border-top: 1px solid #e2e8f0;" />
+        <p style="color: #94a3b8; font-size: 12px; text-align: center;">
+          Obra Tracker - Industrial Precision Engineering
+        </p>
+      </div>
+    `
+  });
+}
