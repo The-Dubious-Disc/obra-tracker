@@ -15,7 +15,7 @@
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
   
-  --primary: 25 95% 53%; /* Safety Orange #f97316 */
+  --primary: 25 95% 45%; /* Safety Orange - Darkened for contrast */
   --primary-foreground: 0 0% 100%;
   
   --secondary: 217 91% 60%; /* Blueprint Blue #3b82f6 */

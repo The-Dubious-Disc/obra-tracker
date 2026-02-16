@@ -1,5 +1,7 @@
 'use client'
 
+// Triggering refresh to fix stale summary error.
+
 import React, { useRef, useState } from 'react'
 import { useProjects, useProjectSummary, useStageTasks, useUpdateTask, useAddEtapa, useAddTask } from '@/hooks/useProject'
 import { useProjectSelection } from '@/contexts/ProjectContext'
@@ -7,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { SegmentedProgress } from '@/components/ui/segmented-progress'
 import { Badge } from '@/components/ui/badge'
 import { Camera, Loader2, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -20,6 +23,7 @@ function StageTasks({
   tareasTotal,
   tareasCompletadas,
   duracionEstimadaJornales,
+  index,
   onUpdated,
 }: {
   etapaId: string;
@@ -28,8 +32,10 @@ function StageTasks({
   tareasTotal: number;
   tareasCompletadas: number;
   duracionEstimadaJornales: number;
+  index: number;
   onUpdated: () => void;
 }) {
+  // ... existing hooks ...
   const [open, setOpen] = useState(false)
   const [newTaskDesc, setNewTaskDesc] = useState('')
   const [localTasks, setLocalTasks] = useState<{ id: string; estado: string; descripcion: string }[]>([])
@@ -37,6 +43,7 @@ function StageTasks({
   const { updateTask } = useUpdateTask()
   const { addTask, isAdding } = useAddTask()
 
+  // ... (keep useEffect and handlers the same) ...
   // Sync local tasks when fetched
   React.useEffect(() => {
     if (tasks) setLocalTasks(tasks)
@@ -76,40 +83,43 @@ function StageTasks({
 
   return (
     <Card>
-      <CardHeader className="flex items-center justify-between gap-2 sm:flex-row">
-        <div>
-          <CardTitle className="text-lg">{nombre}</CardTitle>
+      <CardHeader className="flex items-center justify-between gap-2 sm:flex-row py-4">
+        <div className="flex items-center gap-3">
+           <div className="flex items-center justify-center h-6 w-6 rounded-sm bg-slate-100 dark:bg-slate-800 border border-border text-xs font-black text-slate-500 mono-data">
+             {String(index + 1).padStart(2, '0')}
+           </div>
+           <CardTitle className="text-sm font-black uppercase tracking-wide text-slate-900 dark:text-slate-100">{nombre}</CardTitle>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={() => setOpen(v => !v)}>
+          <Button variant="ghost" size="sm" onClick={() => setOpen(v => !v)} className="h-8 w-8">
             {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {open && hito && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-900 mb-2">
-            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Hito de Verificación</span>
-            <p className="text-sm font-medium mt-1">{hito}</p>
-          </div>
+           <div className="bg-primary/5 p-3 rounded-sm border-l-2 border-primary/40">
+             <p className="text-[9px] uppercase font-black text-primary mb-1 tracking-widest">Hito de Verificación</p>
+             <p className="text-xs text-slate-700 dark:text-slate-300 font-bold italic leading-tight">{hito}</p>
+           </div>
         )}
         <div className="flex items-center justify-between text-sm">
           <Badge 
-            variant={
-              status === "Completado" ? "default" : 
-              status === "En Proceso" ? "secondary" : 
-              "outline"
-            }
+            variant={status === "Completado" ? "default" : status === "En Proceso" ? "secondary" : "outline"}
+            className="rounded-sm px-2 py-0.5 text-[10px] uppercase font-black tracking-wider"
           >
             {status}
           </Badge>
-          <span className="font-medium">{Math.round(progress)}%</span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-xl font-black mono-data">{Math.round(progress)}</span>
+            <span className="text-[10px] font-bold text-muted-foreground">%</span>
+          </div>
         </div>
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{completed}/{total} tareas completadas</span>
-          <span>Jornales: {Math.round((progress / 100) * duracionEstimadaJornales)} / {duracionEstimadaJornales}</span>
+        <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 p-2 rounded-sm border border-border/50 text-xs">
+           <span className="font-medium text-muted-foreground">{completed}/{total} <span className="text-[9px] uppercase tracking-wider">Tareas</span></span>
+           <span className="font-medium text-muted-foreground"><span className="text-[9px] uppercase tracking-wider">Jornales:</span> {Math.round((progress / 100) * duracionEstimadaJornales)} / {duracionEstimadaJornales}</span>
         </div>
-        <Progress value={progress} className="h-2" />
+        <SegmentedProgress value={progress} segments={12} className="h-2" />
 
         {open && (
           <div className="space-y-4 pt-2">
@@ -212,9 +222,9 @@ function AddStageDialog({ projectId, onCreated }: { projectId: string, onCreated
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
+        <Button variant="ghost" size="sm" className="gap-2 text-primary hover:text-primary hover:bg-primary/10">
           <Plus className="h-4 w-4" />
-          Agregar etapa
+          Nueva Etapa
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
@@ -400,41 +410,58 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold">Panel de Tareas</h1>
-          <p className="text-muted-foreground">{summary.proyecto.nombre}</p>
+    <div className="container mx-auto p-6 space-y-8 animate-in fade-in duration-700">
+      <div className="flex items-center justify-between border-b border-border/50 pb-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.5)]" />
+            <span className="text-[10px] uppercase font-black text-primary tracking-[0.2em]">Gestión de Obra</span>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-slate-50 tracking-tighter uppercase italic">
+            Panel de Tareas
+          </h1>
+          <Badge variant="outline" className="border-border px-3 py-1 font-black mono-data text-[10px] uppercase tracking-widest bg-card">
+            {summary.proyecto.nombre}
+          </Badge>
         </div>
         <div className="flex flex-col items-end gap-2">
           <AddStageDialog projectId={summary.proyecto.id} onCreated={refetch} />
-          <Button className="gap-2" onClick={handleUploadClick} disabled={isUploadingReport}>
-            {isUploadingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-            {isUploadingReport ? 'Subiendo...' : 'Subir reporte'}
+          <Button className="gap-2 btn-industrial-primary" onClick={handleUploadClick} disabled={isUploadingReport}>
+             {isUploadingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+             {isUploadingReport ? 'Subiendo...' : 'Subir reporte'}
           </Button>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Resumen</CardTitle>
-          <CardDescription>Avance general de tareas</CardDescription>
+          <CardTitle className="text-sm uppercase font-black text-muted-foreground tracking-widest">Resumen General</CardTitle>
+          <CardDescription className="text-xs font-medium">Avance global del proyecto</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between text-sm">
-            <span>Progreso general</span>
-            <span className="font-medium">{summary.porcentajeAvance.toFixed(0)}%</span>
+        <CardContent className="space-y-4">
+          <div className="flex items-baseline gap-2">
+             <span className="text-5xl font-black text-slate-900 dark:text-slate-50 mono-data tracking-tighter italic">
+               {summary.porcentajeAvance.toFixed(0)}
+             </span>
+             <span className="text-xl font-black text-primary mono-data">%</span>
           </div>
-          <Progress value={summary.porcentajeAvance} className="h-2" />
-          <div className="flex justify-between text-xs text-muted-foreground pt-1">
-            <span>Jornales: {Math.round(summary.jornalesCompletados)} / {summary.totalJornales}</span>
-            <span>Restantes: {Math.max(0, Math.round(summary.totalJornales - summary.jornalesCompletados))}</span>
+          <SegmentedProgress value={summary.porcentajeAvance} segments={20} className="h-3" />
+          <div className="flex justify-between items-center bg-slate-100/50 dark:bg-slate-900/50 p-3 rounded-sm border border-border/50 text-xs">
+             <div className="flex flex-col">
+               <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Jornales</span>
+               <span className="mono-data font-black">{Math.round(summary.jornalesCompletados)} / {summary.totalJornales}</span>
+             </div>
+             <div className="h-6 w-[1px] bg-border/50" />
+             <div className="flex flex-col items-end">
+               <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Restantes</span>
+               <span className="mono-data font-black">{Math.max(0, Math.round(summary.totalJornales - summary.jornalesCompletados))}</span>
+             </div>
           </div>
         </CardContent>
       </Card>
 
       <div className="space-y-4">
-        {summary.etapas.map((etapa) => (
+        {summary.etapas.map((etapa, index) => (
           <StageTasks
             key={etapa.id}
             etapaId={etapa.id}
@@ -443,6 +470,7 @@ export default function TasksPage() {
             tareasTotal={etapa.tareasTotal}
             tareasCompletadas={etapa.tareasCompletadas}
             duracionEstimadaJornales={etapa.duracionEstimadaJornales || 0}
+            index={index}
             onUpdated={refetch}
           />
         ))}

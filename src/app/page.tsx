@@ -250,15 +250,19 @@ function StageCard({ etapa, moneda }: { etapa: EtapaConProgreso, moneda: string 
              </div>
              <h4 className="font-black text-sm text-slate-900 dark:text-slate-100 uppercase tracking-tight">{etapa.nombre}</h4>
           </div>
-          <div className="flex items-center gap-6">
-             <div className="flex-1 max-w-[140px]">
-                <SegmentedProgress value={etapa.porcentajeCompletado} segments={8} />
+             <div className="flex items-center justify-between w-full">
+                <TechnicalValue 
+                  value={`${Math.round((etapa.porcentajeCompletado / 100) * (etapa.duracionEstimadaJornales || 0))} / ${etapa.duracionEstimadaJornales || 0}`}
+                  label="Jornales"
+                />
+                
+                <div className="flex items-center gap-3">
+                   <div className="w-32">
+                      <SegmentedProgress value={etapa.porcentajeCompletado} segments={8} />
+                   </div>
+                   <TechnicalValue value={Math.round(etapa.porcentajeCompletado)} unit="%" />
+                </div>
              </div>
-             <div className="flex gap-4">
-               <TechnicalValue value={Math.round(etapa.porcentajeCompletado)} unit="%" />
-               <TechnicalValue value={etapa.duracionEstimadaJornales || 0}  />
-             </div>
-          </div>
         </div>
         <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 group-hover:text-primary transition-colors">
           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -399,7 +403,7 @@ function DashboardContent() {
                <div className="flex justify-between items-center bg-slate-100/50 dark:bg-slate-900/50 p-4 rounded-sm border border-border/50">
                   <TechnicalValue 
                     value={`${Math.round(jornalesCompletados)} / ${totalJornales}`} 
-                    label="Jornales Producidos" 
+                    label="Jornales" 
                      
                   />
                   <div className="h-8 w-[1px] bg-border/50" />
@@ -419,8 +423,6 @@ function DashboardContent() {
                   <div className="h-1 w-8 bg-primary shadow-[0_0_8px_rgba(249,115,22,0.5)]" />
                   <h3 className="text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-slate-100 italic">Cronograma de Obra</h3>
                </div>
-               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-slate-100 dark:bg-slate-900 px-2 py-1 border border-border">
-               </span>
             </div>
             <div className="space-y-4">
               {etapas.sort((a,b) => a.orden - b.orden).map(etapa => (
@@ -460,7 +462,7 @@ function DashboardContent() {
              </div>
            ) : null}
            
-           {/* Secciones de Soporte (Presupuesto y Pagos) */}
+            {/* Secciones de Soporte (Presupuesto y Pagos) */}
            <div className="space-y-6">
              {showMoney && (
                <div className="glass-card p-6 border-l-2 border-l-primary/30">

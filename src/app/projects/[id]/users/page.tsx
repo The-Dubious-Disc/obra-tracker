@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { UserPlus, Users, Mail, Shield, ShieldAlert, ShieldCheck, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { UserPlus, Users, Mail, Shield, ShieldAlert, ShieldCheck, Loader2, CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function ProjectUsersPage() {
   const params = useParams();
@@ -20,6 +20,7 @@ export default function ProjectUsersPage() {
   const [inviteRol, setInviteRol] = useState('viewer');
   const [inviting, setInviting] = useState(false);
   const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+  const [inviteExpanded, setInviteExpanded] = useState(false);
 
   const fetchMembers = useCallback(async () => {
     if (!projectId) return;
@@ -104,10 +105,86 @@ export default function ProjectUsersPage() {
         <p className="text-muted-foreground">Controla accesos y roles técnicos para la obra.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="flex flex-col gap-8">
         
+        <div className="space-y-6">
+          <Card className="glass-card border-l-4 border-l-primary">
+            <CardHeader className="cursor-pointer" onClick={() => setInviteExpanded(!inviteExpanded)}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <UserPlus className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Invitar Miembro</CardTitle>
+                    <CardDescription>Envía una invitación formal</CardDescription>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
+                  {inviteExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </div>
+            </CardHeader>
+            {inviteExpanded && (
+              <CardContent className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <form onSubmit={handleInvite} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Correo Electrónico</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                      <Input 
+                        id="email"
+                        type="email" 
+                        placeholder="ingeniero@obra.com" 
+                        className="pl-10 h-11 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-primary"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="rol" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Rol Asignado</Label>
+                    <div className="flex flex-col sm:flex-row gap-4 items-end">
+                      <Select value={inviteRol} onValueChange={setInviteRol}>
+                        <SelectTrigger id="rol" className="h-11 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="editor">Editor</SelectItem>
+                          <SelectItem value="viewer">Solo Lectura</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      
+                      <Button type="submit" className="w-full sm:w-auto btn-industrial-primary h-11 shadow-lg shadow-primary/20 text-white px-8" disabled={inviting}>
+                        {inviting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Procesando...
+                          </>
+                        ) : (
+                          'Invitar'
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {message && (
+                    <div className={`p-4 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-top-2 ${message.type === 'success' ? 'bg-green-500/10 text-green-700 border border-green-200' : 'bg-destructive/10 text-destructive border border-destructive/20'}`}>
+                      {message.type === 'success' ? <CheckCircle2 className="h-5 w-5 shrink-0" /> : <AlertCircle className="h-5 w-5 shrink-0" />}
+                      <p className="text-xs font-bold uppercase tracking-tight leading-relaxed">{message.text}</p>
+                    </div>
+                  )}
+                </form>
+              </CardContent>
+            )}
+          </Card>
+        </div>
+
         {/* Miembros Actuales */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6">
           <Card className="glass-card">
             <CardHeader className="border-b bg-slate-50/50 dark:bg-slate-900/50">
               <div className="flex items-center gap-3">
@@ -148,9 +225,9 @@ export default function ProjectUsersPage() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="admin">Administrador</SelectItem>
-                                <SelectItem value="editor">Constructor (Editor)</SelectItem>
-                                <SelectItem value="viewer">Cliente (Viewer)</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="editor">Editor</SelectItem>
+                                <SelectItem value="viewer">Solo Lectura</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -167,81 +244,6 @@ export default function ProjectUsersPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Panel de Invitación */}
-        <div className="lg:col-span-1 space-y-6">
-          <Card className="glass-card border-l-4 border-l-primary">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <UserPlus className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">Invitar Miembro</CardTitle>
-                  <CardDescription>Envía una invitación formal</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleInvite} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Correo Electrónico</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                    <Input 
-                      id="email"
-                      type="email" 
-                      placeholder="ingeniero@obra.com" 
-                      className="pl-10 h-11 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-primary"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="rol" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Rol Asignado</Label>
-                  <Select value={inviteRol} onValueChange={setInviteRol}>
-                    <SelectTrigger id="rol" className="h-11 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Administrador (Control Total)</SelectItem>
-                      <SelectItem value="editor">Editor (Constructor/Arquitecto)</SelectItem>
-                      <SelectItem value="viewer">Viewer (Cliente/Inversor)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button type="submit" className="w-full btn-industrial-primary h-11 shadow-lg shadow-primary/20 text-white" disabled={inviting}>
-                  {inviting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Procesando...
-                    </>
-                  ) : (
-                    'Enviar Invitación Técnica'
-                  )}
-                </Button>
-
-                {message && (
-                  <div className={`p-4 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-top-2 ${message.type === 'success' ? 'bg-green-500/10 text-green-700 border border-green-200' : 'bg-destructive/10 text-destructive border border-destructive/20'}`}>
-                    {message.type === 'success' ? <CheckCircle2 className="h-5 w-5 shrink-0" /> : <AlertCircle className="h-5 w-5 shrink-0" />}
-                    <p className="text-xs font-bold uppercase tracking-tight leading-relaxed">{message.text}</p>
-                  </div>
-                )}
-              </form>
-            </CardContent>
-          </Card>
-
-          <div className="p-6 bg-slate-900 rounded-xl text-white shadow-xl shadow-slate-200 dark:shadow-none">
-            <h4 className="text-xs font-black uppercase tracking-widest text-primary mb-3">Seguridad RBAC</h4>
-            <p className="text-[11px] font-medium leading-relaxed opacity-80">
-              Los roles determinan qué secciones de costos e hitos técnicos puede ver o editar cada miembro. Asegúrate de asignar el nivel correcto.
-            </p>
-          </div>
         </div>
 
       </div>

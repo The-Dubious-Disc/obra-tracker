@@ -10,6 +10,16 @@ interface SegmentedProgressProps {
 }
 
 export function SegmentedProgress({ value, segments = 10, className }: SegmentedProgressProps) {
+  const [mounted, setMounted] = React.useState(false)
+  
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return <div className={cn("h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full", className)} />
+  }
+
   const activeSegments = Math.round((value / 100) * segments)
   
   return (

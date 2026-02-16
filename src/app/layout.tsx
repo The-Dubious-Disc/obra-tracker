@@ -16,9 +16,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "ObraTracker",
   description: "Seguimiento de obras de construcción",
-  icons: {
-    icon: "/favicon.svg",
-  },
 };
 
 import { UserRoleProvider } from '@/contexts/UserRoleContext';

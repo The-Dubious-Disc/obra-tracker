@@ -81,7 +81,7 @@ export default function PendientesPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold">Pendientes</h1>
-          <p className="text-muted-foreground">Tareas fuera de etapas con fecha de vencimiento.</p>
+          <p className="text-muted-foreground">Definiciones pendientes</p>
         </div>
 
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
