@@ -4,7 +4,7 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY) 
   : null;
 
-const FROM_EMAIL = 'Obra Tracker <onboarding@resend.dev>'; // Default de test, cambiar luego cuando tengamos dominio
+const FROM_EMAIL = 'Obra Tracker <obratracking@cheto.club>'; 
 
 export async function sendEmail({
   to,
