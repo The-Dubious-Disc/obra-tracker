@@ -2,7 +2,7 @@ import { db } from '@/lib/db';
 import { usuarios, proyectoMiembros, invitaciones, passwordResetTokens } from '@/lib/db/schema';
 import { eq, and, gt } from 'drizzle-orm';
 import crypto from 'crypto';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export async function hashPassword(password: string) {
   // Use bcrypt with 12 salt rounds for production security
