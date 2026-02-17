@@ -441,6 +441,29 @@ export type ComentarioAnotacion = Database['public']['Tables']['comentarios_anot
 export type Invitacion = Database['public']['Tables']['invitaciones']['Row']
 export type ProyectoMiembro = Database['public']['Tables']['proyecto_miembros']['Row']
 
+// Report types (not in Database interface yet, using schema inference)
+export interface Reporte {
+  id: string
+  proyectoId: string
+  descripcion: string
+  fecha: string
+  createdAt: string
+}
+
+export interface ReporteImagen {
+  id: string
+  reporteId: string
+  r2Key: string
+  nombre: string
+  orden: number
+  createdAt: string
+}
+
+export interface ReporteConImagenes extends Reporte {
+  imagenes: (ReporteImagen & { downloadUrl?: string })[]
+  imageCount: number
+}
+
 // Extended types for business logic
 export interface EtapaConProgreso extends Etapa {
   tareasTotal: number

@@ -2,7 +2,7 @@
 
 // Triggering refresh to fix stale summary error.
 
-import React, { useRef, useState } from 'react'
+import React, { useState } from 'react'
 import { useProjects, useProjectSummary, useStageTasks, useUpdateTask, useAddEtapa, useAddTask } from '@/hooks/useProject'
 import { useProjectSelection } from '@/contexts/ProjectContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { SegmentedProgress } from '@/components/ui/segmented-progress'
 import { Badge } from '@/components/ui/badge'
-import { Camera, Loader2, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
+import { Loader2, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -329,66 +329,6 @@ export default function TasksPage() {
   const { selectedProjectId } = useProjectSelection()
   const activeProjectId = selectedProjectId || (projects.length > 0 ? projects[0].id : null)
   const { data: summary, isLoading: summaryLoading, refetch } = useProjectSummary(activeProjectId)
-  const [isUploadingReport, setIsUploadingReport] = useState(false)
-  
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const handleUploadClick = () => {
-    if (isUploadingReport) return
-    fileInputRef.current?.click()
-  }
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !summary?.proyecto?.id) return
-
-    setIsUploadingReport(true)
-
-    try {
-      const presignRes = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectId: summary.proyecto.id,
-          filename: file.name,
-          contentType: file.type || 'application/octet-stream',
-          kind: 'adjuntos',
-        }),
-      })
-
-      if (!presignRes.ok) {
-        const data = await presignRes.json()
-        throw new Error(data.error || 'No se pudo generar la URL de subida')
-      }
-
-      const { uploadUrl, key } = await presignRes.json()
-      const uploadRes = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type || 'application/octet-stream' },
-        body: file,
-      })
-
-      if (!uploadRes.ok) {
-        throw new Error('No se pudo subir el reporte')
-      }
-
-      const downloadRes = await fetch(`/api/download?key=${encodeURIComponent(key)}`)
-      if (downloadRes.ok) {
-        const { downloadUrl } = await downloadRes.json()
-        window.open(downloadUrl, '_blank')
-      }
-
-      alert('Reporte subido correctamente')
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error al subir el reporte'
-      alert(message)
-    } finally {
-      setIsUploadingReport(false)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
-    }
-  }
 
   if (projectsLoading || summaryLoading) {
     return (
@@ -425,10 +365,6 @@ export default function TasksPage() {
         </div>
         <div className="flex flex-col items-end gap-2">
           <AddStageDialog projectId={summary.proyecto.id} onCreated={refetch} />
-          <Button className="gap-2 btn-industrial-primary" onClick={handleUploadClick} disabled={isUploadingReport}>
-             {isUploadingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-             {isUploadingReport ? 'Subiendo...' : 'Subir reporte'}
-          </Button>
         </div>
       </div>
 
@@ -475,14 +411,7 @@ export default function TasksPage() {
         ))}
       </div>
 
-      <input 
-        type="file" 
-        accept="image/*" 
-        capture="environment" 
-        className="hidden" 
-        ref={fileInputRef}
-        onChange={handleFileChange}
-      />
+
     </div>
   )
 }

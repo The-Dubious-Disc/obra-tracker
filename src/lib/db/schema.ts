@@ -151,7 +151,26 @@ export const passwordResetTokens = pgTable('password_reset_tokens', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
 });
 
-// 12. Miembros de Proyecto (RBAC)
+// 12. Reportes
+export const reportes = pgTable('reportes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  proyectoId: uuid('proyecto_id').references(() => proyectos.id, { onDelete: 'cascade' }).notNull(),
+  descripcion: text('descripcion').notNull(),
+  fecha: date('fecha').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+// 13. Imágenes de Reportes
+export const reporteImagenes = pgTable('reporte_imagenes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  reporteId: uuid('reporte_id').references(() => reportes.id, { onDelete: 'cascade' }).notNull(),
+  r2Key: text('r2_key').notNull(),
+  nombre: text('nombre').notNull(),
+  orden: integer('orden').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+// 14. Miembros de Proyecto (RBAC)
 export const proyectoMiembros = pgTable('proyecto_miembros', {
   id: uuid('id').primaryKey().defaultRandom(),
   proyectoId: uuid('proyecto_id').references(() => proyectos.id, { onDelete: 'cascade' }).notNull(),
@@ -173,12 +192,30 @@ export type ComentarioAnotacionSelect = typeof comentariosAnotaciones.$inferSele
 export type PresupuestoVersionSelect = typeof presupuestoVersiones.$inferSelect;
 export type InvitacionSelect = typeof invitaciones.$inferSelect;
 export type PasswordResetTokenSelect = typeof passwordResetTokens.$inferSelect;
+export type ReporteSelect = typeof reportes.$inferSelect;
+export type ReporteImagenSelect = typeof reporteImagenes.$inferSelect;
 export type ProyectoMiembroSelect = typeof proyectoMiembros.$inferSelect;
 
 // Relations
 export const proyectosRelations = relations(proyectos, ({ many }) => ({
   miembros: many(proyectoMiembros),
   invitaciones: many(invitaciones),
+  reportes: many(reportes),
+}));
+
+export const reportesRelations = relations(reportes, ({ one, many }) => ({
+  proyecto: one(proyectos, {
+    fields: [reportes.proyectoId],
+    references: [proyectos.id],
+  }),
+  imagenes: many(reporteImagenes),
+}));
+
+export const reporteImagenesRelations = relations(reporteImagenes, ({ one }) => ({
+  reporte: one(reportes, {
+    fields: [reporteImagenes.reporteId],
+    references: [reportes.id],
+  }),
 }));
 
 export const invitacionesRelations = relations(invitaciones, ({ one }) => ({

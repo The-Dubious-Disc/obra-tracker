@@ -955,3 +955,199 @@ export function useAddTask(): UseAddTaskResult {
   return { addTask, isAdding, error }
 }
 
+// ============================================
+// useReportes - Fetch project reports
+// ============================================
+import type { Reporte, ReporteConImagenes } from '@/types/database.types'
+
+export function useReportes(projectId: string | null) {
+  const [reportes, setReportes] = useState<(Reporte & { imageCount: number })[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchData = useCallback(async () => {
+    if (!projectId) {
+      setReportes([])
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}/reportes`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const result = await response.json()
+      setReportes(result)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch reportes')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [projectId])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  return { reportes, isLoading, error, refetch: fetchData }
+}
+
+// ============================================
+// useReporte - Fetch single report with images
+// ============================================
+export function useReporte(reporteId: string | null) {
+  const [reporte, setReporte] = useState<ReporteConImagenes | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchData = useCallback(async () => {
+    if (!reporteId) {
+      setReporte(null)
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/reportes/${reporteId}`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const result = await response.json()
+      setReporte(result)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch reporte')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [reporteId])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  return { reporte, isLoading, error, refetch: fetchData }
+}
+
+// ============================================
+// useCreateReporte - Create a report with images
+// ============================================
+export function useCreateReporte() {
+  const [isCreating, setIsCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const createReporte = useCallback(async (params: {
+    projectId: string
+    descripcion: string
+    fecha: string
+    files: File[]
+  }) => {
+    setIsCreating(true)
+    setError(null)
+
+    try {
+      // Upload all files first
+      const imagenes: { r2Key: string; nombre: string; orden: number }[] = []
+
+      for (let i = 0; i < params.files.length; i++) {
+        const file = params.files[i]
+
+        // Get presigned upload URL
+        const presignRes = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectId: params.projectId,
+            filename: file.name,
+            contentType: file.type || 'application/octet-stream',
+            kind: 'adjuntos',
+          }),
+        })
+
+        if (!presignRes.ok) {
+          const data = await presignRes.json()
+          throw new Error(data.error || 'No se pudo generar la URL de subida')
+        }
+
+        const { uploadUrl, key } = await presignRes.json()
+
+        // Upload the file
+        const uploadRes = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type || 'application/octet-stream' },
+          body: file,
+        })
+
+        if (!uploadRes.ok) {
+          throw new Error(`No se pudo subir la imagen: ${file.name}`)
+        }
+
+        imagenes.push({ r2Key: key, nombre: file.name, orden: i })
+      }
+
+      // Create the report record
+      const response = await fetch(`/api/projects/${params.projectId}/reportes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          descripcion: params.descripcion,
+          fecha: params.fecha,
+          imagenes,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Error al crear reporte')
+      }
+
+      const result = await response.json()
+      return result.id as string
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al crear reporte')
+      return null
+    } finally {
+      setIsCreating(false)
+    }
+  }, [])
+
+  return { createReporte, isCreating, error }
+}
+
+// ============================================
+// useDeleteReporte - Delete a report
+// ============================================
+export function useDeleteReporte() {
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const deleteReporte = useCallback(async (reporteId: string) => {
+    setIsDeleting(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/reportes/${reporteId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Error al eliminar reporte')
+      }
+
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al eliminar reporte')
+      return false
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [])
+
+  return { deleteReporte, isDeleting, error }
+}

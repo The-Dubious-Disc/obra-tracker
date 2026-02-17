@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { LayoutDashboard, AlertCircle, ClipboardList, DraftingCompass, PlusCircle, Users, X } from 'lucide-react'
+import { LayoutDashboard, AlertCircle, ClipboardList, DraftingCompass, PlusCircle, Users, X, Camera } from 'lucide-react'
 import { useProjects, usePendingCount } from '@/hooks/useProject'
 import { useProjectSelection } from '@/contexts/ProjectContext'
 // role selector removed
@@ -71,6 +71,13 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           asChild
         >
           <Link href="/builder"><ClipboardList className="h-4 w-4" />Tareas</Link>
+        </Button>
+        <Button 
+          variant="ghost" 
+          className={cn("w-full justify-start gap-2", isActive('/reportes') && "bg-primary/10 text-primary font-bold")} 
+          asChild
+        >
+          <Link href="/reportes"><Camera className="h-4 w-4" />Reportes</Link>
         </Button>
         <Button 
           variant="ghost" 
