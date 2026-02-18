@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Button } from '@/components/ui/button'
-import { Menu, DraftingCompass } from 'lucide-react'
+import { Menu, DraftingCompass, AlertCircle } from 'lucide-react'
 import { usePendingCount } from '@/hooks/useProject'
 import { useProjectSelection } from '@/contexts/ProjectContext'
 
@@ -50,8 +50,86 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
 function PrivateLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { selectedProjectId } = useProjectSelection()
+  const pathname = usePathname()
+  const router = useRouter()
+  // 1. Refresh projects on mount to clear potential stale 401 states from login
+  const { selectedProjectId, isInitialized, projects, isLoading, error, refreshProjects } = useProjectSelection()
   const pendingCount = usePendingCount(selectedProjectId)
+
+  useEffect(() => {
+    refreshProjects()
+  }, [refreshProjects])
+
+  // 2. Handle case with no projects (except when already on the creation page)
+  useEffect(() => {
+    if (isInitialized && !isLoading) {
+      if (projects.length === 0 && pathname !== '/projects/new') {
+        router.replace('/projects/new')
+      } else if (projects.length > 0 && pathname === '/projects/new' && selectedProjectId) {
+         // If user lands on /projects/new but has projects and one selected, 
+         // redirect to the dashboard (root path).
+         router.replace('/')
+      }
+    }
+  }, [isInitialized, isLoading, projects.length, pathname, router, selectedProjectId])
+
+  // 2. Handle error state (e.g., DB connection failure)
+  if (error) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background p-6">
+        <div className="glass-card p-8 w-full max-w-md space-y-6 text-center border-destructive/20">
+          <div className="h-16 w-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="h-8 w-8 text-destructive" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black uppercase tracking-tighter text-destructive uppercase">Error de Conexión</h2>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest leading-relaxed">
+              No se pudo conectar con la base de datos. Por favor, verifica las credenciales en el archivo .env.
+            </p>
+            <div className="p-3 bg-muted rounded-sm mt-4">
+              <p className="text-[10px] font-mono text-muted-foreground break-all">{error}</p>
+            </div>
+          </div>
+          <Button className="w-full" variant="outline" onClick={() => window.location.reload()}>
+            Reintentar
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // 2. Wait for project initialization
+  if (!isInitialized || isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center animate-pulse">
+            <DraftingCompass className="h-6 w-6 text-primary animate-spin" />
+          </div>
+          <p className="text-xs uppercase font-black text-muted-foreground tracking-[0.2em] animate-pulse">
+            Inicializando ObraTracker...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+
+  // If redirecting, show loading state to avoid flash of content
+  if (isInitialized && !isLoading && projects.length === 0 && pathname !== '/projects/new') {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center animate-pulse">
+            <DraftingCompass className="h-6 w-6 text-primary animate-spin" />
+          </div>
+          <p className="text-xs uppercase font-black text-muted-foreground tracking-[0.2em] animate-pulse">
+            Redirigiendo...
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">

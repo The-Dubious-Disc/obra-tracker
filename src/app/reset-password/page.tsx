@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -93,26 +94,22 @@ function ResetPasswordForm() {
                 <label htmlFor="password" className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
                   Nueva Contraseña
                 </label>
-                <input
+                <PasswordInput
                   id="password"
-                  type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="flex h-10 w-full rounded-sm border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
               <div className="space-y-2">
                 <label htmlFor="confirmPassword" className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
                   Confirmar Contraseña
                 </label>
-                <input
+                <PasswordInput
                   id="confirmPassword"
-                  type="password"
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="flex h-10 w-full rounded-sm border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
             </div>

@@ -14,14 +14,16 @@ const UserRoleContext = createContext<UserRoleContextType | undefined>(undefined
 
 export function UserRoleProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole>('viewer');
-  const { selectedProjectId } = useProjectSelection();
+  const { selectedProjectId, isInitialized } = useProjectSelection();
 
   useEffect(() => {
+    if (!isInitialized) return;
+    
     let cancelled = false;
 
     async function fetchRole() {
       if (!selectedProjectId) {
-        setRole('viewer');
+        if (!cancelled) setRole('viewer');
         return;
       }
 
@@ -42,7 +44,7 @@ export function UserRoleProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [selectedProjectId]);
+  }, [selectedProjectId, isInitialized]);
 
   return (
     <UserRoleContext.Provider value={{ role, setRole }}>
