@@ -1,13 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 
-export default function RegisterPage() {
+function RegisterForm() {
+  const searchParams = useSearchParams();
+  const emailParam = searchParams.get('email') || '';
+  const redirectParam = searchParams.get('redirect');
+
   const [nombre, setNombre] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(emailParam);
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const router = useRouter();
@@ -21,7 +25,11 @@ export default function RegisterPage() {
     });
     const data = await res.json();
     if (res.ok) {
-      router.replace('/login?registered=1');
+      const params = new URLSearchParams();
+      params.set('registered', '1');
+      if (redirectParam) params.set('redirect', redirectParam);
+      if (email) params.set('email', email);
+      router.replace(`/login?${params.toString()}`);
     } else {
       setMessage(data.error);
     }
@@ -80,7 +88,7 @@ export default function RegisterPage() {
 
         <div className="text-center">
           <p className="text-xs text-muted-foreground">
-            ¿Ya tenés cuenta? <Link href="/login" className="font-bold text-primary hover:underline">Iniciá sesión</Link>
+            ¿Ya tenés cuenta? <Link href={`/login${redirectParam || email ? `?${new URLSearchParams({ ...(redirectParam ? { redirect: redirectParam } : {}), ...(email ? { email } : {}) }).toString()}` : ''}`} className="font-bold text-primary hover:underline">Iniciá sesión</Link>
           </p>
         </div>
 
@@ -91,5 +99,13 @@ export default function RegisterPage() {
         )}
       </form>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterForm />
+    </Suspense>
   );
 }

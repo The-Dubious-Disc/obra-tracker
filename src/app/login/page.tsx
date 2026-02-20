@@ -13,6 +13,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const registered = searchParams.get('registered');
   const redirectParam = searchParams.get('redirect');
+  const emailParam = searchParams.get('email');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +79,7 @@ function LoginForm() {
         
         <div className="text-center">
           <p className="text-xs text-muted-foreground">
-            ¿No tenés cuenta? <Link href="/register" className="font-bold text-primary hover:underline">Registrate</Link>
+            ¿No tenés cuenta? <Link href={`/register${redirectParam || emailParam ? `?${new URLSearchParams({ ...(redirectParam ? { redirect: redirectParam } : {}), ...(emailParam ? { email: emailParam } : {}) }).toString()}` : ''}`} className="font-bold text-primary hover:underline">Registrate</Link>
           </p>
         </div>
 

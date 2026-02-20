@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 export default function InvitationAcceptPage() {
   const { token } = useParams();
   const router = useRouter();
-  const [invitation, setInvitation] = useState<{ proyectoId: string, proyecto: { nombre: string }, rol: string } | null>(null);
+  const [invitation, setInvitation] = useState<{ proyectoId: string, proyecto: { nombre: string }, rol: string, email?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [accepting, setAccepting] = useState(false);
@@ -42,6 +42,14 @@ export default function InvitationAcceptPage() {
       const res = await fetch(`/api/invitations/${token}/accept`, {
         method: 'POST',
       });
+      if (res.status === 401) {
+        const params = new URLSearchParams({
+          redirect: `/invitations/${token}`,
+          ...(invitation?.email ? { email: invitation.email } : {}),
+        });
+        router.push(`/login?${params.toString()}`);
+        return;
+      }
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Failed to accept invitation');
@@ -71,8 +79,30 @@ export default function InvitationAcceptPage() {
           <CardContent>
             <p>{error}</p>
           </CardContent>
-          <CardFooter>
-            <Button onClick={() => router.push('/login')}>Go to Login</Button>
+          <CardFooter className="flex gap-2">
+            <Button
+              onClick={() => {
+                const params = new URLSearchParams({
+                  redirect: `/invitations/${token}`,
+                  ...(invitation?.email ? { email: invitation.email } : {}),
+                });
+                router.push(`/login?${params.toString()}`);
+              }}
+            >
+              Go to Login
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const params = new URLSearchParams({
+                  redirect: `/invitations/${token}`,
+                  ...(invitation?.email ? { email: invitation.email } : {}),
+                });
+                router.push(`/register?${params.toString()}`);
+              }}
+            >
+              Register
+            </Button>
           </CardFooter>
         </Card>
       </div>
