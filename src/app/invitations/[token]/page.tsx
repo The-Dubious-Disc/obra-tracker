@@ -89,7 +89,7 @@ export default function InvitationAcceptPage() {
                 router.push(`/login?${params.toString()}`);
               }}
             >
-              Go to Login
+              Ir a Iniciar Sesión
             </Button>
             <Button
               variant="outline"
@@ -101,7 +101,7 @@ export default function InvitationAcceptPage() {
                 router.push(`/register?${params.toString()}`);
               }}
             >
-              Register
+              Registrarme
             </Button>
           </CardFooter>
         </Card>

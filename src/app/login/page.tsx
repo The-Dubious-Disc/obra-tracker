@@ -1,19 +1,25 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 
 function LoginForm() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get('registered');
   const redirectParam = searchParams.get('redirect');
   const emailParam = searchParams.get('email');
+
+  const [email, setEmail] = useState(emailParam || '');
+  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
+
+  // keep email in sync with query param
+  useEffect(() => {
+    if (emailParam) setEmail(emailParam);
+  }, [emailParam]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
