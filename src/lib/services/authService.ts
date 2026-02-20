@@ -152,13 +152,17 @@ export async function acceptInvitation(token: string, userId: string) {
       return { success: false, error: 'Invitación inválida o expirada' };
     }
 
-    // Check if user already exists
-    const existingUser = await db.query.usuarios.findFirst({
-      where: eq(usuarios.email, invitation.email),
+    // Ensure the logged-in user matches the invited email
+    const user = await db.query.usuarios.findFirst({
+      where: eq(usuarios.id, userId),
     });
 
-    if (existingUser && existingUser.id !== userId) {
-      return { success: false, error: 'Email ya registrado con otro usuario' };
+    if (!user) {
+      return { success: false, error: 'Usuario inválido' };
+    }
+
+    if (user.email !== invitation.email) {
+      return { success: false, error: 'Esta invitación corresponde a otro correo' };
     }
 
     // Add user to project
