@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { etapas } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { cookies } from 'next/headers';
+import { checkProjectRole } from '@/lib/services/authService';
+
+async function getEtapaProjectId(etapaId: string): Promise<string | null> {
+  const etapa = await db.query.etapas.findFirst({ where: eq(etapas.id, etapaId) });
+  return etapa?.proyectoId ?? null;
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -9,6 +16,22 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('userId')?.value;
+    if (!userId) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    }
+
+    const projectId = await getEtapaProjectId(id);
+    if (!projectId) {
+      return NextResponse.json({ error: 'Etapa no encontrada' }, { status: 404 });
+    }
+
+    const hasRole = await checkProjectRole(userId, projectId, ['admin', 'editor']);
+    if (!hasRole) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { nombre, duracionEstimadaJornales, hitoVerificacion } = body;
 
@@ -38,6 +61,22 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('userId')?.value;
+    if (!userId) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    }
+
+    const projectId = await getEtapaProjectId(id);
+    if (!projectId) {
+      return NextResponse.json({ error: 'Etapa no encontrada' }, { status: 404 });
+    }
+
+    const hasRole = await checkProjectRole(userId, projectId, ['admin']);
+    if (!hasRole) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    }
+
     await db.delete(etapas).where(eq(etapas.id, id));
     return NextResponse.json({ message: 'Etapa eliminada' });
   } catch (error) {

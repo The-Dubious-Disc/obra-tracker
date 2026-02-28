@@ -56,12 +56,18 @@ export async function PATCH(
 ) {
   try {
     const { id: projectId } = await params;
-    const { memberId, rol } = await request.json();
+    const body = await request.json();
+    const { memberId, rol } = body;
     const cookieStore = await cookies();
     const userId = cookieStore.get('userId')?.value;
 
     if (!userId) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const validRoles = ['admin', 'editor', 'viewer'];
+    if (!rol || !validRoles.includes(rol)) {
+      return NextResponse.json({ error: 'Rol inválido. Debe ser admin, editor o viewer' }, { status: 400 });
     }
 
     // Only admin can update roles

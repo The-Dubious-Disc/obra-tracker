@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateBudget } from '@/lib/services/projectService';
-import { checkProjectAccess } from '@/lib/services/authService';
+import { checkProjectRole } from '@/lib/services/authService';
 import { cookies } from 'next/headers';
 
 export async function PUT(
@@ -21,11 +21,11 @@ export async function PUT(
 
     const { id: projectId } = await params;
 
-    // Verificar que el usuario tenga acceso al proyecto
-    const hasAccess = await checkProjectAccess(userId, projectId);
-    if (!hasAccess) {
+    // Solo admin puede modificar presupuesto
+    const hasRole = await checkProjectRole(userId, projectId, ['admin']);
+    if (!hasRole) {
       return NextResponse.json(
-        { error: 'No autorizado para acceder a este proyecto' },
+        { error: 'No autorizado para modificar el presupuesto' },
         { status: 403 }
       );
     }

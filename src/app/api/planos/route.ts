@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPlano } from '@/lib/services/projectService';
+import { cookies } from 'next/headers';
+import { checkProjectRole } from '@/lib/services/authService';
 
 export async function POST(request: NextRequest) {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('userId')?.value;
+    if (!userId) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       proyectoId,
@@ -18,6 +26,11 @@ export async function POST(request: NextRequest) {
         { error: 'Missing required fields: proyectoId, nombre, url, tipo' },
         { status: 400 }
       );
+    }
+
+    const hasRole = await checkProjectRole(userId, proyectoId, ['admin', 'editor']);
+    if (!hasRole) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     }
 
     const result = await createPlano({

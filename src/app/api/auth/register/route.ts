@@ -18,9 +18,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { nombre, email, password, rol } = validationResult.data;
+    const { nombre, email, password } = validationResult.data;
 
-    const result = await registerUser(nombre, email, password, rol);
+    const result = await registerUser(nombre, email, password, 'viewer');
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
