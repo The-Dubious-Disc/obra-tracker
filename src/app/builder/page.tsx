@@ -71,12 +71,19 @@ function StageTasks({
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newTaskDesc.trim()) return
-    
+
+    // Optimistic insert with temporary ID
+    const tempTask = { id: `temp-${Date.now()}`, estado: 'pendiente', descripcion: newTaskDesc.trim() }
+    setLocalTasks(prev => [...prev, tempTask])
+    setNewTaskDesc('')
+
     const ok = await addTask(etapaId, newTaskDesc.trim())
     if (ok) {
-      setNewTaskDesc('')
-      await refetch()
+      await refetch() // silent sync to get real ID
       onUpdated()
+    } else {
+      // Rollback: remove temp task
+      setLocalTasks(prev => prev.filter(t => t.id !== tempTask.id))
     }
   }
 

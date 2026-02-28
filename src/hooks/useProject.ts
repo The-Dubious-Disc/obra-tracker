@@ -55,14 +55,14 @@ export function useProjectSummary(projectId: string | null): UseProjectSummaryRe
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (options?: { silent?: boolean }) => {
     if (!projectId) {
       setData(null)
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
       return
     }
 
-    setIsLoading(true)
+    if (!options?.silent) setIsLoading(true)
     setError(null)
 
     try {
@@ -75,15 +75,17 @@ export function useProjectSummary(projectId: string | null): UseProjectSummaryRe
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch project')
     } finally {
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
     }
   }, [projectId])
+
+  const refetch = useCallback(() => fetchData({ silent: true }), [fetchData])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  return { data, isLoading, error, refetch: fetchData }
+  return { data, isLoading, error, refetch }
 }
 
 // ============================================
@@ -101,8 +103,8 @@ export function useProjects(): UseProjectsResult {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true)
+  const fetchData = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) setIsLoading(true)
     setError(null)
 
     try {
@@ -111,19 +113,22 @@ export function useProjects(): UseProjectsResult {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const result = await response.json()
-      setProjects(result)
+      const dedupResult = Array.from(new Map(result.map((p: Proyecto) => [p.id, p])).values()) as Proyecto[]
+      setProjects(dedupResult)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch projects')
     } finally {
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
     }
   }, [])
+
+  const refetch = useCallback(() => fetchData({ silent: true }), [fetchData])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  return { projects, isLoading, error, refetch: fetchData }
+  return { projects, isLoading, error, refetch }
 }
 
 // ============================================
@@ -234,14 +239,14 @@ export function useBudgetHistory(projectId: string | null): UseBudgetHistoryResu
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (options?: { silent?: boolean }) => {
     if (!projectId) {
       setHistory([])
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
       return
     }
 
-    setIsLoading(true)
+    if (!options?.silent) setIsLoading(true)
     setError(null)
 
     try {
@@ -254,15 +259,17 @@ export function useBudgetHistory(projectId: string | null): UseBudgetHistoryResu
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch budget history')
     } finally {
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
     }
   }, [projectId])
+
+  const refetch = useCallback(() => fetchData({ silent: true }), [fetchData])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  return { history, isLoading, error, refetch: fetchData }
+  return { history, isLoading, error, refetch }
 }
 // ============================================
 // usePayments - Fetch project payments
@@ -279,14 +286,14 @@ export function usePayments(projectId: string | null): UsePaymentsResult {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (options?: { silent?: boolean }) => {
     if (!projectId) {
       setPayments([])
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
       return
     }
 
-    setIsLoading(true)
+    if (!options?.silent) setIsLoading(true)
     setError(null)
 
     try {
@@ -299,15 +306,17 @@ export function usePayments(projectId: string | null): UsePaymentsResult {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch payments')
     } finally {
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
     }
   }, [projectId])
+
+  const refetch = useCallback(() => fetchData({ silent: true }), [fetchData])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  return { payments, isLoading, error, refetch: fetchData }
+  return { payments, isLoading, error, refetch }
 }
 
 // ============================================
@@ -400,14 +409,14 @@ export function usePlanos(projectId: string | null): UsePlanosResult {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (options?: { silent?: boolean }) => {
     if (!projectId) {
       setPlanos([])
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
       return
     }
 
-    setIsLoading(true)
+    if (!options?.silent) setIsLoading(true)
     setError(null)
 
     try {
@@ -420,15 +429,17 @@ export function usePlanos(projectId: string | null): UsePlanosResult {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch planos')
     } finally {
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
     }
   }, [projectId])
+
+  const refetch = useCallback(() => fetchData({ silent: true }), [fetchData])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  return { planos, isLoading, error, refetch: fetchData }
+  return { planos, isLoading, error, refetch }
 }
 
 // ============================================
@@ -516,14 +527,14 @@ export function usePendientes(projectId: string | null): UsePendientesResult {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (options?: { silent?: boolean }) => {
     if (!projectId) {
       setPendientes([])
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
       return
     }
 
-    setIsLoading(true)
+    if (!options?.silent) setIsLoading(true)
     setError(null)
 
     try {
@@ -536,15 +547,17 @@ export function usePendientes(projectId: string | null): UsePendientesResult {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch pendientes')
     } finally {
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
     }
   }, [projectId])
+
+  const refetch = useCallback(() => fetchData({ silent: true }), [fetchData])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  return { pendientes, isLoading, error, refetch: fetchData }
+  return { pendientes, isLoading, error, refetch }
 }
 
 export function usePendingCount(projectId: string | null) {
@@ -701,13 +714,13 @@ export function useStageTasks(etapaId: string | null): UseStageTasksResult {
   const [isLoading, setIsLoading] = useState(false) // Start false, only load when expanding or id set
   const [error, setError] = useState<string | null>(null)
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (options?: { silent?: boolean }) => {
     if (!etapaId) {
       setTasks([])
       return
     }
 
-    setIsLoading(true)
+    if (!options?.silent) setIsLoading(true)
     setError(null)
 
     try {
@@ -720,9 +733,11 @@ export function useStageTasks(etapaId: string | null): UseStageTasksResult {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch tasks')
     } finally {
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
     }
   }, [etapaId])
+
+  const refetch = useCallback(() => fetchData({ silent: true }), [fetchData])
 
   useEffect(() => {
     if (etapaId) {
@@ -730,7 +745,7 @@ export function useStageTasks(etapaId: string | null): UseStageTasksResult {
     }
   }, [fetchData, etapaId])
 
-  return { tasks, isLoading, error, refetch: fetchData }
+  return { tasks, isLoading, error, refetch }
 }
 
 // ============================================
@@ -965,14 +980,14 @@ export function useReportes(projectId: string | null) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (options?: { silent?: boolean }) => {
     if (!projectId) {
       setReportes([])
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
       return
     }
 
-    setIsLoading(true)
+    if (!options?.silent) setIsLoading(true)
     setError(null)
 
     try {
@@ -985,15 +1000,17 @@ export function useReportes(projectId: string | null) {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch reportes')
     } finally {
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
     }
   }, [projectId])
+
+  const refetch = useCallback(() => fetchData({ silent: true }), [fetchData])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  return { reportes, isLoading, error, refetch: fetchData }
+  return { reportes, isLoading, error, refetch }
 }
 
 // ============================================
@@ -1004,13 +1021,13 @@ export function useReporte(reporteId: string | null) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (options?: { silent?: boolean }) => {
     if (!reporteId) {
       setReporte(null)
       return
     }
 
-    setIsLoading(true)
+    if (!options?.silent) setIsLoading(true)
     setError(null)
 
     try {
@@ -1023,15 +1040,17 @@ export function useReporte(reporteId: string | null) {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch reporte')
     } finally {
-      setIsLoading(false)
+      if (!options?.silent) setIsLoading(false)
     }
   }, [reporteId])
+
+  const refetch = useCallback(() => fetchData({ silent: true }), [fetchData])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  return { reporte, isLoading, error, refetch: fetchData }
+  return { reporte, isLoading, error, refetch }
 }
 
 // ============================================

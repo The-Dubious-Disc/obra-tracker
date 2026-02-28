@@ -133,7 +133,7 @@ export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
         </div>
       </div>
 
-      <div className="relative flex flex-1 border rounded-b-lg overflow-hidden bg-slate-100" style={{ height: isFullscreen ? 'calc(100vh - 120px)' : '600px' }}>
+      <div className="relative flex flex-1 border rounded-b-lg overflow-hidden bg-slate-100 items-center justify-center" style={{ height: isFullscreen ? 'calc(100vh - 120px)' : '600px' }}>
         <TransformWrapper
           initialScale={1}
           minScale={0.5}
@@ -159,16 +159,17 @@ export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
                 </Button>
               </div>
 
-              <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }}>
+              <TransformComponent wrapperStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div 
-                  className="relative cursor-crosshair"
+                  className="relative cursor-crosshair flex items-center justify-center w-full h-full"
                   onClick={(e) => handleImageClick(e)}
+                  style={{ width: '100%', height: '100%' }}
                 >
                   <img
                     src={imageUrl}
                     alt="Plano"
-                    className="max-w-none block"
-                    style={{ height: '560px', width: 'auto' }} // Reference height for coordinates
+                    className="block"
+                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', margin: 'auto', display: 'block' }}
                   />
 
                   {pins.map((pin) => (

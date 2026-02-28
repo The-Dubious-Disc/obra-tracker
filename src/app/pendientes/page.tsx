@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import { useProjectSelection } from '@/contexts/ProjectContext'
 import { usePendientes, useCreatePendiente, useUpdatePendiente, useDeletePendiente } from '@/hooks/useProject'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -34,10 +34,18 @@ export default function PendientesPage() {
   const [fechaVencimiento, setFechaVencimiento] = useState('')
   const [showCompleted, setShowCompleted] = useState(false)
 
+  // Local state for optimistic updates
+  const [localPendientes, setLocalPendientes] = useState<Pendiente[]>([])
+
+  // Sync local state when server data arrives
+  useEffect(() => {
+    setLocalPendientes(pendientes)
+  }, [pendientes])
+
   const filtered = useMemo(() => {
-    if (showCompleted) return pendientes
-    return pendientes.filter((p) => p.estado !== 'completado')
-  }, [pendientes, showCompleted])
+    if (showCompleted) return localPendientes
+    return localPendientes.filter((p) => p.estado !== 'completado')
+  }, [localPendientes, showCompleted])
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -55,22 +63,44 @@ export default function PendientesPage() {
       setDescripcion('')
       setFechaVencimiento('')
       setModalOpen(false)
-      await refetch()
+      refetch() // silent background sync
     }
   }
 
-  const handleToggle = async (pendiente: Pendiente, nextChecked: boolean) => {
+  const handleToggle = useCallback(async (pendiente: Pendiente, nextChecked: boolean) => {
+    // Optimistic update
+    const previous = [...localPendientes]
+    setLocalPendientes(prev =>
+      prev.map(p => p.id === pendiente.id
+        ? { ...p, estado: nextChecked ? 'completado' : 'pendiente' }
+        : p
+      )
+    )
+
     const ok = await updatePendiente(pendiente.id, {
       estado: nextChecked ? 'completado' : 'pendiente',
     })
-    if (ok) await refetch()
-  }
+    if (ok) {
+      refetch() // silent background sync
+    } else {
+      setLocalPendientes(previous) // rollback
+    }
+  }, [localPendientes, updatePendiente, refetch])
 
-  const handleDelete = async (pendienteId: string) => {
+  const handleDelete = useCallback(async (pendienteId: string) => {
     if (!confirm('¿Estás seguro de eliminar este pendiente?')) return
+
+    // Optimistic update
+    const previous = [...localPendientes]
+    setLocalPendientes(prev => prev.filter(p => p.id !== pendienteId))
+
     const ok = await deletePendiente(pendienteId)
-    if (ok) await refetch()
-  }
+    if (ok) {
+      refetch() // silent background sync
+    } else {
+      setLocalPendientes(previous) // rollback
+    }
+  }, [localPendientes, deletePendiente, refetch])
 
   if (!selectedProjectId) {
     return <div className="p-6">Selecciona un proyecto para ver los pendientes.</div>

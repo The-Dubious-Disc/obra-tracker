@@ -101,6 +101,24 @@ export async function checkProjectRole(userId: string, projectId: string, requir
 
 export async function createInvitation(projectId: string, email: string, rol: 'admin' | 'editor' | 'viewer', invitedBy: string) {
   try {
+    // Check if user with this email is already a member of the project
+    const existingUser = await db.query.usuarios.findFirst({
+      where: eq(usuarios.email, email),
+    });
+
+    if (existingUser) {
+      const existingMembership = await db.query.proyectoMiembros.findFirst({
+        where: and(
+          eq(proyectoMiembros.usuarioId, existingUser.id),
+          eq(proyectoMiembros.proyectoId, projectId)
+        ),
+      });
+
+      if (existingMembership) {
+        return { success: false, error: 'Este usuario ya es miembro del proyecto' };
+      }
+    }
+
     // Generate token
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
@@ -163,6 +181,23 @@ export async function acceptInvitation(token: string, userId: string) {
 
     if (user.email !== invitation.email) {
       return { success: false, error: 'Esta invitación corresponde a otro correo' };
+    }
+
+    // Check if user is already a member of this project
+    const existingMembership = await db.query.proyectoMiembros.findFirst({
+      where: and(
+        eq(proyectoMiembros.usuarioId, userId),
+        eq(proyectoMiembros.proyectoId, invitation.proyectoId)
+      ),
+    });
+
+    if (existingMembership) {
+      // Mark invitation as accepted anyway, but don't create duplicate membership
+      await db.update(invitaciones)
+        .set({ aceptada: true })
+        .where(eq(invitaciones.id, invitation.id));
+
+      return { success: true, projectId: invitation.proyectoId };
     }
 
     // Add user to project

@@ -57,7 +57,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
       const data: Proyecto[] = await res.json()
 
-      setProjects(data)
+      const deduped = Array.from(new Map(data.map((p: Proyecto) => [p.id, p])).values())
+
+      setProjects(deduped)
 
       const saved = localStorage.getItem(STORAGE_KEY)
       
