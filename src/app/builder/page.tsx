@@ -91,39 +91,39 @@ function StageTasks({
     <Card>
       <CardHeader className="flex items-center justify-between gap-2 sm:flex-row py-4">
         <div className="flex items-center gap-3">
-           <div className="flex items-center justify-center h-6 w-6 rounded-sm bg-slate-100 dark:bg-slate-800 border border-border text-xs font-black text-slate-500 mono-data">
+           <div className="flex items-center justify-center h-6 w-6 rounded-md bg-slate-100 dark:bg-slate-800 border border-border text-xs font-black text-slate-500 mono-data">
              {String(index + 1).padStart(2, '0')}
            </div>
-           <CardTitle className="text-sm font-black uppercase tracking-wide text-slate-900 dark:text-slate-100">{nombre}</CardTitle>
+           <CardTitle className="text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100">{nombre}</CardTitle>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={() => setOpen(v => !v)} className="h-8 w-8">
-            {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          <Button variant="ghost" size="sm" onClick={() => setOpen(v => !v)} className="h-10 w-10">
+            {open ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
           </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {open && hito && (
-           <div className="bg-primary/5 p-3 rounded-sm border-l-2 border-primary/40">
-             <p className="text-[9px] uppercase font-black text-primary mb-1 tracking-widest">Hito de Verificación</p>
-             <p className="text-xs text-slate-700 dark:text-slate-300 font-bold italic leading-tight">{hito}</p>
+           <div className="bg-primary/5 p-3 rounded-lg border-l-2 border-primary/40">
+             <p className="label-xs text-primary mb-1">Hito de Verificación</p>
+             <p className="text-xs text-slate-700 dark:text-slate-300 font-semibold italic leading-tight">{hito}</p>
            </div>
         )}
         <div className="flex items-center justify-between text-sm">
           <Badge 
             variant={status === "Completado" ? "default" : status === "En Proceso" ? "secondary" : "outline"}
-            className="rounded-sm px-2 py-0.5 text-[10px] uppercase font-black tracking-wider"
+            className="rounded-md px-2.5 py-1 text-xs font-bold tracking-wide"
           >
             {status}
           </Badge>
           <div className="flex items-baseline gap-1">
             <span className="text-xl font-black mono-data">{Math.round(progress)}</span>
-            <span className="text-[10px] font-bold text-muted-foreground">%</span>
+            <span className="text-xs font-bold text-muted-foreground">%</span>
           </div>
         </div>
-        <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 p-2 rounded-sm border border-border/50 text-xs">
-           <span className="font-medium text-muted-foreground">{completed}/{total} <span className="text-[9px] uppercase tracking-wider">Tareas</span></span>
-           <span className="font-medium text-muted-foreground"><span className="text-[9px] uppercase tracking-wider">Jornales:</span> {Math.round((progress / 100) * duracionEstimadaJornales)} / {duracionEstimadaJornales}</span>
+        <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-border/50 text-sm">
+           <span className="font-medium text-muted-foreground">{completed}/{total} <span className="label-xs">Tareas</span></span>
+           <span className="font-medium text-muted-foreground"><span className="label-xs">Jornales:</span> {Math.round((progress / 100) * duracionEstimadaJornales)} / {duracionEstimadaJornales}</span>
         </div>
         <SegmentedProgress value={progress} segments={12} className="h-2" />
 
@@ -136,7 +136,7 @@ function StageTasks({
                 <p className="text-sm text-muted-foreground">No hay tareas registradas.</p>
               ) : (
                 localTasks.map((task) => (
-                  <div key={task.id} className="flex items-start gap-3 rounded-md border p-3">
+                  <div key={task.id} className="flex items-start gap-3 rounded-lg border p-3">
                     <Checkbox
                       checked={task.estado === 'completada'}
                       onCheckedChange={(checked) =>
@@ -361,12 +361,12 @@ export default function TasksPage() {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.5)]" />
-            <span className="text-[10px] uppercase font-black text-primary tracking-[0.2em]">Gestión de Obra</span>
+            <span className="label-xs text-primary">Gestión de Obra</span>
           </div>
-          <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-slate-50 tracking-tighter uppercase italic">
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-50 tracking-tight">
             Panel de Tareas
           </h1>
-          <Badge variant="outline" className="border-border px-3 py-1 font-black mono-data text-[10px] uppercase tracking-widest bg-card">
+          <Badge variant="outline" className="border-border px-3 py-1.5 font-bold mono-data text-xs tracking-wide bg-card rounded-lg">
             {summary.proyecto.nombre}
           </Badge>
         </div>
@@ -377,25 +377,25 @@ export default function TasksPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm uppercase font-black text-muted-foreground tracking-widest">Resumen General</CardTitle>
+          <CardTitle className="label-xs">Resumen General</CardTitle>
           <CardDescription className="text-xs font-medium">Avance global del proyecto</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-baseline gap-2">
-             <span className="text-5xl font-black text-slate-900 dark:text-slate-50 mono-data tracking-tighter italic">
+             <span className="text-4xl md:text-5xl font-black text-slate-900 dark:text-slate-50 mono-data tracking-tighter">
                {summary.porcentajeAvance.toFixed(0)}
              </span>
              <span className="text-xl font-black text-primary mono-data">%</span>
           </div>
           <SegmentedProgress value={summary.porcentajeAvance} segments={20} className="h-3" />
-          <div className="flex justify-between items-center bg-slate-100/50 dark:bg-slate-900/50 p-3 rounded-sm border border-border/50 text-xs">
+          <div className="flex justify-between items-center bg-slate-100/50 dark:bg-slate-900/50 p-3 rounded-lg border border-border/50 text-sm">
              <div className="flex flex-col">
-               <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Jornales</span>
+               <span className="label-xs mb-1">Jornales</span>
                <span className="mono-data font-black">{Math.round(summary.jornalesCompletados)} / {summary.totalJornales}</span>
              </div>
              <div className="h-6 w-[1px] bg-border/50" />
              <div className="flex flex-col items-end">
-               <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Restantes</span>
+               <span className="label-xs mb-1">Restantes</span>
                <span className="mono-data font-black">{Math.max(0, Math.round(summary.totalJornales - summary.jornalesCompletados))}</span>
              </div>
           </div>

@@ -39,39 +39,39 @@ function RegisterForm() {
     <div className="flex items-center justify-center min-h-screen p-4">
       <form onSubmit={handleSubmit} className="glass-card p-8 w-full max-w-md space-y-6">
         <div className="space-y-2 text-center">
-          <h1 className="text-3xl font-black uppercase tracking-tighter text-slate-900 dark:text-slate-50">Crear Cuenta</h1>
-          <p className="text-xs text-muted-foreground uppercase tracking-widest">Registrate en ObraTracker</p>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-50">Crear Cuenta</h1>
+          <p className="text-xs text-muted-foreground tracking-wide">Registrate en ObraTracker</p>
         </div>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="nombre" className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Nombre</label>
+            <label htmlFor="nombre" className="label-sm">Nombre</label>
             <input
               id="nombre"
               type="text"
               placeholder="Tu nombre"
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              className="flex h-10 w-full rounded-sm border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-11 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="email" className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Email</label>
+            <label htmlFor="email" className="label-sm">Email</label>
             <input
               id="email"
               type="email"
               placeholder="ingeniero@obra.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="flex h-10 w-full rounded-sm border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-11 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="password" className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Contraseña</label>
+            <label htmlFor="password" className="label-sm">Contraseña</label>
             <PasswordInput
               id="password"
               placeholder="••••••••"
@@ -82,7 +82,7 @@ function RegisterForm() {
           </div>
         </div>
 
-        <button type="submit" className="w-full btn-industrial-primary shadow-lg shadow-primary/20 text-white">
+        <button type="submit" className="w-full btn-industrial-primary shadow-lg shadow-primary/20">
           Registrarme
         </button>
 
@@ -93,7 +93,7 @@ function RegisterForm() {
         </div>
 
         {message && (
-          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-sm text-destructive text-xs font-bold text-center">
+          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm font-semibold text-center">
             {message}
           </div>
         )}

@@ -82,11 +82,11 @@ function PrivateLayout({ children }: { children: React.ReactNode }) {
             <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-black uppercase tracking-tighter text-destructive uppercase">Error de Conexión</h2>
-            <p className="text-xs text-muted-foreground uppercase tracking-widest leading-relaxed">
+            <h2 className="text-xl font-black tracking-tight text-destructive">Error de Conexión</h2>
+            <p className="text-xs text-muted-foreground tracking-wide leading-relaxed">
               No se pudo conectar con la base de datos. Por favor, verifica las credenciales en el archivo .env.
             </p>
-            <div className="p-3 bg-muted rounded-sm mt-4">
+            <div className="p-3 bg-muted rounded-lg mt-4">
               <p className="text-[10px] font-mono text-muted-foreground break-all">{error}</p>
             </div>
           </div>
@@ -106,7 +106,7 @@ function PrivateLayout({ children }: { children: React.ReactNode }) {
           <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center animate-pulse">
             <DraftingCompass className="h-6 w-6 text-primary animate-spin" />
           </div>
-          <p className="text-xs uppercase font-black text-muted-foreground tracking-[0.2em] animate-pulse">
+          <p className="text-xs font-bold text-muted-foreground tracking-wide animate-pulse">
             Inicializando ObraTracker...
           </p>
         </div>
@@ -123,7 +123,7 @@ function PrivateLayout({ children }: { children: React.ReactNode }) {
           <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center animate-pulse">
             <DraftingCompass className="h-6 w-6 text-primary animate-spin" />
           </div>
-          <p className="text-xs uppercase font-black text-muted-foreground tracking-[0.2em] animate-pulse">
+          <p className="text-xs font-bold text-muted-foreground tracking-wide animate-pulse">
             Redirigiendo...
           </p>
         </div>
@@ -141,13 +141,13 @@ function PrivateLayout({ children }: { children: React.ReactNode }) {
             <Menu className="h-5 w-5" />
           </Button>
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-primary rounded-sm flex items-center justify-center shadow-lg shadow-primary/20 relative">
+            <div className="h-9 w-9 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/25 relative">
               <DraftingCompass className="h-5 w-5 text-primary-foreground" />
               {pendingCount > 0 && (
                 <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-primary border-2 border-background animate-pulse shadow-[0_0_5px_rgba(249,115,22,0.5)]" />
               )}
             </div>
-            <span className="text-lg font-black tracking-tight uppercase italic text-slate-900 dark:text-slate-50">ObraTracker</span>
+            <span className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-50">ObraTracker</span>
           </div>
           <div className="w-9" />
         </div>

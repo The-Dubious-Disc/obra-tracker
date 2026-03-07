@@ -41,27 +41,27 @@ function LoginForm() {
     <div className="flex items-center justify-center min-h-screen">
       <form onSubmit={handleSubmit} className="glass-card p-8 w-full max-w-md space-y-6">
         <div className="space-y-2 text-center">
-          <h1 className="text-3xl font-black uppercase tracking-tighter text-slate-900 dark:text-slate-50">Iniciar Sesión</h1>
-          <p className="text-xs text-muted-foreground uppercase tracking-widest">Acceso al Sistema de Obra</p>
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-50">Iniciar Sesión</h1>
+          <p className="text-xs text-muted-foreground tracking-wide">Acceso al Sistema de Obra</p>
         </div>
         
         <div className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="email" className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Email</label>
+            <label htmlFor="email" className="label-sm">Email</label>
             <input
               id="email"
               type="email"
               placeholder="ingeniero@obra.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="flex h-10 w-full rounded-sm border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-11 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               required
             />
           </div>
           <div className="space-y-2">
              <div className="flex items-center justify-between">
-              <label htmlFor="password" className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Contraseña</label>
-              <Link href="/recover-password" className="text-[10px] uppercase font-bold text-primary hover:underline tracking-widest">¿Olvidaste tu contraseña?</Link>
+              <label htmlFor="password" className="label-sm">Contraseña</label>
+              <Link href="/recover-password" className="text-xs font-semibold text-primary hover:underline">¿Olvidaste tu contraseña?</Link>
              </div>
             <PasswordInput
               id="password"
@@ -73,12 +73,12 @@ function LoginForm() {
           </div>
         </div>
 
-        <button type="submit" className="w-full btn-industrial-primary shadow-lg shadow-primary/20 text-white">
+        <button type="submit" className="w-full btn-industrial-primary shadow-lg shadow-primary/20">
           Ingresar
         </button>
         
         {registered && (
-          <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-sm text-green-600 text-xs font-bold text-center">
+          <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-600 text-sm font-semibold text-center">
             Registro exitoso. Iniciá sesión.
           </div>
         )}
@@ -90,7 +90,7 @@ function LoginForm() {
         </div>
 
         {message && (
-          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-sm text-destructive text-xs font-bold text-center">
+          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm font-semibold text-center">
             {message}
           </div>
         )}

@@ -34,10 +34,10 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
     <div className="w-64 border-r bg-background h-full p-4 flex flex-col shadow-lg md:shadow-none">
       <div className="mb-6 px-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 bg-primary rounded-sm flex items-center justify-center shadow-lg shadow-primary/20">
+          <div className="h-9 w-9 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/25">
             <DraftingCompass className="h-5 w-5 text-primary-foreground" />
           </div>
-          <h1 className="text-xl font-black tracking-tight uppercase italic text-slate-900 dark:text-slate-50">ObraTracker</h1>
+          <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-50">ObraTracker</h1>
         </div>
         <Button variant="ghost" size="icon" className="md:hidden" onClick={onClose}>
           <X className="h-4 w-4" />
@@ -47,14 +47,14 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       <nav className="space-y-2 flex-1">
         <Button 
           variant="ghost" 
-          className={cn("w-full justify-start gap-2", isActive('/') && "bg-primary/10 text-primary font-bold")} 
+          className={cn("w-full justify-start gap-2 h-10", isActive('/') && "bg-primary/10 text-primary font-bold border-l-2 border-primary")} 
           asChild
         >
           <Link href="/"><LayoutDashboard className="h-4 w-4" />Dashboard</Link>
         </Button>
         <Button 
           variant="ghost" 
-          className={cn("w-full justify-start gap-2", isActive('/pendientes') && "bg-primary/10 text-primary font-bold")} 
+          className={cn("w-full justify-start gap-2 h-10", isActive('/pendientes') && "bg-primary/10 text-primary font-bold border-l-2 border-primary")} 
           asChild
         >
           <Link href="/pendientes" className="flex items-center w-full">
@@ -67,21 +67,21 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         </Button>
         <Button 
           variant="ghost" 
-          className={cn("w-full justify-start gap-2", isActive('/builder') && "bg-primary/10 text-primary font-bold")} 
+          className={cn("w-full justify-start gap-2 h-10", isActive('/builder') && "bg-primary/10 text-primary font-bold border-l-2 border-primary")} 
           asChild
         >
           <Link href="/builder"><ClipboardList className="h-4 w-4" />Tareas</Link>
         </Button>
         <Button 
           variant="ghost" 
-          className={cn("w-full justify-start gap-2", isActive('/reportes') && "bg-primary/10 text-primary font-bold")} 
+          className={cn("w-full justify-start gap-2 h-10", isActive('/reportes') && "bg-primary/10 text-primary font-bold border-l-2 border-primary")} 
           asChild
         >
           <Link href="/reportes"><Camera className="h-4 w-4" />Reportes</Link>
         </Button>
         <Button 
           variant="ghost" 
-          className={cn("w-full justify-start gap-2", isActive('/planos') && "bg-primary/10 text-primary font-bold")} 
+          className={cn("w-full justify-start gap-2 h-10", isActive('/planos') && "bg-primary/10 text-primary font-bold border-l-2 border-primary")} 
           asChild
         >
           <Link href="/planos"><DraftingCompass className="h-4 w-4" />Planos</Link>
@@ -89,7 +89,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         {selectedProjectId && (
           <Button 
             variant="ghost" 
-            className={cn("w-full justify-start gap-2", isActive(`/projects/${selectedProjectId}/users`) && "bg-primary/10 text-primary font-bold")} 
+            className={cn("w-full justify-start gap-2 h-10", isActive(`/projects/${selectedProjectId}/users`) && "bg-primary/10 text-primary font-bold border-l-2 border-primary")} 
             asChild
           >
             <Link href={`/projects/${selectedProjectId}/users`}><Users className="h-4 w-4" />Equipo</Link>
@@ -100,7 +100,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
 
       <div className="space-y-4 px-2">
         <div className="space-y-2">
-          <div className="text-xs text-muted-foreground">Obra</div>
+          <div className="label-sm">Obra</div>
           <Select
             value={selectedProjectId || ""}
             onValueChange={(val) => setSelectedProjectId(val)}
