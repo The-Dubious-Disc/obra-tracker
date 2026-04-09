@@ -4,34 +4,86 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { ProjectSummary, Proyecto, PresupuestoVersion, Pago, Plano, Tarea, Pendiente } from '@/types/database.types'
 
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function isNetworkFetchError(error: unknown) {
+  if (!(error instanceof Error)) return false
+  const message = error.message.toLowerCase()
+  return (
+    error.name === 'TypeError' ||
+    message.includes('failed to fetch') ||
+    message.includes('fetch failed') ||
+    message.includes('networkerror')
+  )
+}
+
+async function tryParseJson(response: Response) {
+  try {
+    return await response.json()
+  } catch {
+    return null
+  }
+}
+
+async function fetchWithRetry(input: RequestInfo | URL, init?: RequestInit, options?: { retries?: number; retryDelayMs?: number }) {
+  const retries = options?.retries ?? 2
+  const retryDelayMs = options?.retryDelayMs ?? 500
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(input, init)
+
+      if (response.status >= 500 || response.status === 429) {
+        if (attempt < retries) {
+          await delay(retryDelayMs * (attempt + 1))
+          continue
+        }
+      }
+
+      return response
+    } catch (error) {
+      if (!isNetworkFetchError(error) || attempt >= retries) {
+        throw error
+      }
+
+      await delay(retryDelayMs * (attempt + 1))
+    }
+  }
+
+  throw new Error('No se pudo completar la solicitud')
+}
+
 async function uploadToR2(params: {
   projectId: string
   file: File
   kind: 'planos' | 'comprobantes' | 'adjuntos'
 }): Promise<string> {
-  const presignRes = await fetch('/api/upload', {
+  const presignRes = await fetchWithRetry('/api/upload', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
     body: JSON.stringify({
       projectId: params.projectId,
       filename: params.file.name,
       contentType: params.file.type || 'application/octet-stream',
       kind: params.kind,
     }),
-  })
+  }, { retries: 2, retryDelayMs: 600 })
 
   if (!presignRes.ok) {
-    const data = await presignRes.json()
+    const data = await tryParseJson(presignRes)
     throw new Error(data.error || 'No se pudo generar la URL de subida')
   }
 
   const { uploadUrl, key } = await presignRes.json()
 
-  const uploadRes = await fetch(uploadUrl, {
+  const uploadRes = await fetchWithRetry(uploadUrl, {
     method: 'PUT',
     headers: { 'Content-Type': params.file.type || 'application/octet-stream' },
     body: params.file,
-  })
+  }, { retries: 2, retryDelayMs: 700 })
 
   if (!uploadRes.ok) {
     throw new Error('No se pudo subir el archivo')
@@ -1076,59 +1128,40 @@ export function useCreateReporte() {
       for (let i = 0; i < params.files.length; i++) {
         const file = params.files[i]
 
-        // Get presigned upload URL
-        const presignRes = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            projectId: params.projectId,
-            filename: file.name,
-            contentType: file.type || 'application/octet-stream',
-            kind: 'adjuntos',
-          }),
+        const key = await uploadToR2({
+          projectId: params.projectId,
+          file,
+          kind: 'adjuntos',
         })
-
-        if (!presignRes.ok) {
-          const data = await presignRes.json()
-          throw new Error(data.error || 'No se pudo generar la URL de subida')
-        }
-
-        const { uploadUrl, key } = await presignRes.json()
-
-        // Upload the file
-        const uploadRes = await fetch(uploadUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': file.type || 'application/octet-stream' },
-          body: file,
-        })
-
-        if (!uploadRes.ok) {
-          throw new Error(`No se pudo subir la imagen: ${file.name}`)
-        }
 
         imagenes.push({ r2Key: key, nombre: file.name, orden: i })
       }
 
       // Create the report record
-      const response = await fetch(`/api/projects/${params.projectId}/reportes`, {
+      const response = await fetchWithRetry(`/api/projects/${params.projectId}/reportes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({
           descripcion: params.descripcion,
           fecha: params.fecha,
           imagenes,
         }),
-      })
+      }, { retries: 1, retryDelayMs: 700 })
 
       if (!response.ok) {
-        const data = await response.json()
+        const data = await tryParseJson(response)
         throw new Error(data.error || 'Error al crear reporte')
       }
 
       const result = await response.json()
       return result.id as string
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al crear reporte')
+      if (isNetworkFetchError(err)) {
+        setError('Error de red al enviar el reporte. Verificá la conexión y reintentá.')
+      } else {
+        setError(err instanceof Error ? err.message : 'Error al crear reporte')
+      }
       return null
     } finally {
       setIsCreating(false)
