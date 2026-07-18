@@ -377,6 +377,7 @@ export function usePayments(projectId: string | null): UsePaymentsResult {
 interface CreatePaymentParams {
   proyectoId: string
   etapaId: string | null
+  adicionalId?: string | null
   montoPagado: number
   moneda: string
   fechaPago: string
@@ -419,6 +420,7 @@ export function useCreatePayment(): UseCreatePaymentResult {
           body: JSON.stringify({
             proyectoId: params.proyectoId,
             etapaId: params.etapaId,
+            adicionalId: params.adicionalId,
             montoPagado: params.montoPagado,
             moneda: params.moneda,
             fechaPago: params.fechaPago,

@@ -99,7 +99,19 @@ function WelcomeScreen() {
   );
 }
 
-function PaymentSummary({ projectId, refreshKey, etapas, onPaymentCreated }: { projectId: string; refreshKey: number; etapas: { id: string; nombre: string; orden: number }[]; onPaymentCreated: () => void }) {
+function PaymentSummary({ 
+  projectId, 
+  refreshKey, 
+  etapas, 
+  adicionales = [], 
+  onPaymentCreated 
+}: { 
+  projectId: string; 
+  refreshKey: number; 
+  etapas: { id: string; nombre: string; orden: number }[]; 
+  adicionales?: { id: string; nombre: string }[];
+  onPaymentCreated: () => void 
+}) {
   const { payments, isLoading, refetch } = usePayments(projectId);
 
   React.useEffect(() => {
@@ -119,6 +131,7 @@ function PaymentSummary({ projectId, refreshKey, etapas, onPaymentCreated }: { p
         <RegisterPaymentDialog
           projectId={projectId}
           etapas={etapas}
+          adicionales={adicionales}
           onPaymentCreated={onPaymentCreated}
         >
           <Button size="icon" variant="ghost" className="h-6 w-6 text-primary hover:text-primary hover:bg-primary/10">
@@ -351,8 +364,8 @@ function DashboardContent() {
     );
   }
 
-  const { proyecto, etapas, totalPagado, porcentajeAvance, presupuestoActivo, totalJornales, jornalesCompletados } = data;
-  const montoTotal = Number(presupuestoActivo?.monto ?? proyecto.montoTotalActivo ?? proyecto.presupuestoTotalUsd ?? 0);
+  const { proyecto, etapas, adicionales = [], totalPagado, porcentajeAvance, presupuestoActivo, totalJornales, jornalesCompletados, presupuestoTotalCalculado } = data;
+  const montoTotal = Number(presupuestoTotalCalculado ?? presupuestoActivo?.monto ?? proyecto.montoTotalActivo ?? proyecto.presupuestoTotalUsd ?? 0);
   const totalPagadoNum = Number(totalPagado ?? 0);
   const pendiente = montoTotal - totalPagadoNum;
   const showMoney = role === 'admin';
@@ -478,15 +491,16 @@ function DashboardContent() {
              )}
              
              {showMoney && (
-               <div className="glass-card p-6 border-l-2 border-l-primary/30">
-                  <PaymentSummary 
-                    projectId={proyecto.id} 
-                    refreshKey={paymentsRefresh}
-                    etapas={etapas.map(e => ({ id: e.id, nombre: e.nombre, orden: e.orden }))}
-                    onPaymentCreated={() => { refetch(); setPaymentsRefresh(v => v + 1); }}
-                  />
-               </div>
-             )}
+                <div className="glass-card p-6 border-l-2 border-l-primary/30">
+                   <PaymentSummary 
+                     projectId={proyecto.id} 
+                     refreshKey={paymentsRefresh}
+                     etapas={etapas.map(e => ({ id: e.id, nombre: e.nombre, orden: e.orden }))}
+                     adicionales={adicionales.map(a => ({ id: a.id, nombre: a.nombre }))}
+                     onPaymentCreated={() => { refetch(); setPaymentsRefresh(v => v + 1); }}
+                   />
+                </div>
+              )}
            </div>
         </div>
 

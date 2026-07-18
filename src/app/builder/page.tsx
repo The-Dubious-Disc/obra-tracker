@@ -5,6 +5,7 @@
 import React, { useState } from 'react'
 import { useProjects, useProjectSummary, useStageTasks, useUpdateTask, useAddEtapa, useAddTask } from '@/hooks/useProject'
 import { useProjectSelection } from '@/contexts/ProjectContext'
+import { useUserRole } from '@/contexts/UserRoleContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
@@ -330,12 +331,86 @@ function AddStageDialog({ projectId, onCreated }: { projectId: string, onCreated
   )
 }
 
+function AdicionalesPanel({
+  adicionales,
+  canEdit,
+  onUpdated
+}: {
+  adicionales: Array<{ id: string; nombre: string; monto: number; completado: boolean }>;
+  canEdit: boolean;
+  onUpdated: () => void;
+}) {
+  const [localAdicionales, setLocalAdicionales] = useState(adicionales)
+
+  React.useEffect(() => {
+    setLocalAdicionales(adicionales)
+  }, [adicionales])
+
+  const handleToggle = async (id: string, currentStatus: boolean) => {
+    const previous = [...localAdicionales]
+    setLocalAdicionales(prev => prev.map(a => a.id === id ? { ...a, completado: !currentStatus } : a))
+
+    try {
+      const res = await fetch(`/api/adicionales/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completado: !currentStatus })
+      });
+      if (!res.ok) throw new Error('Error al actualizar adicional');
+      onUpdated();
+    } catch (err) {
+      setLocalAdicionales(previous)
+      alert(err instanceof Error ? err.message : 'Error al actualizar adicional');
+    }
+  };
+
+  if (adicionales.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader className="py-4 border-b">
+        <CardTitle className="text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100 uppercase">
+          Tareas Adicionales
+        </CardTitle>
+        <CardDescription className="text-xs">Items de obra adicionales al contrato principal</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3 pt-4">
+        {localAdicionales.map((ad) => (
+          <div key={ad.id} className="flex items-center gap-3 rounded-lg border p-4 bg-card shadow-sm hover:shadow-md transition-shadow">
+            <Checkbox
+              checked={ad.completado}
+              disabled={!canEdit}
+              onCheckedChange={() => handleToggle(ad.id, ad.completado)}
+            />
+            <div className="flex-1 flex justify-between items-center">
+              <div>
+                <p className={`text-sm font-semibold ${ad.completado ? 'line-through text-muted-foreground' : 'text-slate-800 dark:text-slate-200'}`}>
+                  {ad.nombre}
+                </p>
+                <p className="text-[11px] font-bold text-muted-foreground uppercase mt-0.5">
+                  Monto: <span className="mono-data">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(ad.monto)}</span>
+                </p>
+              </div>
+              <Badge variant={ad.completado ? 'default' : 'outline'} className="text-[10px] uppercase font-bold tracking-wide">
+                {ad.completado ? 'Completado' : 'Pendiente'}
+              </Badge>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function TasksPage() {
 
   const { projects, isLoading: projectsLoading } = useProjects()
   const { selectedProjectId } = useProjectSelection()
   const activeProjectId = selectedProjectId || (projects.length > 0 ? projects[0].id : null)
   const { data: summary, isLoading: summaryLoading, refetch } = useProjectSummary(activeProjectId)
+  const { role } = useUserRole()
+
+  const canEdit = role === 'admin' || role === 'editor'
 
   if (projectsLoading || summaryLoading) {
     return (
@@ -370,9 +445,11 @@ export default function TasksPage() {
             {summary.proyecto.nombre}
           </Badge>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <AddStageDialog projectId={summary.proyecto.id} onCreated={refetch} />
-        </div>
+        {canEdit && (
+          <div className="flex flex-col items-end gap-2">
+            <AddStageDialog projectId={summary.proyecto.id} onCreated={refetch} />
+          </div>
+        )}
       </div>
 
       <Card>
@@ -418,7 +495,12 @@ export default function TasksPage() {
         ))}
       </div>
 
-
+      {/* Tareas Adicionales */}
+      <AdicionalesPanel
+        adicionales={summary.adicionales.map(a => ({ ...a, monto: Number(a.monto) })) || []}
+        canEdit={canEdit}
+        onUpdated={refetch}
+      />
     </div>
   )
 }

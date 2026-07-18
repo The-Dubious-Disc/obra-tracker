@@ -180,6 +180,33 @@ export interface Database {
         }
         Relationships: []
       }
+      adicionales: {
+        Row: {
+          id: string
+          proyectoId: string
+          nombre: string
+          monto: number
+          completado: boolean
+          createdAt: string
+        }
+        Insert: {
+          id?: string
+          proyectoId: string
+          nombre: string
+          monto: number
+          completado?: boolean
+          createdAt?: string
+        }
+        Update: {
+          id?: string
+          proyectoId?: string
+          nombre?: string
+          monto?: number
+          completado?: boolean
+          createdAt?: string
+        }
+        Relationships: []
+      }
       pendientes: {
         Row: {
           id: string
@@ -218,6 +245,7 @@ export interface Database {
           id: string
           proyectoId: string
           etapaId: string | null
+          adicionalId: string | null
           montoPagado: number
           moneda: string
           fechaPago: string
@@ -231,6 +259,7 @@ export interface Database {
           id?: string
           proyectoId: string
           etapaId?: string | null
+          adicionalId?: string | null
           montoPagado: number
           moneda?: string
           fechaPago?: string
@@ -244,6 +273,7 @@ export interface Database {
           id?: string
           proyectoId?: string
           etapaId?: string | null
+          adicionalId?: string | null
           montoPagado?: number
           moneda?: string
           fechaPago?: string
@@ -440,6 +470,7 @@ export type AnotacionPlano = Database['public']['Tables']['anotaciones_planos'][
 export type ComentarioAnotacion = Database['public']['Tables']['comentarios_anotaciones']['Row']
 export type Invitacion = Database['public']['Tables']['invitaciones']['Row']
 export type ProyectoMiembro = Database['public']['Tables']['proyecto_miembros']['Row']
+export type Adicional = Database['public']['Tables']['adicionales']['Row']
 
 // Report types (not in Database interface yet, using schema inference)
 export interface Reporte {
@@ -475,9 +506,11 @@ export interface EtapaConProgreso extends Etapa {
 export interface ProjectSummary {
   proyecto: Proyecto
   etapas: EtapaConProgreso[]
+  adicionales: Adicional[]
   totalPagado: number
   porcentajeAvance: number
   totalJornales: number
   jornalesCompletados: number
   presupuestoActivo: PresupuestoVersion | null
+  presupuestoTotalCalculado: number
 }

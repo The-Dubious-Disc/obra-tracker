@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { LayoutDashboard, AlertCircle, ClipboardList, DraftingCompass, PlusCircle, Users, X, Camera } from 'lucide-react'
+import { LayoutDashboard, AlertCircle, ClipboardList, DraftingCompass, PlusCircle, Users, X, Camera, Coins } from 'lucide-react'
 import { useProjects, usePendingCount } from '@/hooks/useProject'
 import { useProjectSelection } from '@/contexts/ProjectContext'
 // role selector removed
@@ -51,6 +51,13 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           asChild
         >
           <Link href="/"><LayoutDashboard className="h-4 w-4" />Dashboard</Link>
+        </Button>
+        <Button 
+          variant="ghost" 
+          className={cn("w-full justify-start gap-2 h-10", isActive('/presupuesto') && "bg-primary/10 text-primary font-bold border-l-2 border-primary")} 
+          asChild
+        >
+          <Link href="/presupuesto"><Coins className="h-4 w-4" />Presupuesto</Link>
         </Button>
         <Button 
           variant="ghost" 

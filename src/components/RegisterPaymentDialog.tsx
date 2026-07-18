@@ -12,18 +12,27 @@ import { useCreatePayment } from '@/hooks/useProject';
 interface RegisterPaymentDialogProps {
   projectId: string;
   etapas: Array<{ id: string; nombre: string; orden: number }>;
+  adicionales?: Array<{ id: string; nombre: string }>;
   children: React.ReactNode;
   onPaymentCreated?: () => void;
 }
 
-export function RegisterPaymentDialog({ projectId, etapas, children, onPaymentCreated }: RegisterPaymentDialogProps) {
+export function RegisterPaymentDialog({ 
+  projectId, 
+  etapas, 
+  adicionales = [], 
+  children, 
+  onPaymentCreated 
+}: RegisterPaymentDialogProps) {
   const [open, setOpen] = useState(false);
+  const [imputationType, setImputationType] = useState<'etapa' | 'adicional'>('etapa');
   const [formData, setFormData] = useState({
     montoPagado: '',
     moneda: 'USD',
     fechaPago: format(new Date(), 'yyyy-MM-dd'),
     comentario: '',
     etapaId: 'none',
+    adicionalId: 'none',
   });
   const [comprobanteFile, setComprobanteFile] = useState<File | null>(null);
 
@@ -32,9 +41,13 @@ export function RegisterPaymentDialog({ projectId, etapas, children, onPaymentCr
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const selectedEtapaId = imputationType === 'etapa' && formData.etapaId !== 'none' ? formData.etapaId : null;
+    const selectedAdicionalId = imputationType === 'adicional' && formData.adicionalId !== 'none' ? formData.adicionalId : null;
+
     const success = await createPayment({
       proyectoId: projectId,
-      etapaId: formData.etapaId === 'none' ? null : formData.etapaId,
+      etapaId: selectedEtapaId,
+      adicionalId: selectedAdicionalId,
       montoPagado: parseFloat(formData.montoPagado),
       moneda: formData.moneda,
       fechaPago: formData.fechaPago,
@@ -50,7 +63,9 @@ export function RegisterPaymentDialog({ projectId, etapas, children, onPaymentCr
         fechaPago: format(new Date(), 'yyyy-MM-dd'),
         comentario: '',
         etapaId: 'none',
+        adicionalId: 'none',
       });
+      setImputationType('etapa');
       setComprobanteFile(null);
       onPaymentCreated?.();
     }
@@ -70,16 +85,16 @@ export function RegisterPaymentDialog({ projectId, etapas, children, onPaymentCr
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
+          <DialogTitle className="flex items-center gap-2 text-xl font-bold uppercase tracking-tight">
+            <DollarSign className="h-5 w-5 text-primary" />
             Registrar Pago
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="monto">Monto</Label>
+              <Label htmlFor="monto" className="text-xs uppercase font-bold text-muted-foreground">Monto (USD)</Label>
               <Input
                 id="monto"
                 type="number"
@@ -91,7 +106,7 @@ export function RegisterPaymentDialog({ projectId, etapas, children, onPaymentCr
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="moneda">Moneda</Label>
+              <Label htmlFor="moneda" className="text-xs uppercase font-bold text-muted-foreground">Moneda</Label>
               <Select value={formData.moneda} onValueChange={(value) => setFormData(prev => ({ ...prev, moneda: value }))}>
                 <SelectTrigger>
                   <SelectValue />
@@ -104,7 +119,7 @@ export function RegisterPaymentDialog({ projectId, etapas, children, onPaymentCr
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="fecha">Fecha de Pago</Label>
+            <Label htmlFor="fecha" className="text-xs uppercase font-bold text-muted-foreground">Fecha de Pago</Label>
             <Input
               id="fecha"
               type="date"
@@ -114,28 +129,71 @@ export function RegisterPaymentDialog({ projectId, etapas, children, onPaymentCr
             />
           </div>
 
+          {/* Imputación del pago */}
           <div className="space-y-2">
-            <Label htmlFor="etapa">Etapa (Opcional)</Label>
-            <Select value={formData.etapaId} onValueChange={(value) => setFormData(prev => ({ ...prev, etapaId: value }))}>
+            <Label className="text-xs uppercase font-bold text-muted-foreground">Imputar Pago a</Label>
+            <Select 
+              value={imputationType} 
+              onValueChange={(val: 'etapa' | 'adicional') => {
+                setImputationType(val);
+                setFormData(prev => ({ ...prev, etapaId: 'none', adicionalId: 'none' }));
+              }}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar etapa..." />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Sin etapa específica</SelectItem>
-                {etapas.map((etapa) => (
-                  <SelectItem key={etapa.id} value={etapa.id}>
-                    {etapa.orden}. {etapa.nombre}
-                  </SelectItem>
-                ))}
+                <SelectItem value="etapa">Etapa</SelectItem>
+                <SelectItem value="adicional">Adicional</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
+          {/* Select de Etapas */}
+          {imputationType === 'etapa' && (
+            <div className="space-y-2 animate-in slide-in-from-top-1 duration-200">
+              <Label htmlFor="etapa" className="text-xs uppercase font-bold text-muted-foreground">Seleccionar Etapa</Label>
+              <Select value={formData.etapaId} onValueChange={(value) => setFormData(prev => ({ ...prev, etapaId: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar etapa..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Seleccionar etapa...</SelectItem>
+                  {etapas.map((etapa) => (
+                    <SelectItem key={etapa.id} value={etapa.id}>
+                      {etapa.orden}. {etapa.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Select de Adicionales */}
+          {imputationType === 'adicional' && (
+            <div className="space-y-2 animate-in slide-in-from-top-1 duration-200">
+              <Label htmlFor="adicional" className="text-xs uppercase font-bold text-muted-foreground">Seleccionar Item Adicional</Label>
+              <Select value={formData.adicionalId} onValueChange={(value) => setFormData(prev => ({ ...prev, adicionalId: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar adicional..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Seleccionar adicional...</SelectItem>
+                  {adicionales.map((ad) => (
+                    <SelectItem key={ad.id} value={ad.id}>
+                      {ad.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
-            <Label htmlFor="comentario">Comentario</Label>
+            <Label htmlFor="comentario" className="text-xs uppercase font-bold text-muted-foreground">Comentario</Label>
             <Textarea
               id="comentario"
-              placeholder="Descripción del pago..."
+              placeholder="Descripción del pago o justificación..."
               value={formData.comentario}
               onChange={(e) => setFormData(prev => ({ ...prev, comentario: e.target.value }))}
               rows={3}
@@ -143,7 +201,7 @@ export function RegisterPaymentDialog({ projectId, etapas, children, onPaymentCr
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="comprobante">Comprobante (Opcional)</Label>
+            <Label htmlFor="comprobante" className="text-xs uppercase font-bold text-muted-foreground">Comprobante (Opcional)</Label>
             <div className="flex items-center gap-2">
               <Input
                 id="comprobante"
@@ -163,14 +221,14 @@ export function RegisterPaymentDialog({ projectId, etapas, children, onPaymentCr
               </Button>
             </div>
             {comprobanteFile && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Archivo seleccionado: {comprobanteFile.name}
               </p>
             )}
           </div>
 
           {error && (
-            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+            <div className="text-xs text-destructive bg-destructive/10 p-3 rounded-md font-bold text-center">
               {error}
             </div>
           )}
@@ -179,7 +237,7 @@ export function RegisterPaymentDialog({ projectId, etapas, children, onPaymentCr
             <Button type="button" variant="outline" onClick={() => setOpen(false)} className="flex-1">
               Cancelar
             </Button>
-            <Button type="submit" disabled={isCreating} className="flex-1">
+            <Button type="submit" disabled={isCreating} className="flex-1 btn-industrial-primary">
               {isCreating ? 'Registrando...' : 'Registrar Pago'}
             </Button>
           </div>

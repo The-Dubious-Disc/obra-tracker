@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
     const {
       proyectoId,
       etapaId,
+      adicionalId,
       montoPagado,
       moneda,
       fechaPago,
@@ -30,6 +31,13 @@ export async function POST(request: NextRequest) {
     if (!proyectoId || !montoPagado || !moneda || !fechaPago) {
       return NextResponse.json(
         { error: 'Missing required fields: proyectoId, montoPagado, moneda, fechaPago' },
+        { status: 400 }
+      );
+    }
+
+    if (etapaId && adicionalId) {
+      return NextResponse.json(
+        { error: 'Un pago no puede asociarse a una etapa y a un adicional simultáneamente' },
         { status: 400 }
       );
     }
@@ -46,7 +54,8 @@ export async function POST(request: NextRequest) {
 
     const result = await createPayment({
       proyectoId,
-      etapaId,
+      etapaId: etapaId || null,
+      adicionalId: adicionalId || null,
       montoPagado: parseFloat(montoPagado),
       moneda,
       fechaPago,

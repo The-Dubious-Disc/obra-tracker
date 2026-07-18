@@ -202,6 +202,10 @@ export default function PlanViewer({ planoId, imageUrl }: PlanViewerProps) {
               status={selectedPin.estado}
               onClose={() => setSelectedPin(null)}
               onStatusChange={(status) => updatePinStatus(selectedPin.id, status)}
+              onDelete={() => {
+                setPins((prev) => prev.filter((p) => p.id !== selectedPin.id));
+                setSelectedPin(null);
+              }}
             />
           </div>
         )}

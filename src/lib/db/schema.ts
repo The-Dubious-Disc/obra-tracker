@@ -68,6 +68,16 @@ export const tareas = pgTable('tareas', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
+// 5b. Adicionales (Adicionales al presupuesto contratado)
+export const adicionales = pgTable('adicionales', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  proyectoId: uuid('proyecto_id').references(() => proyectos.id, { onDelete: 'cascade' }).notNull(),
+  nombre: text('nombre').notNull(),
+  monto: decimal('monto', { precision: 12, scale: 2 }).notNull(),
+  completado: boolean('completado').default(false).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
 // 6. Pendientes
 export const pendientes = pgTable('pendientes', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -85,6 +95,7 @@ export const pagos = pgTable('pagos', {
   id: uuid('id').primaryKey().defaultRandom(),
   proyectoId: uuid('proyecto_id').references(() => proyectos.id, { onDelete: 'cascade' }).notNull(),
   etapaId: uuid('etapa_id').references(() => etapas.id, { onDelete: 'set null' }),
+  adicionalId: uuid('adicional_id').references(() => adicionales.id, { onDelete: 'set null' }),
   montoPagado: decimal('monto_pagado', { precision: 12, scale: 2 }).notNull(),
   moneda: text('moneda').notNull().default('USD'),
   fechaPago: date('fecha_pago').notNull().defaultNow(),
@@ -195,12 +206,38 @@ export type PasswordResetTokenSelect = typeof passwordResetTokens.$inferSelect;
 export type ReporteSelect = typeof reportes.$inferSelect;
 export type ReporteImagenSelect = typeof reporteImagenes.$inferSelect;
 export type ProyectoMiembroSelect = typeof proyectoMiembros.$inferSelect;
+export type AdicionalSelect = typeof adicionales.$inferSelect;
 
 // Relations
 export const proyectosRelations = relations(proyectos, ({ many }) => ({
   miembros: many(proyectoMiembros),
   invitaciones: many(invitaciones),
   reportes: many(reportes),
+  adicionales: many(adicionales),
+  pagos: many(pagos),
+}));
+
+export const adicionalesRelations = relations(adicionales, ({ one, many }) => ({
+  proyecto: one(proyectos, {
+    fields: [adicionales.proyectoId],
+    references: [proyectos.id],
+  }),
+  pagos: many(pagos),
+}));
+
+export const pagosRelations = relations(pagos, ({ one }) => ({
+  proyecto: one(proyectos, {
+    fields: [pagos.proyectoId],
+    references: [proyectos.id],
+  }),
+  etapa: one(etapas, {
+    fields: [pagos.etapaId],
+    references: [etapas.id],
+  }),
+  adicional: one(adicionales, {
+    fields: [pagos.adicionalId],
+    references: [adicionales.id],
+  }),
 }));
 
 export const reportesRelations = relations(reportes, ({ one, many }) => ({

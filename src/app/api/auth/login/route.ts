@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let { email, password } = validationResult.data;
-    email = email.trim().toLowerCase();
+    const { password } = validationResult.data;
+    const email = validationResult.data.email.trim().toLowerCase();
 
     const user = await db.query.usuarios.findFirst({
       where: eq(usuarios.email, email),

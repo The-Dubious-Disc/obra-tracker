@@ -31,7 +31,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { newAmount, note } = body;
+    const { newAmount, note, distributeProportionally } = body;
 
     if (!newAmount || typeof newAmount !== 'number' || newAmount < 0) {
       return NextResponse.json(
@@ -40,7 +40,7 @@ export async function PUT(
       );
     }
 
-    const result = await updateBudget(projectId, newAmount, note || 'Updated via API');
+    const result = await updateBudget(projectId, newAmount, note || 'Updated via API', Boolean(distributeProportionally));
 
     if (!result.success) {
       return NextResponse.json(

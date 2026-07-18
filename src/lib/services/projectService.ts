@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { pagos, proyectos, etapas, tareas, planos, presupuestoVersiones, proyectoMiembros, pendientes } from '@/lib/db/schema';
+import { pagos, proyectos, etapas, tareas, planos, presupuestoVersiones, proyectoMiembros, pendientes, adicionales } from '@/lib/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 
 // Projects & Summary
@@ -19,8 +19,9 @@ export async function getProjectSummary(projectId: string, userId?: string) {
 
     if (!project) return null;
 
-    // 2. Get Etapas
+    // 2. Get Etapas y Adicionales
     const stages = await db.select().from(etapas).where(eq(etapas.proyectoId, projectId)).orderBy(etapas.orden);
+    const adicionalesList = await db.select().from(adicionales).where(eq(adicionales.proyectoId, projectId));
 
     // 3. Aggregate data per stage
     const etapasWithProgress = await Promise.all(stages.map(async (etapa) => {
@@ -47,12 +48,14 @@ export async function getProjectSummary(projectId: string, userId?: string) {
     const allPayments = await db.select().from(pagos).where(eq(pagos.proyectoId, projectId));
     const totalPagado = allPayments.reduce((sum, p) => sum + Number(p.montoPagado), 0);
     
-    // Weighted progress based on jornales
-    const totalJornales = etapasWithProgress.reduce((sum, e) => sum + (e.duracionEstimadaJornales || 0), 0);
+    // Weighted progress based on jornales (each additional weighs 5 jornales)
+    const ADDITIONAL_JORNALES_WEIGHT = 5;
+    const totalJornalesEtapas = etapasWithProgress.reduce((sum, e) => sum + (e.duracionEstimadaJornales || 0), 0);
+    const totalJornales = totalJornalesEtapas + (adicionalesList.length * ADDITIONAL_JORNALES_WEIGHT);
+    
     const weightedProgress = totalJornales > 0 
-      ? etapasWithProgress.reduce((acc, curr) => {
-          return acc + (curr.porcentajeCompletado * (curr.duracionEstimadaJornales || 0) / totalJornales);
-        }, 0)
+      ? (etapasWithProgress.reduce((acc, curr) => acc + (curr.porcentajeCompletado * (curr.duracionEstimadaJornales || 0)), 0) +
+         adicionalesList.reduce((acc, curr) => acc + ((curr.completado ? 100 : 0) * ADDITIONAL_JORNALES_WEIGHT), 0)) / totalJornales
       : 0;
 
     const jornalesCompletados = totalJornales > 0
@@ -63,14 +66,20 @@ export async function getProjectSummary(projectId: string, userId?: string) {
       where: and(eq(presupuestoVersiones.proyectoId, projectId), eq(presupuestoVersiones.esActiva, true)),
     });
 
+    const montoEtapas = stages.reduce((sum, e) => sum + Number(e.montoEtapa), 0);
+    const montoAdicionales = adicionalesList.reduce((sum, a) => sum + Number(a.monto), 0);
+    const presupuestoTotalCalculado = montoEtapas + montoAdicionales;
+
     return {
       proyecto: project,
       etapas: etapasWithProgress,
+      adicionales: adicionalesList,
       totalPagado,
       porcentajeAvance: weightedProgress,
       totalJornales,
       jornalesCompletados,
       presupuestoActivo: activeBudget || null,
+      presupuestoTotalCalculado,
     };
 
   } catch (error) {
@@ -92,6 +101,7 @@ export async function getStageTasks(etapaId: string) {
 export async function createPayment(data: {
   proyectoId: string;
   etapaId: string | null;
+  adicionalId: string | null;
   montoPagado: number;
   moneda: string;
   fechaPago: string;
@@ -102,6 +112,7 @@ export async function createPayment(data: {
     const [newPayment] = await db.insert(pagos).values({
       proyectoId: data.proyectoId,
       etapaId: data.etapaId,
+      adicionalId: data.adicionalId,
       montoPagado: data.montoPagado.toString(),
       moneda: data.moneda,
       fechaPago: data.fechaPago,
@@ -127,11 +138,14 @@ export async function getProjectPayments(proyectoId: string) {
       comentario: pagos.comentario,
       etapaId: pagos.etapaId,
       etapaNombre: etapas.nombre,
+      adicionalId: pagos.adicionalId,
+      adicionalNombre: adicionales.nombre,
       estado: pagos.estado,
       comprobanteUrl: pagos.comprobanteUrl
     })
     .from(pagos)
     .leftJoin(etapas, eq(pagos.etapaId, etapas.id))
+    .leftJoin(adicionales, eq(pagos.adicionalId, adicionales.id))
     .where(eq(pagos.proyectoId, proyectoId))
     .orderBy(desc(pagos.fechaPago));
 
@@ -374,7 +388,8 @@ export async function getBudgetHistory(projectId: string) {
 export async function updateBudget(
   projectId: string, 
   newAmount: number, 
-  note: string
+  note: string,
+  distributeProportionally: boolean = false
 ) {
   try {
     // Deactivate current active budget
@@ -395,10 +410,79 @@ export async function updateBudget(
       .set({ montoTotalActivo: newAmount.toString(), updatedAt: new Date() })
       .where(eq(proyectos.id, projectId));
 
+    // Si se requiere redistribuir proporcionalmente en las etapas existentes
+    if (distributeProportionally) {
+      const stagesList = await db.select().from(etapas).where(eq(etapas.proyectoId, projectId));
+      for (const stage of stagesList) {
+        const newMontoEtapa = (newAmount * (Number(stage.porcentajeTotal) / 100)).toFixed(2);
+        await db.update(etapas)
+          .set({ montoUsd: newMontoEtapa, montoEtapa: newMontoEtapa })
+          .where(eq(etapas.id, stage.id));
+      }
+    }
+
     return { success: true };
   } catch (error) {
     console.error('Error in updateBudget:', error);
     return { success: false, error: 'Database error' };
+  }
+}
+
+// Adicionales Services
+export async function getAdicionales(projectId: string) {
+  try {
+    return await db.select().from(adicionales).where(eq(adicionales.proyectoId, projectId)).orderBy(desc(adicionales.createdAt));
+  } catch (error) {
+    console.error('Error in getAdicionales:', error);
+    return [];
+  }
+}
+
+export async function createAdicional(projectId: string, data: { nombre: string; monto: number }) {
+  try {
+    const [newAdicional] = await db.insert(adicionales).values({
+      proyectoId: projectId,
+      nombre: data.nombre,
+      monto: data.monto.toString(),
+      completado: false,
+    }).returning();
+    return { success: true, adicionalId: newAdicional.id };
+  } catch (error) {
+    console.error('Error in createAdicional:', error);
+    return { success: false, error: 'Database error' };
+  }
+}
+
+export async function updateAdicionalCompletado(adicionalId: string, completado: boolean) {
+  try {
+    await db.update(adicionales)
+      .set({ completado })
+      .where(eq(adicionales.id, adicionalId));
+    return { success: true };
+  } catch (error) {
+    console.error('Error in updateAdicionalCompletado:', error);
+    return { success: false, error: 'Database error' };
+  }
+}
+
+export async function deleteAdicional(adicionalId: string) {
+  try {
+    await db.delete(adicionales).where(eq(adicionales.id, adicionalId));
+    return { success: true };
+  } catch (error) {
+    console.error('Error in deleteAdicional:', error);
+    return { success: false, error: 'Database error' };
+  }
+}
+
+export async function getAdicionalById(adicionalId: string) {
+  try {
+    return await db.query.adicionales.findFirst({
+      where: eq(adicionales.id, adicionalId),
+    });
+  } catch (error) {
+    console.error('Error in getAdicionalById:', error);
+    return null;
   }
 }
 
