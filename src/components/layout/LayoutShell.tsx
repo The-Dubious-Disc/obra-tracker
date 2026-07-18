@@ -14,10 +14,15 @@ const PUBLIC_PREFIXES = ['/invitations']
 export function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname) || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))
 
   useEffect(() => {
-    if (isPublicRoute) return
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted || isPublicRoute) return
 
     let cancelled = false
     async function checkAuth() {
@@ -39,7 +44,12 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [isPublicRoute, pathname, router])
+  }, [mounted, isPublicRoute, pathname, router])
+
+  // Before mount, render a minimal shell to avoid hydration mismatch
+  if (!mounted) {
+    return <main className="min-h-screen bg-background">{children}</main>
+  }
 
   if (isPublicRoute) {
     return <main className="min-h-screen bg-background">{children}</main>

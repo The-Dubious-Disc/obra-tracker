@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllProjects, createProject } from '@/lib/services/projectService';
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
 import { createProjectSchema } from '@/lib/schemas';
 
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('userId')?.value;
+    const headersList = await headers();
+    const userId = headersList.get('x-user-id');
 
     if (!userId) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
@@ -25,8 +25,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('userId')?.value;
+    const headersList = await headers();
+    const userId = headersList.get('x-user-id');
 
     if (!userId) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });

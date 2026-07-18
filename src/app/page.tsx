@@ -85,11 +85,14 @@ function DashboardError({ error, onRetry }: { error: string; onRetry: () => void
 
 function WelcomeScreen() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[500px] space-y-6 text-center">
-      <div className="space-y-2">
-        <h2 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Obra Tracker</h2>
-        <p className="text-muted-foreground max-w-lg text-lg">
-          Tu centro de control de ingeniería. Crea un proyecto en el menú lateral para comenzar el seguimiento técnico.
+    <div className="flex flex-col items-center justify-center min-h-[500px] space-y-6 text-center animate-in zoom-in-95 duration-700">
+      <div className="relative p-12 glass-card border-primary/20 bg-card/40 backdrop-blur-xl max-w-2xl mx-auto">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent rounded-xl -z-10" />
+        <h2 className="text-5xl font-black tracking-tight text-slate-900 dark:text-slate-50 mb-4 bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-500 dark:from-slate-50 dark:to-slate-400">
+          Obra Tracker
+        </h2>
+        <p className="text-muted-foreground text-lg leading-relaxed">
+          Tu centro de control de ingeniería avanzado. Selecciona o crea un proyecto en el menú lateral para iniciar la gestión.
         </p>
       </div>
     </div>

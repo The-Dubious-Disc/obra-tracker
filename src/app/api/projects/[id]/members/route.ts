@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { proyectoMiembros, usuarios } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
 
 export async function GET(
   request: NextRequest,
@@ -10,8 +10,8 @@ export async function GET(
 ) {
   try {
     const { id: projectId } = await params;
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('userId')?.value;
+    const headersList = await headers();
+    const userId = headersList.get('x-user-id');
 
     if (!userId) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
@@ -58,8 +58,8 @@ export async function PATCH(
     const { id: projectId } = await params;
     const body = await request.json();
     const { memberId, rol } = body;
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('userId')?.value;
+    const headersList = await headers();
+    const userId = headersList.get('x-user-id');
 
     if (!userId) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });

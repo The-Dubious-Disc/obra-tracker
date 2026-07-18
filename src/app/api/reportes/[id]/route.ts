@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
 import { db } from '@/lib/db';
 import { reportes, reporteImagenes } from '@/lib/db/schema';
 import { checkProjectAccess } from '@/lib/services/authService';
@@ -12,8 +12,8 @@ export async function GET(
 ) {
   try {
     const { id: reporteId } = await params;
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('userId')?.value;
+    const headersList = await headers();
+    const userId = headersList.get('x-user-id');
     if (!userId) {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
     }
@@ -67,8 +67,8 @@ export async function DELETE(
 ) {
   try {
     const { id: reporteId } = await params;
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('userId')?.value;
+    const headersList = await headers();
+    const userId = headersList.get('x-user-id');
     if (!userId) {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
     }

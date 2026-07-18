@@ -1,25 +1,28 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 
-function LoginForm() {
+export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const registered = searchParams.get('registered');
-  const redirectParam = searchParams.get('redirect');
-  const emailParam = searchParams.get('email');
-
-  const [email, setEmail] = useState(emailParam || '');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
+  const [registered, setRegistered] = useState(false);
+  const [redirectParam, setRedirectParam] = useState('');
 
-  // keep email in sync with query param
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const emailParam = searchParams.get('email');
+    const registeredParam = searchParams.get('registered');
+    const redirect = searchParams.get('redirect');
+
     if (emailParam) setEmail(emailParam);
-  }, [emailParam]);
+    if (registeredParam === '1') setRegistered(true);
+    if (redirect) setRedirectParam(redirect);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +88,7 @@ function LoginForm() {
         
         <div className="text-center">
           <p className="text-xs text-muted-foreground">
-            ¿No tenés cuenta? <Link href={`/register${redirectParam || emailParam ? `?${new URLSearchParams({ ...(redirectParam ? { redirect: redirectParam } : {}), ...(emailParam ? { email: emailParam } : {}) }).toString()}` : ''}`} className="font-bold text-primary hover:underline">Registrate</Link>
+            ¿No tenés cuenta? <Link href={`/register${redirectParam || email ? `?${new URLSearchParams({ ...(redirectParam ? { redirect: redirectParam } : {}), ...(email ? { email: email } : {}) }).toString()}` : ''}`} className="font-bold text-primary hover:underline">Registrate</Link>
           </p>
         </div>
 
@@ -96,13 +99,5 @@ function LoginForm() {
         )}
       </form>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={null}>
-      <LoginForm />
-    </Suspense>
   );
 }

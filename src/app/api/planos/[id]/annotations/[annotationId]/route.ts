@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { anotacionesPlanos, planos } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
 import { checkProjectAccess } from '@/lib/services/authService';
 
 export async function PATCH(
@@ -11,8 +11,8 @@ export async function PATCH(
 ) {
   try {
     const { id: planoId, annotationId } = await params;
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('userId')?.value;
+    const headersList = await headers();
+    const userId = headersList.get('x-user-id');
 
     if (!userId) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });

@@ -6,6 +6,7 @@ import { verifyPassword } from '@/lib/services/authService';
 import { cookies } from 'next/headers';
 import { loginSchema } from '@/lib/schemas';
 import { checkRateLimit } from '@/lib/middleware/rateLimit';
+import { signToken } from '@/lib/auth/jwt';
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +30,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, password } = validationResult.data;
+    let { email, password } = validationResult.data;
+    email = email.trim().toLowerCase();
 
     const user = await db.query.usuarios.findFirst({
       where: eq(usuarios.email, email),
@@ -40,7 +42,8 @@ export async function POST(request: NextRequest) {
     }
 
     const cookieStore = await cookies();
-    cookieStore.set('userId', user.id, {
+    const token = await signToken({ userId: user.id, rol: (user.rol as "admin" | "editor" | "viewer" | "cliente" | "constructor") ?? 'viewer', nombre: user.nombre });
+    cookieStore.set('session', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

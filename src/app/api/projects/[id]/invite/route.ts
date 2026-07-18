@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createInvitation, checkProjectRole } from '@/lib/services/authService';
 import { getProjectSummary } from '@/lib/services/projectService';
 import { sendProjectInvitationEmail } from '@/lib/services/emailService';
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: projectId } = await params;
     const { email, rol } = await request.json();
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('userId')?.value;
+    const headersList = await headers();
+    const userId = headersList.get('x-user-id');
 
     if (!userId) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });

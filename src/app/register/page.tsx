@@ -1,20 +1,26 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 
-function RegisterForm() {
-  const searchParams = useSearchParams();
-  const emailParam = searchParams.get('email') || '';
-  const redirectParam = searchParams.get('redirect');
-
+export default function RegisterPage() {
   const [nombre, setNombre] = useState('');
-  const [email, setEmail] = useState(emailParam);
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
+  const [redirectParam, setRedirectParam] = useState('');
   const router = useRouter();
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const emailParam = searchParams.get('email');
+    const redirect = searchParams.get('redirect');
+
+    if (emailParam) setEmail(emailParam);
+    if (redirect) setRedirectParam(redirect);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,13 +105,5 @@ function RegisterForm() {
         )}
       </form>
     </div>
-  );
-}
-
-export default function RegisterPage() {
-  return (
-    <Suspense fallback={null}>
-      <RegisterForm />
-    </Suspense>
   );
 }

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
 import { checkProjectRole } from '@/lib/services/authService';
 import { createPayment } from '@/lib/services/projectService';
 
 export async function POST(request: NextRequest) {
   try {
     // Verificar autenticación
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('userId')?.value;
+    const headersList = await headers();
+    const userId = headersList.get('x-user-id');
 
     if (!userId) {
       return NextResponse.json(

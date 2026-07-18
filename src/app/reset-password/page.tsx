@@ -1,15 +1,13 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 
-function ResetPasswordForm() {
-  const searchParams = useSearchParams();
+export default function ResetPasswordPage() {
   const router = useRouter();
-  const token = searchParams.get('token');
-
+  const [token, setToken] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -17,10 +15,14 @@ function ResetPasswordForm() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (!token) {
+    const searchParams = new URLSearchParams(window.location.search);
+    const tokenParam = searchParams.get('token');
+    if (tokenParam) {
+      setToken(tokenParam);
+    } else {
       setError('Token de recuperación faltante o inválido.');
     }
-  }, [token]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +64,15 @@ function ResetPasswordForm() {
     }
   };
 
-  if (!token && !error) return null;
+  if (!token && !error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="glass-card w-full max-w-md p-8 space-y-6 text-center">
+          <p className="text-xs text-muted-foreground animate-pulse">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -88,40 +98,42 @@ function ResetPasswordForm() {
             </p>
           </div>
         ) : (
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
-                  Nueva Contraseña
-                </label>
-                <PasswordInput
-                  id="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+          token && (
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="password" className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
+                    Nueva Contraseña
+                  </label>
+                  <PasswordInput
+                    id="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="confirmPassword" className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
+                    Confirmar Contraseña
+                  </label>
+                  <PasswordInput
+                    id="confirmPassword"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <label htmlFor="confirmPassword" className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
-                  Confirmar Contraseña
-                </label>
-                <PasswordInput
-                  id="confirmPassword"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-              </div>
-            </div>
 
-            <button
-              type="submit"
-              disabled={isLoading || !!error}
-              className="w-full btn-industrial-primary shadow-lg shadow-primary/20 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? 'Guardando...' : 'Restablecer Contraseña'}
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={isLoading || !!error}
+                className="w-full btn-industrial-primary shadow-lg shadow-primary/20 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? 'Guardando...' : 'Restablecer Contraseña'}
+              </button>
+            </form>
+          )
         )}
 
         <div className="text-center mt-4">
@@ -131,13 +143,5 @@ function ResetPasswordForm() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function ResetPasswordPage() {
-  return (
-    <Suspense fallback={<div>Cargando...</div>}>
-      <ResetPasswordForm />
-    </Suspense>
   );
 }

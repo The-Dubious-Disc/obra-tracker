@@ -3,7 +3,7 @@ import { addTask, getStageTasks } from '@/lib/services/projectService';
 import { db } from '@/lib/db';
 import { etapas } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
 import { checkProjectAccess, checkProjectRole } from '@/lib/services/authService';
 
 async function getEtapaProjectId(etapaId: string): Promise<string | null> {
@@ -17,8 +17,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('userId')?.value;
+    const headersList = await headers();
+    const userId = headersList.get('x-user-id');
     if (!userId) {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
     }
@@ -47,8 +47,8 @@ export async function POST(
 ) {
   try {
     const { id: etapaId } = await params;
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('userId')?.value;
+    const headersList = await headers();
+    const userId = headersList.get('x-user-id');
     if (!userId) {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
     }

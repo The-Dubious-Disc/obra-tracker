@@ -1,7 +1,6 @@
 'use client'
 
 import { createContext, useContext, useMemo, useState, useEffect, useCallback } from 'react'
-import { usePathname } from 'next/navigation'
 import { Proyecto } from '@/types/database.types'
 
 const PUBLIC_ROUTES = ['/login', '/register', '/recover-password', '/reset-password']
@@ -22,7 +21,6 @@ const ProjectContext = createContext<ProjectContextValue | undefined>(undefined)
 const STORAGE_KEY = 'obra_tracker_selected_project_id';
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const [projects, setProjects] = useState<Proyecto[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -31,8 +29,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
   // Initialization: fetch projects and validate stored ID
   const initialize = useCallback(async () => {
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : ''
     // If we are on a public route, don't fetch projects
-    if (PUBLIC_ROUTES.includes(pathname) || PUBLIC_PREFIXES.some(p => pathname.startsWith(p))) {
+    if (PUBLIC_ROUTES.includes(currentPath) || PUBLIC_PREFIXES.some(p => currentPath.startsWith(p))) {
        setIsInitialized(true)
        setIsLoading(false)
        return
@@ -82,7 +81,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       setIsInitialized(true)
       setIsLoading(false)
     }
-  }, [pathname])
+  }, [])
 
   useEffect(() => {
     initialize()

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProjectSummary } from '@/lib/services/projectService';
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
 
 export async function GET(
   request: NextRequest,
@@ -8,8 +8,8 @@ export async function GET(
 ) {
   try {
     const { id: projectId } = await params;
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('userId')?.value;
+    const headersList = await headers();
+    const userId = headersList.get('x-user-id');
 
     if (!userId) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });

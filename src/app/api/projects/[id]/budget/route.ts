@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateBudget } from '@/lib/services/projectService';
 import { checkProjectRole } from '@/lib/services/authService';
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
 
 export async function PUT(
   request: NextRequest,
@@ -9,8 +9,8 @@ export async function PUT(
 ) {
   try {
     // Verificar autenticación
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('userId')?.value;
+    const headersList = await headers();
+    const userId = headersList.get('x-user-id');
 
     if (!userId) {
       return NextResponse.json(

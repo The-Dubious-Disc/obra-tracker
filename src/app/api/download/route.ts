@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
 import { checkProjectAccess } from '@/lib/services/authService';
 import { getPresignedDownloadUrl } from '@/lib/services/r2';
 
@@ -18,8 +18,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing key' }, { status: 400 });
     }
 
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('userId')?.value;
+    const headersList = await headers();
+    const userId = headersList.get('x-user-id');
     if (!userId) {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
     }

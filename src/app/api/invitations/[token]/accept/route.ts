@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { acceptInvitation } from '@/lib/services/authService';
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
     const { token } = await params;
-    const cookieStore = await cookies();
-    const usuarioId = cookieStore.get('userId')?.value;
+    const headersList = await headers();
+    const usuarioId = headersList.get('x-user-id');
 
     if (!usuarioId) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });

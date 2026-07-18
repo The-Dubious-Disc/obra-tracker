@@ -24,6 +24,7 @@
     "date-fns": "^4.1.0",
     "drizzle-orm": "0.45.1",
     "express-rate-limit": "^8.2.1",
+    "jose": "^6.2.3",
     "lucide-react": "^0.563.0",
     "next": "^15.5.12",
     "postcss": "8.4.31",
