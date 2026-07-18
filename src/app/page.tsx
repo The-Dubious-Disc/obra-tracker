@@ -168,7 +168,17 @@ function PaymentSummary({
   );
 }
 
-function BudgetHistoryCard({ projectId, presupuestoActivo, onUpdated }: { projectId: string; presupuestoActivo?: { monto: number; id: string; fechaCreacion?: string; fecha_creacion?: string } | null; onUpdated: () => void }) {
+function BudgetHistoryCard({ 
+  projectId, 
+  presupuestoActivo, 
+  adicionales = [], 
+  onUpdated 
+}: { 
+  projectId: string; 
+  presupuestoActivo?: { monto: number; id: string; fechaCreacion?: string; fecha_creacion?: string } | null; 
+  adicionales?: { id: string; monto: number }[];
+  onUpdated: () => void 
+}) {
   const { history,  refetch } = useBudgetHistory(projectId);
   const { updateProjectBudget, isUpdating,  } = useBudgetUpdate();
   const [open, setOpen] = useState(false);
@@ -231,8 +241,22 @@ function BudgetHistoryCard({ projectId, presupuestoActivo, onUpdated }: { projec
             <div className="absolute top-0 right-0 p-1 opacity-20">
               <Wallet className="h-8 w-8 text-primary" />
             </div>
-            <p className="label-xs text-primary mb-1">Presupuesto Actual</p>
-            <p className="mono-data text-2xl font-black text-slate-900 dark:text-slate-100 leading-none">{formatCurrency(Number(presupuestoActivo.monto), 'USD')}</p>
+            <p className="label-xs text-primary mb-1">Presupuesto Contractual (Base)</p>
+            <p className="mono-data text-2xl font-black text-slate-900 dark:text-slate-100 leading-none mb-3">
+              {formatCurrency(Number(presupuestoActivo.monto), 'USD')}
+            </p>
+            
+            <p className="label-xs text-amber-600 dark:text-amber-500 mb-1">Adicionales / Extras</p>
+            <p className="mono-data text-base font-bold text-slate-800 dark:text-slate-200 leading-none mb-3">
+              + {formatCurrency(adicionales.reduce((sum, a) => sum + Number(a.monto), 0), 'USD')}
+            </p>
+
+            <div className="border-t border-primary/20 pt-2 mt-2">
+              <p className="label-xs text-primary font-bold mb-1">Presupuesto Total Activo</p>
+              <p className="mono-data text-2xl font-black text-primary leading-none">
+                {formatCurrency(Number(presupuestoActivo.monto) + adicionales.reduce((sum, a) => sum + Number(a.monto), 0), 'USD')}
+              </p>
+            </div>
           </div>
         )}
 
@@ -480,15 +504,16 @@ function DashboardContent() {
            
             {/* Secciones de Soporte (Presupuesto y Pagos) */}
            <div className="space-y-6">
-             {showMoney && (
-               <div className="glass-card p-6 border-l-2 border-l-primary/30">
-                  <BudgetHistoryCard 
-                    projectId={proyecto.id} 
-                    presupuestoActivo={presupuestoActivo} 
-                    onUpdated={() => { refetch(); setPaymentsRefresh(v => v + 1); }} 
-                  />
-               </div>
-             )}
+              {showMoney && (
+                <div className="glass-card p-6 border-l-2 border-l-primary/30">
+                   <BudgetHistoryCard 
+                     projectId={proyecto.id} 
+                     presupuestoActivo={presupuestoActivo} 
+                     adicionales={adicionales.map(a => ({ id: a.id, monto: Number(a.monto) }))}
+                     onUpdated={() => { refetch(); setPaymentsRefresh(v => v + 1); }} 
+                   />
+                </div>
+              )}
              
              {showMoney && (
                 <div className="glass-card p-6 border-l-2 border-l-primary/30">
