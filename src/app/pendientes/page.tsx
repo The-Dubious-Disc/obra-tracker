@@ -1,198 +1,162 @@
 'use client'
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useProjectSelection } from '@/contexts/ProjectContext'
-import { usePendientes, useCreatePendiente, useUpdatePendiente, useDeletePendiente } from '@/hooks/useProject'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { usePendientes, useUpdatePendiente, useDeletePendiente } from '@/hooks/useProject'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Calendar, Trash2, Plus, Loader2 } from 'lucide-react'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import type { Pendiente } from '@/types/database.types'
+import { Badge } from '@/components/ui/badge'
+import { Calendar, FileDown, ImageIcon, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ImageLightbox } from '@/components/reportes/ImageLightbox'
+import { PendienteFormDialog } from '@/components/pendientes/PendienteFormDialog'
+import { estadoPendienteLabel, formatCalendarDate, isOverdue, todayIsoDate } from '@/lib/pendientes/format'
+import type { PendienteConFotos, PendienteFoto } from '@/types/database.types'
 
-function formatDate(date: string) {
-  try {
-    return new Date(date).toLocaleDateString('es-UY')
-  } catch {
-    return date
-  }
+function dueValue(pendiente: PendienteConFotos) {
+  const raw = pendiente.fechaVencimiento
+    ?? (pendiente as unknown as { fecha_vencimiento?: string }).fecha_vencimiento
+  return typeof raw === 'string' ? raw : ''
 }
 
 export default function PendientesPage() {
-  const { selectedProjectId } = useProjectSelection()
+  const { selectedProjectId, projects } = useProjectSelection()
   const { pendientes, isLoading, error, refetch } = usePendientes(selectedProjectId)
-  const { createPendiente, isCreating } = useCreatePendiente()
   const { updatePendiente } = useUpdatePendiente()
   const { deletePendiente } = useDeletePendiente()
 
-  const [modalOpen, setModalOpen] = useState(false)
-  const [titulo, setTitulo] = useState('')
-  const [descripcion, setDescripcion] = useState('')
-  const [fechaVencimiento, setFechaVencimiento] = useState('')
   const [showCompleted, setShowCompleted] = useState(false)
+  const [localPendientes, setLocalPendientes] = useState<PendienteConFotos[]>([])
+  const [form, setForm] = useState<{ mode: 'create' | 'edit'; pendiente: PendienteConFotos | null } | null>(null)
+  const [lightbox, setLightbox] = useState<{ fotos: PendienteFoto[]; index: number } | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const hoy = todayIsoDate()
 
-  // Local state for optimistic updates
-  const [localPendientes, setLocalPendientes] = useState<Pendiente[]>([])
+  const projectName = projects.find((project) => project.id === selectedProjectId)?.nombre
 
-  // Sync local state when server data arrives
   useEffect(() => {
     setLocalPendientes(pendientes)
   }, [pendientes])
 
+  useEffect(() => {
+    if (!form?.pendiente) return
+    const fresh = localPendientes.find((item) => item.id === form.pendiente?.id)
+    if (fresh && fresh !== form.pendiente) {
+      setForm((current) => current ? { ...current, pendiente: fresh } : current)
+    }
+  }, [localPendientes, form?.pendiente])
+
   const filtered = useMemo(() => {
     if (showCompleted) return localPendientes
-    return localPendientes.filter((p) => p.estado !== 'completado')
+    return localPendientes.filter((pendiente) => pendiente.estado !== 'completado')
   }, [localPendientes, showCompleted])
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedProjectId || !titulo.trim() || !fechaVencimiento) return
+  const activos = localPendientes.filter((pendiente) => pendiente.estado !== 'completado').length
 
-    const ok = await createPendiente({
-      projectId: selectedProjectId,
-      titulo: titulo.trim(),
-      descripcion: descripcion.trim() || undefined,
-      fechaVencimiento,
-    })
-
-    if (ok) {
-      setTitulo('')
-      setDescripcion('')
-      setFechaVencimiento('')
-      setModalOpen(false)
-      refetch() // silent background sync
-    }
-  }
-
-  const handleToggle = useCallback(async (pendiente: Pendiente, nextChecked: boolean) => {
-    // Optimistic update
+  const handleToggle = useCallback(async (pendiente: PendienteConFotos, nextChecked: boolean) => {
     const previous = [...localPendientes]
-    setLocalPendientes(prev =>
-      prev.map(p => p.id === pendiente.id
-        ? { ...p, estado: nextChecked ? 'completado' : 'pendiente' }
-        : p
-      )
-    )
+    const estado = nextChecked ? 'completado' : 'pendiente'
+    setLocalPendientes((current) => current.map((item) => (
+      item.id === pendiente.id ? { ...item, estado } : item
+    )))
 
-    const ok = await updatePendiente(pendiente.id, {
-      estado: nextChecked ? 'completado' : 'pendiente',
-    })
-    if (ok) {
-      refetch() // silent background sync
-    } else {
-      setLocalPendientes(previous) // rollback
-    }
+    const ok = await updatePendiente(pendiente.id, { estado })
+    if (ok) refetch()
+    else setLocalPendientes(previous)
   }, [localPendientes, updatePendiente, refetch])
 
   const handleDelete = useCallback(async (pendienteId: string) => {
     if (!confirm('¿Estás seguro de eliminar este pendiente?')) return
-
-    // Optimistic update
     const previous = [...localPendientes]
-    setLocalPendientes(prev => prev.filter(p => p.id !== pendienteId))
-
+    setLocalPendientes((current) => current.filter((item) => item.id !== pendienteId))
     const ok = await deletePendiente(pendienteId)
     if (ok) {
-      refetch() // silent background sync
+      if (form?.pendiente?.id === pendienteId) setForm(null)
+      refetch()
     } else {
-      setLocalPendientes(previous) // rollback
+      setLocalPendientes(previous)
     }
-  }, [localPendientes, deletePendiente, refetch])
+  }, [localPendientes, deletePendiente, refetch, form?.pendiente?.id])
+
+  const handleFotoDeleted = (fotoId: string) => {
+    if (!form?.pendiente) return
+    const pendienteId = form.pendiente.id
+    setLocalPendientes((current) => current.map((item) => (
+      item.id === pendienteId
+        ? { ...item, fotos: (item.fotos ?? []).filter((foto) => foto.id !== fotoId) }
+        : item
+    )))
+    refetch()
+  }
+
+  const exportPdf = async () => {
+    if (!selectedProjectId) return
+    setIsExporting(true)
+    setExportError(null)
+    try {
+      const response = await fetch(`/api/projects/${selectedProjectId}/pendientes/pdf`)
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null) as { error?: string } | null
+        throw new Error(payload?.error || 'No se pudo exportar el PDF')
+      }
+      const blob = await response.blob()
+      const match = response.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)
+      const filename = match?.[1] || 'pendientes.pdf'
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = filename
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'No se pudo exportar el PDF')
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   if (!selectedProjectId) {
     return <div className="p-6">Selecciona un proyecto para ver los pendientes.</div>
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold">Pendientes</h1>
-          <p className="text-muted-foreground">Definiciones pendientes</p>
+    <div className="container mx-auto p-4 sm:p-6 space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight">Pendientes</h1>
+          <p className="text-muted-foreground">
+            {projectName ? projectName : 'Definiciones pendientes del proyecto'}
+            {' · '}
+            {activos} {activos === 1 ? 'activo' : 'activos'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            El PDF incluye todos los pendientes del proyecto, con título, detalle y fotos.
+          </p>
         </div>
-
-        <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nuevo pendiente
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Nuevo pendiente</DialogTitle>
-              <DialogDescription>
-                Agrega un pendiente asociado al proyecto actual.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4 py-2">
-              <div className="grid gap-2">
-                <Label htmlFor="titulo">Título</Label>
-                <Input
-                  id="titulo"
-                  value={titulo}
-                  onChange={(e) => setTitulo(e.target.value)}
-                  placeholder="Ej: Revisar planos"
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="fecha">Fecha de vencimiento</Label>
-                <div className="relative">
-                  <Calendar className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
-                  <Input
-                    id="fecha"
-                    type="date"
-                    value={fechaVencimiento}
-                    onChange={(e) => setFechaVencimiento(e.target.value)}
-                    className="pl-9"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="descripcion">Descripción (opcional)</Label>
-                <Textarea
-                  id="descripcion"
-                  value={descripcion}
-                  onChange={(e) => setDescripcion(e.target.value)}
-                  placeholder="Detalles adicionales..."
-                  rows={3}
-                />
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={isCreating || !titulo.trim() || !fechaVencimiento}>
-                  {isCreating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Guardando...
-                    </>
-                  ) : (
-                    'Crear pendiente'
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button variant="outline" className="gap-2" onClick={exportPdf} disabled={isExporting}>
+            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+            Exportar PDF
+          </Button>
+          <Button className="gap-2" onClick={() => setForm({ mode: 'create', pendiente: null })}>
+            <Plus className="h-4 w-4" />
+            Nuevo pendiente
+          </Button>
+        </div>
       </div>
+
+      {exportError && <p className="text-sm text-destructive">{exportError}</p>}
 
       <div className="flex items-center gap-2 px-1">
         <Checkbox
           id="show-completed"
           checked={showCompleted}
-          onCheckedChange={(val) => setShowCompleted(Boolean(val))}
+          onCheckedChange={(value) => setShowCompleted(Boolean(value))}
         />
-        <label
-          htmlFor="show-completed"
-          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-        >
+        <label htmlFor="show-completed" className="text-sm font-medium cursor-pointer">
           Mostrar completados
         </label>
       </div>
@@ -200,9 +164,13 @@ export default function PendientesPage() {
       <Card>
         <CardHeader>
           <CardTitle>Lista de pendientes</CardTitle>
-          <CardDescription>Ordenados por fecha de vencimiento más cercana.</CardDescription>
+          <CardDescription>
+            {filtered.length === 0
+              ? 'Ordenados por la fecha de vencimiento más cercana.'
+              : `${filtered.length} en esta vista, ordenados por vencimiento.`}
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -214,53 +182,128 @@ export default function PendientesPage() {
               No hay pendientes {showCompleted ? '' : 'activos'} para mostrar.
             </p>
           ) : (
-            <div className="space-y-3">
-              {filtered.map((pendiente) => {
-                const isCompleted = pendiente.estado === 'completado'
-                const fecha = (pendiente as unknown as Record<string, unknown>).fechaVencimiento ?? (pendiente as unknown as Record<string, unknown>).fecha_vencimiento
-                const fechaValue = typeof fecha === 'string' ? fecha : ''
-                const isOverdue = !isCompleted && fechaValue ? new Date(fechaValue).getTime() < Date.now() : false
+            filtered.map((pendiente) => {
+              const fecha = dueValue(pendiente)
+              const completed = pendiente.estado === 'completado'
+              const overdue = isOverdue(fecha, pendiente.estado, hoy)
+              const fotos = pendiente.fotos ?? []
 
-                return (
-                  <div
-                    key={pendiente.id}
-                    className={`flex items-start justify-between gap-4 rounded-md border p-4 transition-colors ${
-                      isOverdue ? 'border-red-300 bg-red-50/40' : 'hover:bg-muted/50'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        checked={isCompleted}
-                        onCheckedChange={(val) => handleToggle(pendiente, Boolean(val))}
-                      />
-                      <div>
-                        <div className={`font-medium ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+              return (
+                <article
+                  key={pendiente.id}
+                  className={`rounded-lg border p-4 space-y-3 ${overdue ? 'border-red-300 bg-red-50/40' : ''}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      checked={completed}
+                      aria-label={completed ? 'Marcar como pendiente' : 'Marcar como completado'}
+                      className="mt-1"
+                      onCheckedChange={(value) => handleToggle(pendiente, Boolean(value))}
+                    />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className={`font-medium ${completed ? 'line-through text-muted-foreground' : ''}`}>
                           {pendiente.titulo}
-                        </div>
-                        {pendiente.descripcion && (
-                          <div className="text-sm text-muted-foreground mt-1">{pendiente.descripcion}</div>
+                        </h2>
+                        <Badge variant={completed ? 'outline' : 'secondary'}>
+                          {estadoPendienteLabel(pendiente.estado)}
+                        </Badge>
+                        {overdue && <Badge variant="destructive">Vencido</Badge>}
+                        {fotos.length > 0 && (
+                          <Badge variant="outline" className="gap-1">
+                            <ImageIcon className="h-3 w-3" />
+                            {fotos.length}
+                          </Badge>
                         )}
-                        <div className={`text-xs mt-2 flex items-center gap-1 ${isOverdue ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
-                          <Calendar className="h-3.3 w-3.3" />
-                          Vence: {fechaValue ? formatDate(fechaValue) : 'Sin fecha'}
-                        </div>
                       </div>
+                      {pendiente.descripcion ? (
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{pendiente.descripcion}</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground/70">Sin detalle</p>
+                      )}
+                      <p className={`text-xs flex items-center gap-1 ${overdue ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
+                        <Calendar className="h-3.5 w-3.5" />
+                        Vence: {formatCalendarDate(fecha)}
+                      </p>
                     </div>
+                  </div>
+
+                  {fotos.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto pb-1 pl-7">
+                      {fotos.map((foto, index) => (
+                        <button
+                          key={foto.id}
+                          type="button"
+                          className="h-16 w-16 shrink-0 overflow-hidden rounded-md border bg-muted"
+                          onClick={() => setLightbox({ fotos, index })}
+                        >
+                          {foto.downloadUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={foto.downloadUrl} alt={foto.nombre} className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="flex h-full w-full items-center justify-center text-muted-foreground">
+                              <ImageIcon className="h-4 w-4" />
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2">
                     <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => setForm({ mode: 'edit', pendiente })}
+                    >
+                      <Pencil className="h-4 w-4" />
+                      Editar
+                    </Button>
+                    <Button
+                      type="button"
                       variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-destructive"
+                      size="sm"
+                      className="gap-1 text-muted-foreground hover:text-destructive"
                       onClick={() => handleDelete(pendiente.id)}
                     >
                       <Trash2 className="h-4 w-4" />
+                      Eliminar
                     </Button>
                   </div>
-                )
-              })}
-            </div>
+                </article>
+              )
+            })
           )}
         </CardContent>
       </Card>
+
+      {form && selectedProjectId && (
+        <PendienteFormDialog
+          key={`${form.mode}-${form.pendiente?.id ?? 'nuevo'}`}
+          open
+          mode={form.mode}
+          projectId={selectedProjectId}
+          pendiente={form.pendiente}
+          onOpenChange={(open) => {
+            if (!open) setForm(null)
+          }}
+          onSaved={() => {
+            setForm(null)
+            refetch()
+          }}
+          onFotoDeleted={handleFotoDeleted}
+        />
+      )}
+
+      {lightbox && (
+        <ImageLightbox
+          images={lightbox.fotos}
+          initialIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+        />
+      )}
     </div>
   )
 }

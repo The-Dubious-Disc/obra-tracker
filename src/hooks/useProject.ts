@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import type { ProjectSummary, Proyecto, PresupuestoVersion, Pago, Plano, Tarea, Pendiente } from '@/types/database.types'
+import type { ProjectSummary, Proyecto, PresupuestoVersion, Pago, Plano, Tarea, PendienteConFotos } from '@/types/database.types'
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -58,7 +58,7 @@ async function fetchWithRetry(input: RequestInfo | URL, init?: RequestInit, opti
 async function uploadToR2(params: {
   projectId: string
   file: File
-  kind: 'planos' | 'comprobantes' | 'adjuntos'
+  kind: 'planos' | 'comprobantes' | 'adjuntos' | 'pendientes'
 }): Promise<string> {
   const presignRes = await fetchWithRetry('/api/upload', {
     method: 'POST',
@@ -69,19 +69,23 @@ async function uploadToR2(params: {
       filename: params.file.name,
       contentType: params.file.type || 'application/octet-stream',
       kind: params.kind,
+      size: params.file.size,
     }),
   }, { retries: 2, retryDelayMs: 600 })
 
   if (!presignRes.ok) {
     const data = await tryParseJson(presignRes)
-    throw new Error(data.error || 'No se pudo generar la URL de subida')
+    throw new Error(data?.error || 'No se pudo generar la URL de subida')
   }
 
-  const { uploadUrl, key } = await presignRes.json()
+  const { uploadUrl, key, contentType } = await presignRes.json()
+  const putType = typeof contentType === 'string' && contentType
+    ? contentType
+    : (params.file.type || 'application/octet-stream')
 
   const uploadRes = await fetchWithRetry(uploadUrl, {
     method: 'PUT',
-    headers: { 'Content-Type': params.file.type || 'application/octet-stream' },
+    headers: { 'Content-Type': putType },
     body: params.file,
   }, { retries: 2, retryDelayMs: 700 })
 
@@ -570,14 +574,14 @@ export function useUploadPlano(): UseUploadPlanoResult {
 // usePendientes - Fetch project pendientes
 // ============================================
 interface UsePendientesResult {
-  pendientes: Pendiente[]
+  pendientes: PendienteConFotos[]
   isLoading: boolean
   error: string | null
   refetch: () => Promise<void>
 }
 
 export function usePendientes(projectId: string | null): UsePendientesResult {
-  const [pendientes, setPendientes] = useState<Pendiente[]>([])
+  const [pendientes, setPendientes] = useState<PendienteConFotos[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -597,9 +601,10 @@ export function usePendientes(projectId: string | null): UsePendientesResult {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const result = await response.json()
-      setPendientes(result)
+      const rows = Array.isArray(result) ? result as PendienteConFotos[] : []
+      setPendientes(rows.map((item) => ({ ...item, fotos: item.fotos ?? [] })))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch pendientes')
+      setError(err instanceof Error ? err.message : 'No se pudieron cargar los pendientes')
     } finally {
       if (!options?.silent) setIsLoading(false)
     }
@@ -654,11 +659,23 @@ export function useCreatePendiente() {
     titulo: string
     descripcion?: string
     fechaVencimiento: string
+    estado?: 'pendiente' | 'completado'
+    files?: File[]
   }) => {
     setIsCreating(true)
     setError(null)
 
     try {
+      const fotos: { r2Key: string; nombre: string }[] = []
+      for (const file of params.files ?? []) {
+        const key = await uploadToR2({
+          projectId: params.projectId,
+          file,
+          kind: 'pendientes',
+        })
+        fotos.push({ r2Key: key, nombre: file.name })
+      }
+
       const response = await fetch(`/api/projects/${params.projectId}/pendientes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -666,6 +683,8 @@ export function useCreatePendiente() {
           titulo: params.titulo,
           descripcion: params.descripcion,
           fechaVencimiento: params.fechaVencimiento,
+          estado: params.estado,
+          fotos,
         }),
       })
 
@@ -676,7 +695,7 @@ export function useCreatePendiente() {
 
       return true
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create pendiente')
+      setError(err instanceof Error ? err.message : 'No se pudo crear el pendiente')
       return false
     } finally {
       setIsCreating(false)
@@ -690,12 +709,19 @@ export function useUpdatePendiente() {
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const updatePendiente = useCallback(async (pendienteId: string, data: {
-    titulo?: string
-    descripcion?: string | null
-    fechaVencimiento?: string
-    estado?: 'pendiente' | 'completado'
-  }) => {
+  const updatePendiente = useCallback(async (
+    pendienteId: string,
+    data: {
+      titulo?: string
+      descripcion?: string | null
+      fechaVencimiento?: string
+      estado?: 'pendiente' | 'completado'
+    },
+    extras?: {
+      projectId?: string
+      files?: File[]
+    },
+  ) => {
     setIsUpdating(true)
     setError(null)
 
@@ -711,9 +737,34 @@ export function useUpdatePendiente() {
         throw new Error(payload.error || `HTTP error! status: ${response.status}`)
       }
 
+      if (extras?.files && extras.files.length > 0) {
+        if (!extras.projectId) {
+          throw new Error('Falta el proyecto para subir las fotos')
+        }
+        const fotos: { r2Key: string; nombre: string }[] = []
+        for (const file of extras.files) {
+          const key = await uploadToR2({
+            projectId: extras.projectId,
+            file,
+            kind: 'pendientes',
+          })
+          fotos.push({ r2Key: key, nombre: file.name })
+        }
+
+        const fotoResponse = await fetch(`/api/pendientes/${pendienteId}/fotos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fotos }),
+        })
+        if (!fotoResponse.ok) {
+          const payload = await tryParseJson(fotoResponse)
+          throw new Error(payload?.error || 'Los datos se guardaron, pero no se pudieron adjuntar las fotos')
+        }
+      }
+
       return true
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update pendiente')
+      setError(err instanceof Error ? err.message : 'No se pudo actualizar el pendiente')
       return false
     } finally {
       setIsUpdating(false)
@@ -743,7 +794,7 @@ export function useDeletePendiente() {
 
       return true
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete pendiente')
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar el pendiente')
       return false
     } finally {
       setIsDeleting(false)
@@ -751,6 +802,36 @@ export function useDeletePendiente() {
   }, [])
 
   return { deletePendiente, isDeleting, error }
+}
+
+export function useDeletePendienteFoto() {
+  const [deletingFotoId, setDeletingFotoId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const deleteFoto = useCallback(async (pendienteId: string, fotoId: string) => {
+    setDeletingFotoId(fotoId)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/pendientes/${pendienteId}/fotos/${fotoId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const payload = await response.json()
+        throw new Error(payload.error || 'No se pudo eliminar la foto')
+      }
+
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar la foto')
+      return false
+    } finally {
+      setDeletingFotoId(null)
+    }
+  }, [])
+
+  return { deleteFoto, deletingFotoId, error }
 }
 
 // ============================================

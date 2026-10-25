@@ -90,6 +90,15 @@ export const pendientes = pgTable('pendientes', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
+export const pendienteFotos = pgTable('pendiente_fotos', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  pendienteId: uuid('pendiente_id').references(() => pendientes.id, { onDelete: 'cascade' }).notNull(),
+  r2Key: text('r2_key').notNull().unique(),
+  nombre: text('nombre').notNull(),
+  orden: integer('orden').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
 // 7. Pagos (Mejorado)
 export const pagos = pgTable('pagos', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -196,6 +205,7 @@ export type ProyectoSelect = typeof proyectos.$inferSelect;
 export type EtapaSelect = typeof etapas.$inferSelect;
 export type TareaSelect = typeof tareas.$inferSelect;
 export type PendienteSelect = typeof pendientes.$inferSelect;
+export type PendienteFotoSelect = typeof pendienteFotos.$inferSelect;
 export type PagoSelect = typeof pagos.$inferSelect;
 export type PlanoSelect = typeof planos.$inferSelect;
 export type AnotacionPlanoSelect = typeof anotacionesPlanos.$inferSelect;
@@ -237,6 +247,21 @@ export const pagosRelations = relations(pagos, ({ one }) => ({
   adicional: one(adicionales, {
     fields: [pagos.adicionalId],
     references: [adicionales.id],
+  }),
+}));
+
+export const pendientesRelations = relations(pendientes, ({ one, many }) => ({
+  proyecto: one(proyectos, {
+    fields: [pendientes.proyectoId],
+    references: [proyectos.id],
+  }),
+  fotos: many(pendienteFotos),
+}));
+
+export const pendienteFotosRelations = relations(pendienteFotos, ({ one }) => ({
+  pendiente: one(pendientes, {
+    fields: [pendienteFotos.pendienteId],
+    references: [pendientes.id],
   }),
 }));
 
