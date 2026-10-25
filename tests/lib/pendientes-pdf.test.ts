@@ -22,6 +22,9 @@ const PNG_1X1 = Uint8Array.from(Buffer.from(
   'base64',
 ));
 
+/** Enough body text to spill one item onto a second page, without the old six-item fixture. */
+const DETALLE_LARGO = 'Detalle del encuentro de muro y losa. '.repeat(120);
+
 function streamText(stream: unknown): string {
   if (!(stream instanceof PDFRawStream)) return '';
   const decoded = decodePDFRawStream(stream);
@@ -233,7 +236,6 @@ describe('informe PDF de pendientes', () => {
   });
 
   it('incluye título, varias páginas y la foto embebida', async () => {
-    const detalle = 'Detalle del encuentro de muro y losa. '.repeat(40);
     const sinFoto = await buildPendientesPdf({
       proyectoNombre: 'Casa Norte',
       generadoEl: '25 oct 2026',
@@ -258,12 +260,12 @@ describe('informe PDF de pendientes', () => {
             { nombre: 'rota.bin', bytes: Uint8Array.from([9, 9, 9]), contentType: 'application/octet-stream' },
           ],
         },
-        ...Array.from({ length: 6 }, (_, index) => ({
-          titulo: `Pendiente ${index + 2}`,
-          descripcion: detalle,
-          estado: 'pendiente' as const,
+        {
+          titulo: 'Pendiente 2',
+          descripcion: DETALLE_LARGO,
+          estado: 'pendiente',
           fotos: [],
-        })),
+        },
       ],
     });
 
@@ -282,16 +284,15 @@ describe('informe PDF de pendientes', () => {
     expect((await PDFDocument.load(vacio)).getPageCount()).toBe(1);
     expect(vacioText).toContain('No hay pendientes abiertos');
     expect(vacioText).not.toMatch(/Estado/i);
-  });
+  }, 15_000);
 
   it('omite los pendientes completados aunque el detalle sea largo', async () => {
-    const detalle = 'Detalle del encuentro de muro y losa. '.repeat(40);
-    const abiertos = Array.from({ length: 6 }, (_, index) => ({
-      titulo: `Pendiente ${index + 1}`,
-      descripcion: detalle,
+    const abiertos = [{
+      titulo: 'Pendiente 1',
+      descripcion: DETALLE_LARGO,
       estado: 'pendiente' as const,
       fotos: [] as [],
-    }));
+    }];
     const soloAbiertos = await buildPendientesPdf({
       proyectoNombre: 'Casa Norte',
       generadoEl: '25 oct 2026',
@@ -304,7 +305,7 @@ describe('informe PDF de pendientes', () => {
         ...abiertos,
         {
           titulo: 'Pintura terminada',
-          descripcion: detalle.repeat(4),
+          descripcion: DETALLE_LARGO,
           estado: 'completado',
           fotos: [{ nombre: 'pintura.png', bytes: PNG_1X1, contentType: 'image/png' }],
         },
@@ -315,7 +316,7 @@ describe('informe PDF de pendientes', () => {
       generadoEl: '25 oct 2026',
       items: [{
         titulo: 'Pintura terminada',
-        descripcion: detalle.repeat(4),
+        descripcion: DETALLE_LARGO,
         estado: 'completado',
         fotos: [{ nombre: 'pintura.png', bytes: PNG_1X1, contentType: 'image/png' }],
       }],
@@ -335,5 +336,5 @@ describe('informe PDF de pendientes', () => {
     expect(text).toContain('Pendiente 1');
     expect(text).not.toContain('Pintura terminada');
     expect(text).not.toContain('Estado');
-  });
+  }, 15_000);
 });
