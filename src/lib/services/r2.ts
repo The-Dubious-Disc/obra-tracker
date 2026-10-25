@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const r2Config = {
@@ -32,9 +32,11 @@ function getClient() {
   });
 }
 
+export type StorageKind = 'planos' | 'comprobantes' | 'adjuntos' | 'pendientes';
+
 export function buildObjectKey(options: {
   projectId: string;
-  kind: 'planos' | 'comprobantes' | 'adjuntos';
+  kind: StorageKind;
   filename: string;
 }) {
   const safeName = options.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -67,6 +69,29 @@ export async function getPresignedDownloadUrl(options: {
   });
 
   return getSignedUrl(client, command, { expiresIn: options.expiresIn ?? 300 });
+}
+
+export async function getObjectBytes(key: string): Promise<{ bytes: Uint8Array; contentType?: string }> {
+  const client = getClient();
+  const response = await client.send(new GetObjectCommand({
+    Bucket: r2Config.bucket,
+    Key: key,
+  }));
+
+  if (!response.Body) {
+    throw new Error('Objeto vacío');
+  }
+
+  const bytes = await response.Body.transformToByteArray();
+  return { bytes, contentType: response.ContentType };
+}
+
+export async function deleteObject(key: string) {
+  const client = getClient();
+  await client.send(new DeleteObjectCommand({
+    Bucket: r2Config.bucket,
+    Key: key,
+  }));
 }
 
 export function isR2Key(value: string) {

@@ -106,14 +106,22 @@ describe('invitation, pendiente, and plano schemas', () => {
   it('defaults a pendiente to pendiente and a plano order to 0', () => {
     const pendiente = createPendienteSchema.safeParse({
       titulo: 'Comprar cemento',
-      fechaVencimiento: '2026-02-01',
     })
     expect(pendiente.success).toBe(true)
-    if (pendiente.success) expect(pendiente.data.estado).toBe('pendiente')
+    if (pendiente.success) {
+      expect(pendiente.data.estado).toBe('pendiente')
+      expect(pendiente.data).not.toHaveProperty('fechaVencimiento')
+    }
+
+    const withStaleDate = createPendienteSchema.safeParse({
+      titulo: 'Comprar cemento',
+      fechaVencimiento: '2026-02-01',
+    })
+    expect(withStaleDate.success).toBe(true)
+    if (withStaleDate.success) expect(withStaleDate.data).not.toHaveProperty('fechaVencimiento')
 
     expect(createPendienteSchema.safeParse({
       titulo: '',
-      fechaVencimiento: 'mañana',
     }).success).toBe(false)
 
     const plano = createPlanoSchema.safeParse({

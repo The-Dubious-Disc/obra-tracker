@@ -82,12 +82,32 @@ export const createInvitationSchema = z.object({
   rol: z.enum(['admin', 'editor', 'viewer']),
 });
 
+const pendienteFotoSchema = z.object({
+  r2Key: z.string({ error: 'La foto no tiene clave' }).min(1, 'La foto no tiene clave').max(500),
+  nombre: z.string({ error: 'Cada foto necesita un nombre' }).min(1, 'Cada foto necesita un nombre').max(255),
+});
+
 // Pendiente schemas
 export const createPendienteSchema = z.object({
-  titulo: z.string().min(1, 'Título es requerido').max(200, 'Título demasiado largo'),
-  descripcion: z.string().optional(),
-  fechaVencimiento: z.string().refine((date) => !isNaN(Date.parse(date)), 'Fecha inválida'),
-  estado: z.enum(['pendiente', 'completado']).optional().default('pendiente'),
+  titulo: z.string({ error: 'Título es requerido' }).min(1, 'Título es requerido').max(200, 'Título demasiado largo'),
+  descripcion: z.string({ error: 'El detalle es inválido' }).nullable().optional(),
+  estado: z.enum(['pendiente', 'completado'], { error: 'Estado inválido' }).optional().default('pendiente'),
+  fotos: z.array(pendienteFotoSchema, { error: 'Fotos inválidas' }).max(10, 'Máximo 10 fotos por pendiente').optional(),
+});
+
+export const updatePendienteSchema = z.object({
+  titulo: z.string({ error: 'Título es requerido' }).min(1, 'Título es requerido').max(200, 'Título demasiado largo').optional(),
+  descripcion: z.string({ error: 'El detalle es inválido' }).nullable().optional(),
+  estado: z.enum(['pendiente', 'completado'], { error: 'Estado inválido' }).optional(),
+});
+
+export const addPendienteFotosSchema = z.object({
+  fotos: z.array(pendienteFotoSchema, { error: 'Fotos inválidas' }).min(1, 'Agregá al menos una foto').max(10, 'Máximo 10 fotos por pendiente'),
+});
+
+export const replacePendienteFotoSchema = z.object({
+  r2Key: z.string({ error: 'La foto no tiene clave' }).min(1, 'La foto no tiene clave').max(500),
+  nombre: z.string({ error: 'Cada foto necesita un nombre' }).min(1, 'Cada foto necesita un nombre').max(255),
 });
 
 // Comment schemas

@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
-import { pagos, proyectos, etapas, tareas, planos, presupuestoVersiones, proyectoMiembros, pendientes, adicionales } from '@/lib/db/schema';
-import { eq, desc, and } from 'drizzle-orm';
+import { pagos, proyectos, etapas, tareas, planos, presupuestoVersiones, proyectoMiembros, pendientes, pendienteFotos, adicionales } from '@/lib/db/schema';
+import type { PendienteFotoSelect, PendienteSelect } from '@/lib/db/schema';
+import { eq, desc, and, asc, inArray } from 'drizzle-orm';
 
 // Projects & Summary
 export async function getProjectSummary(projectId: string, userId?: string) {
@@ -166,9 +167,50 @@ export async function getProjectPendientes(proyectoId: string, onlyPending = fal
     return await db.select()
       .from(pendientes)
       .where(whereClause)
-      .orderBy(pendientes.fechaVencimiento);
+      .orderBy(asc(pendientes.createdAt));
   } catch (error) {
     console.error('Error in getProjectPendientes:', error);
+    return [];
+  }
+}
+
+export type PendienteConFotosRow = PendienteSelect & {
+  estado: 'pendiente' | 'completado';
+  fotos: PendienteFotoSelect[];
+};
+
+export async function getProjectPendientesConFotos(proyectoId: string, onlyPending = false): Promise<PendienteConFotosRow[]> {
+  try {
+    const whereClause = onlyPending
+      ? and(eq(pendientes.proyectoId, proyectoId), eq(pendientes.estado, 'pendiente'))
+      : eq(pendientes.proyectoId, proyectoId);
+
+    const rows = await db.select()
+      .from(pendientes)
+      .where(whereClause)
+      .orderBy(asc(pendientes.createdAt));
+
+    if (rows.length === 0) return [];
+
+    const fotos = await db.select()
+      .from(pendienteFotos)
+      .where(inArray(pendienteFotos.pendienteId, rows.map((row) => row.id)))
+      .orderBy(asc(pendienteFotos.orden), asc(pendienteFotos.createdAt));
+
+    const fotosPorPendiente = new Map<string, PendienteFotoSelect[]>();
+    for (const foto of fotos) {
+      const list = fotosPorPendiente.get(foto.pendienteId) ?? [];
+      list.push(foto);
+      fotosPorPendiente.set(foto.pendienteId, list);
+    }
+
+    return rows.map((row) => ({
+      ...row,
+      estado: row.estado === 'completado' ? 'completado' : 'pendiente',
+      fotos: fotosPorPendiente.get(row.id) ?? [],
+    }));
+  } catch (error) {
+    console.error('Error in getProjectPendientesConFotos:', error);
     return [];
   }
 }
@@ -177,33 +219,53 @@ export async function createPendiente(data: {
   proyectoId: string;
   titulo: string;
   descripcion?: string | null;
-  fechaVencimiento: string;
+  estado?: 'pendiente' | 'completado';
+  fotos?: { r2Key: string; nombre: string; orden: number }[];
 }) {
+  let createdId: string | null = null;
   try {
     const [newPendiente] = await db.insert(pendientes).values({
       proyectoId: data.proyectoId,
       titulo: data.titulo,
       descripcion: data.descripcion || null,
-      fechaVencimiento: data.fechaVencimiento,
+      ...(data.estado ? { estado: data.estado } : {}),
     }).returning();
+    createdId = newPendiente.id;
 
-    return { success: true, pendienteId: newPendiente.id };
+    if (data.fotos && data.fotos.length > 0) {
+      await db.insert(pendienteFotos).values(data.fotos.map((foto) => ({
+        pendienteId: newPendiente.id,
+        r2Key: foto.r2Key,
+        nombre: foto.nombre,
+        orden: foto.orden,
+      })));
+    }
+
+    return { success: true as const, pendienteId: newPendiente.id };
   } catch (error) {
+    if (createdId) {
+      try {
+        await db.delete(pendientes).where(eq(pendientes.id, createdId));
+      } catch (cleanupError) {
+        console.error('Error rolling back pendiente:', cleanupError);
+      }
+    }
     console.error('Error in createPendiente:', error);
-    return { success: false, error: 'Database error' };
+    return { success: false as const, error: 'Database error' };
   }
 }
 
 export async function updatePendiente(pendienteId: string, data: {
   titulo?: string;
   descripcion?: string | null;
-  fechaVencimiento?: string;
   estado?: 'pendiente' | 'completado';
 }) {
   try {
     await db.update(pendientes)
       .set({
-        ...data,
+        ...(data.titulo !== undefined ? { titulo: data.titulo } : {}),
+        ...(data.descripcion !== undefined ? { descripcion: data.descripcion } : {}),
+        ...(data.estado !== undefined ? { estado: data.estado } : {}),
         updatedAt: new Date(),
       })
       .where(eq(pendientes.id, pendienteId));
@@ -215,15 +277,89 @@ export async function updatePendiente(pendienteId: string, data: {
   }
 }
 
+export async function listPendienteFotos(pendienteId: string) {
+  try {
+    return await db.select()
+      .from(pendienteFotos)
+      .where(eq(pendienteFotos.pendienteId, pendienteId))
+      .orderBy(asc(pendienteFotos.orden), asc(pendienteFotos.createdAt));
+  } catch (error) {
+    console.error('Error in listPendienteFotos:', error);
+    return null;
+  }
+}
+
+export async function addPendienteFotos(
+  pendienteId: string,
+  fotos: { r2Key: string; nombre: string; orden: number }[],
+) {
+  try {
+    if (fotos.length === 0) return { success: true as const, fotos: [] };
+    const inserted = await db.insert(pendienteFotos).values(fotos.map((foto) => ({
+      pendienteId,
+      r2Key: foto.r2Key,
+      nombre: foto.nombre,
+      orden: foto.orden,
+    }))).returning();
+    return { success: true as const, fotos: inserted };
+  } catch (error) {
+    console.error('Error in addPendienteFotos:', error);
+    return { success: false as const, error: 'Database error' };
+  }
+}
+
+export async function replacePendienteFoto(
+  pendienteId: string,
+  fotoId: string,
+  data: { r2Key: string; nombre: string },
+) {
+  try {
+    const [foto] = await db.select()
+      .from(pendienteFotos)
+      .where(and(eq(pendienteFotos.id, fotoId), eq(pendienteFotos.pendienteId, pendienteId)));
+
+    if (!foto) return { success: false as const, error: 'not_found' as const };
+
+    await db.update(pendienteFotos)
+      .set({ r2Key: data.r2Key, nombre: data.nombre })
+      .where(eq(pendienteFotos.id, fotoId));
+
+    return { success: true as const, previousKey: foto.r2Key };
+  } catch (error) {
+    console.error('Error in replacePendienteFoto:', error);
+    return { success: false as const, error: 'database' as const };
+  }
+}
+
+export async function deletePendienteFoto(pendienteId: string, fotoId: string) {
+  try {
+    const [foto] = await db.select()
+      .from(pendienteFotos)
+      .where(and(eq(pendienteFotos.id, fotoId), eq(pendienteFotos.pendienteId, pendienteId)));
+
+    if (!foto) return { success: false as const, error: 'not_found' as const };
+
+    await db.delete(pendienteFotos).where(eq(pendienteFotos.id, fotoId));
+    return { success: true as const, r2Key: foto.r2Key };
+  } catch (error) {
+    console.error('Error in deletePendienteFoto:', error);
+    return { success: false as const, error: 'database' as const };
+  }
+}
+
 export async function deletePendiente(pendienteId: string) {
   try {
+    const fotos = await db.select({ r2Key: pendienteFotos.r2Key })
+      .from(pendienteFotos)
+      .where(eq(pendienteFotos.pendienteId, pendienteId));
+
     await db.delete(pendientes)
       .where(eq(pendientes.id, pendienteId));
 
-    return { success: true };
+    return { success: true as const, r2Keys: fotos.map((foto) => foto.r2Key) };
   } catch (error) {
     console.error('Error in deletePendiente:', error);
-    return { success: false, error: 'Database error' };
+    return { success: false as const, error: 'Database error' };
   }
 }
 

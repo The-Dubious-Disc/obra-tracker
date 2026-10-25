@@ -213,7 +213,6 @@ export interface Database {
           proyectoId: string
           titulo: string
           descripcion: string | null
-          fechaVencimiento: string
           estado: PendienteEstado
           createdAt: string
           updatedAt: string
@@ -223,7 +222,6 @@ export interface Database {
           proyectoId: string
           titulo: string
           descripcion?: string | null
-          fechaVencimiento: string
           estado?: PendienteEstado
           createdAt?: string
           updatedAt?: string
@@ -233,7 +231,6 @@ export interface Database {
           proyectoId?: string
           titulo?: string
           descripcion?: string | null
-          fechaVencimiento?: string
           estado?: PendienteEstado
           createdAt?: string
           updatedAt?: string
@@ -464,6 +461,20 @@ export type PresupuestoVersion = Database['public']['Tables']['presupuesto_versi
 export type Etapa = Database['public']['Tables']['etapas']['Row']
 export type Tarea = Database['public']['Tables']['tareas']['Row']
 export type Pendiente = Database['public']['Tables']['pendientes']['Row']
+
+export interface PendienteFoto {
+  id: string
+  pendienteId: string
+  r2Key: string
+  nombre: string
+  orden: number
+  createdAt: string
+  downloadUrl?: string | null
+}
+
+export interface PendienteConFotos extends Pendiente {
+  fotos?: PendienteFoto[]
+}
 export type Pago = Database['public']['Tables']['pagos']['Row']
 export type Plano = Database['public']['Tables']['planos']['Row']
 export type AnotacionPlano = Database['public']['Tables']['anotaciones_planos']['Row']

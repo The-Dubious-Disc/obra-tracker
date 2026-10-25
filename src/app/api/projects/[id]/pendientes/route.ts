@@ -1,7 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { checkProjectAccess } from '@/lib/services/authService';
-import { getProjectPendientes, createPendiente } from '@/lib/services/projectService';
+import { getProjectPendientes, getProjectPendientesConFotos, createPendiente } from '@/lib/services/projectService';
+import { getPresignedDownloadUrl } from '@/lib/services/r2';
+import { createPendienteSchema } from '@/lib/schemas';
+import { nextFotoOrden, preparePendienteFotos } from '@/lib/pendientes/photos';
+
+async function attachDownloadUrls<T extends { r2Key: string }>(fotos: T[]) {
+  return Promise.all(fotos.map(async (foto) => {
+    try {
+      const downloadUrl = await getPresignedDownloadUrl({ key: foto.r2Key, expiresIn: 60 * 60 });
+      return { ...foto, downloadUrl };
+    } catch (error) {
+      console.error('No se pudo firmar la foto del pendiente', error);
+      return { ...foto, downloadUrl: null };
+    }
+  }));
+}
 
 export async function GET(
   request: NextRequest,
@@ -22,9 +37,18 @@ export async function GET(
     }
 
     const onlyPending = request.nextUrl.searchParams.get('estado') === 'pendiente';
-    const pendientes = await getProjectPendientes(projectId, onlyPending);
+    if (onlyPending) {
+      const pendientes = await getProjectPendientes(projectId, true);
+      return NextResponse.json(pendientes);
+    }
 
-    return NextResponse.json(pendientes);
+    const pendientes = await getProjectPendientesConFotos(projectId);
+    const withUrls = await Promise.all(pendientes.map(async (pendiente) => ({
+      ...pendiente,
+      fotos: await attachDownloadUrls(pendiente.fotos),
+    })));
+
+    return NextResponse.json(withUrls);
   } catch (error) {
     console.error('Error fetching pendientes:', error);
     return NextResponse.json({ error: 'Error al obtener pendientes' }, { status: 500 });
@@ -50,17 +74,42 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { titulo, descripcion, fechaVencimiento } = body;
-
-    if (!titulo || !fechaVencimiento) {
+    const titulo = typeof body?.titulo === 'string' ? body.titulo.trim() : '';
+    if (!titulo) {
       return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 });
+    }
+
+    const parsed = createPendienteSchema.safeParse({
+      titulo,
+      descripcion: typeof body?.descripcion === 'string' ? body.descripcion.trim() : body?.descripcion,
+      estado: body?.estado,
+      fotos: body?.fotos,
+    });
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? 'Faltan campos obligatorios' },
+        { status: 400 },
+      );
+    }
+
+    const prepared = preparePendienteFotos({
+      projectId,
+      incoming: parsed.data.fotos ?? [],
+      existingCount: 0,
+      existingKeys: [],
+      nextOrden: nextFotoOrden([]),
+    });
+    if (!prepared.ok) {
+      return NextResponse.json({ error: prepared.error }, { status: 400 });
     }
 
     const result = await createPendiente({
       proyectoId: projectId,
-      titulo: String(titulo).trim(),
-      descripcion: descripcion ? String(descripcion).trim() : null,
-      fechaVencimiento: String(fechaVencimiento),
+      titulo: parsed.data.titulo,
+      descripcion: parsed.data.descripcion ? parsed.data.descripcion : null,
+      estado: parsed.data.estado,
+      fotos: prepared.fotos,
     });
 
     if (!result.success) {

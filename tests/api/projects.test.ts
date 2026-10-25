@@ -9,6 +9,7 @@ vi.mock('@/lib/services/projectService', () => ({
   getProjectSummary: vi.fn(),
   updateBudget: vi.fn(),
   getProjectPendientes: vi.fn(),
+  getProjectPendientesConFotos: vi.fn(),
   createPendiente: vi.fn(),
 }))
 
@@ -23,6 +24,7 @@ import {
   createProject,
   getAllProjects,
   getProjectPendientes,
+  getProjectPendientesConFotos,
   getProjectSummary,
   updateBudget,
 } from '@/lib/services/projectService'
@@ -40,6 +42,7 @@ const createProjectMock = vi.mocked(createProject)
 const getProjectSummaryMock = vi.mocked(getProjectSummary)
 const updateBudgetMock = vi.mocked(updateBudget)
 const getProjectPendientesMock = vi.mocked(getProjectPendientes)
+const getProjectPendientesConFotosMock = vi.mocked(getProjectPendientesConFotos)
 const createPendienteMock = vi.mocked(createPendiente)
 const checkProjectRoleMock = vi.mocked(checkProjectRole)
 const checkProjectAccessMock = vi.mocked(checkProjectAccess)
@@ -54,6 +57,7 @@ beforeEach(() => {
   getProjectSummaryMock.mockReset()
   updateBudgetMock.mockReset()
   getProjectPendientesMock.mockReset()
+  getProjectPendientesConFotosMock.mockReset()
   createPendienteMock.mockReset()
   checkProjectRoleMock.mockReset()
   checkProjectAccessMock.mockReset()
@@ -198,12 +202,15 @@ describe('membership and pendientes', () => {
     expect(pending.status).toBe(200)
     expect(getProjectPendientesMock).toHaveBeenCalledWith('p1', true)
 
+    getProjectPendientesConFotosMock.mockResolvedValue([{ id: 'pen-1', fotos: [] }] as never)
     const all = await listPendientes(new NextRequest('http://localhost/api/projects/p1/pendientes?estado=todos'), projectParams)
     expect(all.status).toBe(200)
-    expect(getProjectPendientesMock).toHaveBeenLastCalledWith('p1', false)
+    expect(getProjectPendientesConFotosMock).toHaveBeenCalledWith('p1')
+    expect(getProjectPendientesMock).toHaveBeenCalledTimes(1)
 
     const missingFields = await createPendienteRoute(jsonRequest('http://localhost/api/projects/p1/pendientes', {
-      titulo: 'Cemento',
+      titulo: '   ',
+      fechaVencimiento: '2026-04-01',
     }), projectParams)
     expect(missingFields.status).toBe(400)
 
@@ -218,7 +225,8 @@ describe('membership and pendientes', () => {
       proyectoId: 'p1',
       titulo: 'Cemento',
       descripcion: '10 bolsas',
-      fechaVencimiento: '2026-04-01',
+      estado: 'pendiente',
+      fotos: [],
     })
   })
 })
