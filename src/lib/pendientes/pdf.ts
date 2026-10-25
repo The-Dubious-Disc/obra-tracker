@@ -1,5 +1,23 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib';
-import { estadoPendienteLabel } from '@/lib/pendientes/format';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import fontkit from '@pdf-lib/fontkit';
+import {
+  PDFDocument,
+  appendBezierCurve,
+  clip,
+  closePath,
+  endPath,
+  fill,
+  lineTo,
+  moveTo,
+  popGraphicsState,
+  pushGraphicsState,
+  rgb,
+  setFillingColor,
+  type PDFFont,
+  type PDFImage,
+  type PDFPage,
+} from 'pdf-lib';
 
 export interface PdfFotoInput {
   nombre: string;
@@ -24,11 +42,66 @@ export function pendientesAbiertos<T extends { estado: string }>(items: T[]): T[
   return items.filter((item) => item.estado === 'pendiente');
 }
 
+const MONTHS_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'] as const;
+
+/** Short export date used in the report header, e.g. "25 oct 2026". */
+export function formatPdfExportDate(date: Date): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Montevideo',
+    day: 'numeric',
+    month: 'numeric',
+    year: 'numeric',
+  }).formatToParts(date);
+  const day = parts.find((part) => part.type === 'day')?.value ?? '';
+  const monthIndex = Number(parts.find((part) => part.type === 'month')?.value) - 1;
+  const year = parts.find((part) => part.type === 'year')?.value ?? '';
+  return `${day} ${MONTHS_ES[monthIndex] ?? ''} ${year}`;
+}
+
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
-const MARGIN = 40;
-const FOOTER_Y = 28;
-const HEADER_BOTTOM = 92;
+const MARGIN_X = 50;
+const MARGIN_BOTTOM = 46;
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2;
+
+const INK = rgb(0.067, 0.094, 0.153);
+const SLATE = rgb(0.122, 0.161, 0.216);
+const BODY = rgb(0.392, 0.435, 0.486);
+const MUTED = rgb(0.580, 0.620, 0.675);
+const RULE = rgb(0.886, 0.910, 0.929);
+const PLACEHOLDER = rgb(0.945, 0.953, 0.965);
+const WHITE = rgb(1, 1, 1);
+
+const TITLE_SIZE = 26;
+const PROJECT_SIZE = 12;
+const DATE_SIZE = 10;
+const ITEM_TITLE_SIZE = 16;
+const ITEM_TITLE_LEADING = 21;
+const BODY_SIZE = 11;
+const BODY_LEADING = 16.5;
+const CIRCLE_DIAMETER = 32;
+const PHOTO_GAP = 16;
+const PHOTO_RADIUS = 10;
+const PHOTO_ASPECT = 1.12;
+const CAPTION_SIZE = 8;
+const CAPTION_TRACKING = 0.85;
+
+let cachedRegular: Uint8Array | null = null;
+let cachedBold: Uint8Array | null = null;
+
+function fontBytes(filename: string): Uint8Array {
+  return new Uint8Array(readFileSync(join(process.cwd(), 'src/lib/pendientes/fonts', filename)));
+}
+
+function regularFontBytes(): Uint8Array {
+  if (!cachedRegular) cachedRegular = fontBytes('Inter-Regular.ttf');
+  return cachedRegular;
+}
+
+function boldFontBytes(): Uint8Array {
+  if (!cachedBold) cachedBold = fontBytes('Inter-Bold.ttf');
+  return cachedBold;
+}
 
 export function pdfFilename(proyectoNombre: string): string {
   const slug = proyectoNombre
@@ -55,34 +128,32 @@ export function detectImageKind(bytes: Uint8Array): 'jpg' | 'png' | 'other' {
   return 'other';
 }
 
+/**
+ * Annotated fotos are already flattened JPEGs. Those bytes are embedded unchanged.
+ * Other formats are converted only when pdf-lib cannot embed them directly.
+ */
 export async function toPdfImage(bytes: Uint8Array): Promise<{ bytes: Uint8Array; kind: 'jpg' | 'png' } | null> {
   if (!bytes.length) return null;
   const detected = detectImageKind(bytes);
+  if (detected === 'jpg' || detected === 'png') return { bytes, kind: detected };
+
   try {
     const sharpModule = await import('sharp');
     const output = await sharpModule.default(bytes, { failOn: 'error' })
       .rotate()
-      .resize({ width: 1400, height: 1400, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 78 })
+      .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 82 })
       .toBuffer();
-    if (!output.length) return detected === 'other' ? null : { bytes, kind: detected };
+    if (!output.length) return null;
     return { bytes: new Uint8Array(output), kind: 'jpg' };
   } catch {
-    if (detected === 'jpg' || detected === 'png') return { bytes, kind: detected };
     return null;
   }
 }
 
 function sanitizeForFont(text: string, font: PDFFont): string {
-  const normalized = text
-    .replace(/\r\n/g, '\n')
-    .replace(/[“”]/g, '"')
-    .replace(/[‘’]/g, "'")
-    .replace(/[–—]/g, '-')
-    .replace(/\u2026/g, '...');
-
   let out = '';
-  for (const char of normalized) {
+  for (const char of text.replace(/\r\n/g, '\n').replace(/\t/g, ' ')) {
     if (char === '\n') {
       out += '\n';
       continue;
@@ -141,116 +212,151 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
 function truncateToWidth(text: string, font: PDFFont, size: number, maxWidth: number): string {
   if (font.widthOfTextAtSize(text, size) <= maxWidth) return text;
   let out = text;
-  while (out.length > 1 && font.widthOfTextAtSize(`${out}...`, size) > maxWidth) {
+  while (out.length > 1 && font.widthOfTextAtSize(`${out}…`, size) > maxWidth) {
     out = out.slice(0, -1);
   }
-  return `${out}...`;
+  return `${out}…`;
+}
+
+function roundedRectPath(x: number, y: number, width: number, height: number, radius: number) {
+  const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+  const c = r * 0.5522847498;
+  return [
+    moveTo(x + r, y),
+    lineTo(x + width - r, y),
+    appendBezierCurve(x + width - r + c, y, x + width, y + r - c, x + width, y + r),
+    lineTo(x + width, y + height - r),
+    appendBezierCurve(x + width, y + height - r + c, x + width - r + c, y + height, x + width - r, y + height),
+    lineTo(x + r, y + height),
+    appendBezierCurve(x + r - c, y + height, x, y + height - r + c, x, y + height - r),
+    lineTo(x, y + r),
+    appendBezierCurve(x, y + r - c, x + r - c, y, x + r, y),
+    closePath(),
+  ];
+}
+
+function fillRoundedRect(page: PDFPage, x: number, y: number, width: number, height: number, radius: number, color: ReturnType<typeof rgb>) {
+  page.pushOperators(
+    pushGraphicsState(),
+    setFillingColor(color),
+    ...roundedRectPath(x, y, width, height, radius),
+    fill(),
+    popGraphicsState(),
+  );
+}
+
+function drawTrackedText(
+  page: PDFPage,
+  text: string,
+  x: number,
+  y: number,
+  size: number,
+  font: PDFFont,
+  color: ReturnType<typeof rgb>,
+  tracking: number,
+) {
+  let cursor = x;
+  for (const char of text) {
+    page.drawText(char, { x: cursor, y, size, font, color });
+    cursor += font.widthOfTextAtSize(char, size) + tracking;
+  }
 }
 
 export async function buildPendientesPdf(input: PendientePdfInput): Promise<Uint8Array> {
   const items = pendientesAbiertos(input.items);
   const pdf = await PDFDocument.create();
-  pdf.setTitle(`Pendientes — ${input.proyectoNombre}`);
+  pdf.registerFontkit(fontkit as unknown as Parameters<PDFDocument['registerFontkit']>[0]);
+  pdf.setTitle(`Reporte de pendientes — ${input.proyectoNombre}`);
   pdf.setAuthor('ObraTracker');
   pdf.setCreator('ObraTracker');
-  pdf.setSubject('Informe de pendientes');
+  pdf.setSubject('Reporte de pendientes');
   pdf.setCreationDate(new Date());
 
-  const font = await pdf.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const font = await pdf.embedFont(regularFontBytes(), { subset: true });
+  const fontBold = await pdf.embedFont(boldFontBytes(), { subset: true });
   const sanitize = (value: string) => sanitizeForFont(value, font);
-  const contentWidth = PAGE_WIDTH - MARGIN * 2;
 
   let page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   let cursorY = PAGE_HEIGHT;
+  let headerBottomY = PAGE_HEIGHT;
 
   const drawHeader = () => {
-    page.drawRectangle({
-      x: 0,
-      y: PAGE_HEIGHT - 78,
-      width: PAGE_WIDTH,
-      height: 78,
-      color: rgb(0.11, 0.14, 0.18),
-    });
-    page.drawRectangle({
-      x: 0,
-      y: PAGE_HEIGHT - 82,
-      width: PAGE_WIDTH,
-      height: 4,
-      color: rgb(0.95, 0.45, 0.09),
-    });
+    const titleWidth = fontBold.widthOfTextAtSize('Reporte de pendientes', TITLE_SIZE);
+    const rightLimit = PAGE_WIDTH - MARGIN_X;
+    const rightMax = Math.max(90, rightLimit - (MARGIN_X + titleWidth + 18));
+    const projectLabel = truncateToWidth(sanitize(input.proyectoNombre || 'Proyecto'), font, PROJECT_SIZE, rightMax);
+    const dateLabel = truncateToWidth(sanitize(input.generadoEl), font, DATE_SIZE, rightMax);
 
-    const title = 'INFORME DE PENDIENTES';
-    page.drawText(title, {
-      x: MARGIN,
-      y: PAGE_HEIGHT - 34,
-      size: 16,
+    const top = PAGE_HEIGHT - 48;
+    const projectBaseline = top - PROJECT_SIZE;
+    const dateBaseline = projectBaseline - 16;
+    const titleBaseline = projectBaseline + (PROJECT_SIZE - TITLE_SIZE) * 0.68;
+    const ruleY = Math.min(titleBaseline, dateBaseline) - 18;
+
+    page.drawText('Reporte de pendientes', {
+      x: MARGIN_X,
+      y: titleBaseline,
+      size: TITLE_SIZE,
       font: fontBold,
-      color: rgb(1, 1, 1),
+      color: INK,
     });
 
-    const dateLabel = truncateToWidth(sanitize(input.generadoEl), font, 9, 220);
-    const dateWidth = font.widthOfTextAtSize(dateLabel, 9);
-    page.drawText(dateLabel, {
-      x: PAGE_WIDTH - MARGIN - dateWidth,
-      y: PAGE_HEIGHT - 32,
-      size: 9,
-      font,
-      color: rgb(0.86, 0.89, 0.93),
-    });
-
-    const projectLabel = truncateToWidth(sanitize(input.proyectoNombre || 'Proyecto'), font, 11, contentWidth);
+    const projectWidth = font.widthOfTextAtSize(projectLabel, PROJECT_SIZE);
     page.drawText(projectLabel, {
-      x: MARGIN,
-      y: PAGE_HEIGHT - 58,
-      size: 11,
+      x: rightLimit - projectWidth,
+      y: projectBaseline,
+      size: PROJECT_SIZE,
       font,
-      color: rgb(0.93, 0.95, 0.97),
+      color: INK,
     });
 
-    cursorY = PAGE_HEIGHT - HEADER_BOTTOM;
+    const dateWidth = font.widthOfTextAtSize(dateLabel, DATE_SIZE);
+    page.drawText(dateLabel, {
+      x: rightLimit - dateWidth,
+      y: dateBaseline,
+      size: DATE_SIZE,
+      font,
+      color: MUTED,
+    });
+
+    page.drawLine({
+      start: { x: MARGIN_X, y: ruleY },
+      end: { x: rightLimit, y: ruleY },
+      thickness: 0.8,
+      color: RULE,
+    });
+
+    headerBottomY = ruleY - 32;
+    cursorY = headerBottomY;
   };
 
   const ensure = (heightNeeded: number) => {
-    if (cursorY - heightNeeded >= MARGIN + FOOTER_Y) return;
+    if (cursorY - heightNeeded >= MARGIN_BOTTOM) return;
+    if (Math.abs(cursorY - headerBottomY) < 1) return;
     page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
     drawHeader();
   };
 
-  const drawLines = (lines: string[], size: number, textFont: PDFFont, color: ReturnType<typeof rgb>, gap = 3) => {
+  const drawLines = (
+    lines: string[],
+    size: number,
+    textFont: PDFFont,
+    color: ReturnType<typeof rgb>,
+    leading: number,
+  ) => {
     for (const line of lines) {
-      ensure(size + gap);
+      ensure(leading);
       if (line) {
         page.drawText(line, {
-          x: MARGIN,
+          x: MARGIN_X,
           y: cursorY - size,
           size,
           font: textFont,
           color,
         });
       }
-      cursorY -= size + gap;
+      cursorY -= leading;
     }
-  };
-
-  const drawPlaceholder = (target: PDFPage, x: number, y: number, width: number, height: number, label: string) => {
-    target.drawRectangle({
-      x,
-      y,
-      width,
-      height,
-      color: rgb(0.94, 0.95, 0.96),
-      borderColor: rgb(0.78, 0.8, 0.84),
-      borderWidth: 1,
-    });
-    const caption = truncateToWidth(sanitize(label || 'Foto no disponible'), font, 8, width - 16);
-    target.drawText(caption, {
-      x: x + 8,
-      y: y + height / 2 - 4,
-      size: 8,
-      font,
-      color: rgb(0.35, 0.38, 0.42),
-    });
   };
 
   const embedFoto = async (foto: PdfFotoInput): Promise<PDFImage | null> => {
@@ -265,110 +371,141 @@ export async function buildPendientesPdf(input: PendientePdfInput): Promise<Uint
     }
   };
 
-  drawHeader();
+  const drawContainedImage = (image: PDFImage, x: number, y: number, width: number, height: number) => {
+    const dims = image.scale(1);
+    const scale = Math.min(width / dims.width, height / dims.height);
+    const drawWidth = dims.width * scale;
+    const drawHeight = dims.height * scale;
+    page.pushOperators(
+      pushGraphicsState(),
+      ...roundedRectPath(x, y, width, height, PHOTO_RADIUS),
+      clip(),
+      endPath(),
+    );
+    page.drawImage(image, {
+      x: x + (width - drawWidth) / 2,
+      y: y + (height - drawHeight) / 2,
+      width: drawWidth,
+      height: drawHeight,
+    });
+    page.pushOperators(popGraphicsState());
+  };
 
-  const summary = sanitize(
-    items.length === 1 ? '1 pendiente abierto' : `${items.length} pendientes abiertos`,
-  );
-  drawLines([summary], 10, font, rgb(0.33, 0.36, 0.42), 6);
-  cursorY -= 6;
+  drawHeader();
 
   if (items.length === 0) {
     drawLines(
       ['No hay pendientes abiertos para este proyecto.'],
       12,
       font,
-      rgb(0.33, 0.36, 0.42),
+      BODY,
+      18,
     );
   }
 
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index];
-    ensure(72);
-    page.drawRectangle({
-      x: MARGIN,
-      y: cursorY - 1,
-      width: contentWidth,
-      height: 1,
-      color: rgb(0.86, 0.88, 0.9),
-    });
-    cursorY -= 12;
-
     const numero = String(index + 1).padStart(2, '0');
-    const titulo = sanitize(item.titulo || 'Sin título');
-    const titleLines = wrapText(`${numero}  ${titulo}`, fontBold, 13, contentWidth);
-    drawLines(titleLines, 13, fontBold, rgb(0.1, 0.12, 0.16), 3);
-
-    const meta = sanitize(`Estado: ${estadoPendienteLabel(item.estado)}`);
-    drawLines([meta], 9, font, rgb(0.38, 0.42, 0.48), 4);
-    cursorY -= 2;
-
-    const detalle = item.descripcion?.trim()
-      ? item.descripcion.trim()
-      : 'Sin detalle';
-    const detailLines = wrapText(sanitize(detalle), font, 10, contentWidth);
-    drawLines(detailLines, 10, font, rgb(0.16, 0.18, 0.22), 3);
-    cursorY -= 6;
-
-    if (item.fotos.length === 0) continue;
-
-    const slots = await Promise.all(item.fotos.map(async (foto) => ({
-      nombre: foto.nombre,
-      image: await embedFoto(foto),
-    })));
-
-    for (let offset = 0; offset < slots.length; offset += 2) {
-      const row = slots.slice(offset, offset + 2);
-      const single = row.length === 1;
-      const gap = 10;
-      const boxW = single ? contentWidth : (contentWidth - gap) / 2;
-      const boxH = single ? 210 : 145;
-      ensure(boxH + 8);
-      const bottom = cursorY - boxH;
-
-      row.forEach((slot, column) => {
-        const x = MARGIN + column * (boxW + gap);
-        if (!slot.image) {
-          drawPlaceholder(page, x, bottom, boxW, boxH, slot.nombre);
-          return;
-        }
-        page.drawRectangle({
-          x,
-          y: bottom,
-          width: boxW,
-          height: boxH,
-          color: rgb(0.96, 0.97, 0.98),
-          borderColor: rgb(0.86, 0.88, 0.9),
-          borderWidth: 0.6,
-        });
-        const dims = slot.image.scale(1);
-        const scale = Math.min((boxW - 8) / dims.width, (boxH - 8) / dims.height);
-        const width = dims.width * scale;
-        const height = dims.height * scale;
-        page.drawImage(slot.image, {
-          x: x + (boxW - width) / 2,
-          y: bottom + (boxH - height) / 2,
-          width,
-          height,
-        });
-      });
-
-      cursorY = bottom - 10;
+    const titulo = sanitize(item.titulo.trim() || 'Sin título');
+    const titleX = MARGIN_X + CIRCLE_DIAMETER + 12;
+    const titleMaxWidth = PAGE_WIDTH - MARGIN_X - titleX;
+    const titleLines = wrapText(titulo, fontBold, ITEM_TITLE_SIZE, titleMaxWidth);
+    const titleBlockHeight = Math.max(CIRCLE_DIAMETER, titleLines.length * ITEM_TITLE_LEADING);
+    if (item.fotos.length > 0) {
+      const photoWidth = (CONTENT_WIDTH - PHOTO_GAP) / 2;
+      const photoRow = 10 + photoWidth * PHOTO_ASPECT + 8 + CAPTION_SIZE + 18;
+      const bodyLines = item.descripcion?.trim()
+        ? wrapText(sanitize(item.descripcion.trim()), font, BODY_SIZE, CONTENT_WIDTH).length
+        : 0;
+      const bodyBlock = bodyLines ? Math.min(bodyLines, 4) * BODY_LEADING + 16 : 0;
+      const together = titleBlockHeight + 20 + bodyBlock + photoRow;
+      const pageRoom = headerBottomY - MARGIN_BOTTOM;
+      if (together <= pageRoom && cursorY - together < MARGIN_BOTTOM) ensure(together);
     }
-  }
+    ensure(titleBlockHeight + 6);
 
-  const pages = pdf.getPages();
-  pages.forEach((pdfPage, pageIndex) => {
-    const label = sanitize(`Página ${pageIndex + 1} de ${pages.length}`);
-    const width = font.widthOfTextAtSize(label, 9);
-    pdfPage.drawText(label, {
-      x: (PAGE_WIDTH - width) / 2,
-      y: 18,
-      size: 9,
-      font,
-      color: rgb(0.42, 0.45, 0.5),
+    const rowTop = cursorY;
+    const circleCy = rowTop - CIRCLE_DIAMETER / 2;
+    page.drawCircle({
+      x: MARGIN_X + CIRCLE_DIAMETER / 2,
+      y: circleCy,
+      size: CIRCLE_DIAMETER / 2,
+      color: SLATE,
     });
-  });
+
+    let numberSize = 11;
+    while (numberSize > 7 && fontBold.widthOfTextAtSize(numero, numberSize) > CIRCLE_DIAMETER - 12) {
+      numberSize -= 0.5;
+    }
+    const numberWidth = fontBold.widthOfTextAtSize(numero, numberSize);
+    page.drawText(numero, {
+      x: MARGIN_X + CIRCLE_DIAMETER / 2 - numberWidth / 2,
+      y: circleCy - numberSize * 0.35,
+      size: numberSize,
+      font: fontBold,
+      color: WHITE,
+    });
+
+    const firstBaseline = circleCy - ITEM_TITLE_SIZE * 0.34;
+    titleLines.forEach((line, lineIndex) => {
+      if (!line) return;
+      page.drawText(line, {
+        x: titleX,
+        y: firstBaseline - lineIndex * ITEM_TITLE_LEADING,
+        size: ITEM_TITLE_SIZE,
+        font: fontBold,
+        color: INK,
+      });
+    });
+
+    const titleBottom = firstBaseline - (titleLines.length - 1) * ITEM_TITLE_LEADING - ITEM_TITLE_SIZE * 0.22;
+    const circleBottom = circleCy - CIRCLE_DIAMETER / 2;
+    cursorY = Math.min(titleBottom, circleBottom) - 14;
+
+    const detalle = item.descripcion?.trim() ? sanitize(item.descripcion.trim()) : '';
+    if (detalle) {
+      const detailLines = wrapText(detalle, font, BODY_SIZE, CONTENT_WIDTH);
+      drawLines(detailLines, BODY_SIZE, font, BODY, BODY_LEADING);
+      cursorY -= 6;
+    }
+
+    if (item.fotos.length > 0) {
+      cursorY -= 10;
+      const slots = await Promise.all(item.fotos.map(async (foto) => embedFoto(foto)));
+      const photoWidth = (CONTENT_WIDTH - PHOTO_GAP) / 2;
+      const photoHeight = photoWidth * PHOTO_ASPECT;
+      const captionBlock = 8 + CAPTION_SIZE;
+
+      for (let offset = 0; offset < slots.length; offset += 2) {
+        const row = slots.slice(offset, offset + 2);
+        const rowHeight = photoHeight + captionBlock + 8;
+        ensure(rowHeight);
+        const bottom = cursorY - photoHeight;
+
+        row.forEach((image, column) => {
+          const x = MARGIN_X + column * (photoWidth + PHOTO_GAP);
+          if (image) drawContainedImage(image, x, bottom, photoWidth, photoHeight);
+          else fillRoundedRect(page, x, bottom, photoWidth, photoHeight, PHOTO_RADIUS, PLACEHOLDER);
+
+          const caption = `FOTO ${offset + column + 1}`;
+          drawTrackedText(
+            page,
+            caption,
+            x,
+            bottom - 8 - CAPTION_SIZE,
+            CAPTION_SIZE,
+            font,
+            MUTED,
+            CAPTION_TRACKING,
+          );
+        });
+
+        cursorY = bottom - captionBlock - 18;
+      }
+    }
+
+    cursorY -= 20;
+  }
 
   return pdf.save();
 }
