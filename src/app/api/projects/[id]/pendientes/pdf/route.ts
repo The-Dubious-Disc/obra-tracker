@@ -6,7 +6,7 @@ import { db } from '@/lib/db';
 import { proyectos } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getObjectBytes } from '@/lib/services/r2';
-import { buildPendientesPdf, pdfFilename, type PdfFotoInput } from '@/lib/pendientes/pdf';
+import { buildPendientesPdf, formatPdfExportDate, pdfFilename, type PdfFotoInput } from '@/lib/pendientes/pdf';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -74,14 +74,9 @@ export async function GET(
       };
     }));
 
-    const now = new Date();
     const pdfBytes = await buildPendientesPdf({
       proyectoNombre: project.nombre,
-      generadoEl: new Intl.DateTimeFormat('es-UY', {
-        dateStyle: 'long',
-        timeStyle: 'short',
-        timeZone: 'America/Montevideo',
-      }).format(now),
+      generadoEl: formatPdfExportDate(new Date()),
       items,
     });
 
