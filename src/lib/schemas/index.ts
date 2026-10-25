@@ -105,6 +105,11 @@ export const addPendienteFotosSchema = z.object({
   fotos: z.array(pendienteFotoSchema, { error: 'Fotos inválidas' }).min(1, 'Agregá al menos una foto').max(10, 'Máximo 10 fotos por pendiente'),
 });
 
+export const replacePendienteFotoSchema = z.object({
+  r2Key: z.string({ error: 'La foto no tiene clave' }).min(1, 'La foto no tiene clave').max(500),
+  nombre: z.string({ error: 'Cada foto necesita un nombre' }).min(1, 'Cada foto necesita un nombre').max(255),
+});
+
 // Comment schemas
 export const createCommentSchema = z.object({
   texto: z.string().min(1, 'Texto es requerido'),

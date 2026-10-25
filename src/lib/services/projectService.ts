@@ -308,6 +308,29 @@ export async function addPendienteFotos(
   }
 }
 
+export async function replacePendienteFoto(
+  pendienteId: string,
+  fotoId: string,
+  data: { r2Key: string; nombre: string },
+) {
+  try {
+    const [foto] = await db.select()
+      .from(pendienteFotos)
+      .where(and(eq(pendienteFotos.id, fotoId), eq(pendienteFotos.pendienteId, pendienteId)));
+
+    if (!foto) return { success: false as const, error: 'not_found' as const };
+
+    await db.update(pendienteFotos)
+      .set({ r2Key: data.r2Key, nombre: data.nombre })
+      .where(eq(pendienteFotos.id, fotoId));
+
+    return { success: true as const, previousKey: foto.r2Key };
+  } catch (error) {
+    console.error('Error in replacePendienteFoto:', error);
+    return { success: false as const, error: 'database' as const };
+  }
+}
+
 export async function deletePendienteFoto(pendienteId: string, fotoId: string) {
   try {
     const [foto] = await db.select()

@@ -717,6 +717,7 @@ export function useUpdatePendiente() {
     extras?: {
       projectId?: string
       files?: File[]
+      replacements?: { fotoId: string; file: File }[]
     },
   ) => {
     setIsUpdating(true)
@@ -734,28 +735,49 @@ export function useUpdatePendiente() {
         throw new Error(payload.error || `HTTP error! status: ${response.status}`)
       }
 
-      if (extras?.files && extras.files.length > 0) {
-        if (!extras.projectId) {
+      const newFiles = extras?.files ?? []
+      const replacements = extras?.replacements ?? []
+      if (newFiles.length > 0 || replacements.length > 0) {
+        if (!extras?.projectId) {
           throw new Error('Falta el proyecto para subir las fotos')
         }
-        const fotos: { r2Key: string; nombre: string }[] = []
-        for (const file of extras.files) {
-          const key = await uploadToR2({
-            projectId: extras.projectId,
-            file,
-            kind: 'pendientes',
+        if (newFiles.length > 0) {
+          const fotos: { r2Key: string; nombre: string }[] = []
+          for (const file of newFiles) {
+            const key = await uploadToR2({
+              projectId: extras.projectId,
+              file,
+              kind: 'pendientes',
+            })
+            fotos.push({ r2Key: key, nombre: file.name })
+          }
+
+          const fotoResponse = await fetch(`/api/pendientes/${pendienteId}/fotos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fotos }),
           })
-          fotos.push({ r2Key: key, nombre: file.name })
+          if (!fotoResponse.ok) {
+            const payload = await tryParseJson(fotoResponse)
+            throw new Error(payload?.error || 'Los datos se guardaron, pero no se pudieron adjuntar las fotos')
+          }
         }
 
-        const fotoResponse = await fetch(`/api/pendientes/${pendienteId}/fotos`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fotos }),
-        })
-        if (!fotoResponse.ok) {
-          const payload = await tryParseJson(fotoResponse)
-          throw new Error(payload?.error || 'Los datos se guardaron, pero no se pudieron adjuntar las fotos')
+        for (const replacement of replacements) {
+          const key = await uploadToR2({
+            projectId: extras.projectId,
+            file: replacement.file,
+            kind: 'pendientes',
+          })
+          const replaceResponse = await fetch(`/api/pendientes/${pendienteId}/fotos/${replacement.fotoId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ r2Key: key, nombre: replacement.file.name }),
+          })
+          if (!replaceResponse.ok) {
+            const payload = await tryParseJson(replaceResponse)
+            throw new Error(payload?.error || 'No se pudo guardar la foto marcada')
+          }
         }
       }
 

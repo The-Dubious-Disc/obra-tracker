@@ -8,12 +8,21 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { ImagePlus, Loader2, Trash2, Upload, X } from 'lucide-react'
 import { useCreatePendiente, useDeletePendienteFoto, useUpdatePendiente } from '@/hooks/useProject'
+import { FotoAnnotator } from '@/components/pendientes/FotoAnnotator'
 import {
   MAX_PENDIENTE_FOTO_BYTES,
   MAX_PENDIENTE_FOTOS,
   resolvePendienteImageContentType,
 } from '@/lib/pendientes/photos'
 import type { PendienteConFotos, PendienteFoto } from '@/types/database.types'
+
+interface AnnotatingFoto {
+  kind: 'new' | 'existing'
+  index?: number
+  fotoId?: string
+  src: string
+  nombre: string
+}
 
 interface PendienteFormDialogProps {
   open: boolean
@@ -75,14 +84,26 @@ export function PendienteFormDialog({
   )
   const [files, setFiles] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
+  const [markedPreviews, setMarkedPreviews] = useState<string[]>([])
+  const [replacements, setReplacements] = useState<Record<string, { file: File; preview: string }>>({})
+  const [annotating, setAnnotating] = useState<AnnotatingFoto | null>(null)
+  const [openingFotoId, setOpeningFotoId] = useState<string | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
+  const replacementsRef = useRef(replacements)
+  const fetchedAnnotatorUrl = useRef<string | null>(null)
 
   useEffect(() => {
     previewsRef.current = previews
   }, [previews])
 
+  useEffect(() => {
+    replacementsRef.current = replacements
+  }, [replacements])
+
   useEffect(() => () => {
     previewsRef.current.forEach((url) => URL.revokeObjectURL(url))
+    Object.values(replacementsRef.current).forEach((item) => URL.revokeObjectURL(item.preview))
+    if (fetchedAnnotatorUrl.current) URL.revokeObjectURL(fetchedAnnotatorUrl.current)
   }, [])
 
   const existingFotos: PendienteFoto[] = pendiente?.fotos ?? []
@@ -116,17 +137,96 @@ export function PendienteFormDialog({
   }
 
   const removeNewFile = (index: number) => {
-    URL.revokeObjectURL(previews[index])
+    const preview = previews[index]
+    URL.revokeObjectURL(preview)
     setFiles((current) => current.filter((_, i) => i !== index))
     setPreviews((current) => current.filter((_, i) => i !== index))
+    setMarkedPreviews((current) => current.filter((url) => url !== preview))
     setFileError(null)
+  }
+
+  const closeAnnotator = () => {
+    if (fetchedAnnotatorUrl.current) {
+      URL.revokeObjectURL(fetchedAnnotatorUrl.current)
+      fetchedAnnotatorUrl.current = null
+    }
+    setAnnotating(null)
+  }
+
+  const openNewFoto = (index: number) => {
+    const preview = previews[index]
+    const file = files[index]
+    if (!preview || !file) return
+    setAnnotating({ kind: 'new', index, src: preview, nombre: file.name })
+  }
+
+  const openExistingFoto = async (foto: PendienteFoto) => {
+    if (!pendiente) return
+    const replacement = replacements[foto.id]
+    if (replacement) {
+      setAnnotating({
+        kind: 'existing',
+        fotoId: foto.id,
+        src: replacement.preview,
+        nombre: replacement.file.name,
+      })
+      return
+    }
+
+    setFileError(null)
+    setOpeningFotoId(foto.id)
+    try {
+      const response = await fetch(`/api/pendientes/${pendiente.id}/fotos/${foto.id}`)
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null) as { error?: string } | null
+        throw new Error(payload?.error || 'No se pudo abrir la foto')
+      }
+      const blob = await response.blob()
+      const src = URL.createObjectURL(blob)
+      fetchedAnnotatorUrl.current = src
+      setAnnotating({ kind: 'existing', fotoId: foto.id, src, nombre: foto.nombre })
+    } catch (error) {
+      setFileError(error instanceof Error ? error.message : 'No se pudo abrir la foto')
+    } finally {
+      setOpeningFotoId(null)
+    }
+  }
+
+  const applyAnnotation = (file: File) => {
+    if (!annotating) return
+    const preview = URL.createObjectURL(file)
+    if (annotating.kind === 'new' && annotating.index !== undefined) {
+      const index = annotating.index
+      const previous = previews[index]
+      if (previous) URL.revokeObjectURL(previous)
+      setFiles((current) => current.map((item, itemIndex) => (itemIndex === index ? file : item)))
+      setPreviews((current) => current.map((item, itemIndex) => (itemIndex === index ? preview : item)))
+      setMarkedPreviews((current) => [...current.filter((url) => url !== previous), preview])
+    } else if (annotating.fotoId) {
+      const fotoId = annotating.fotoId
+      setReplacements((current) => {
+        const previous = current[fotoId]
+        if (previous) URL.revokeObjectURL(previous.preview)
+        return { ...current, [fotoId]: { file, preview } }
+      })
+    }
+    closeAnnotator()
   }
 
   const handleDeleteExisting = async (foto: PendienteFoto) => {
     if (!pendiente) return
     if (!confirm('¿Quitar esta foto del pendiente?')) return
     const ok = await deleteFoto(pendiente.id, foto.id)
-    if (ok) onFotoDeleted(foto.id)
+    if (!ok) return
+    setReplacements((current) => {
+      const previous = current[foto.id]
+      if (!previous) return current
+      URL.revokeObjectURL(previous.preview)
+      const next = { ...current }
+      delete next[foto.id]
+      return next
+    })
+    onFotoDeleted(foto.id)
   }
 
   const handleSubmit = async (event: FormEvent) => {
@@ -150,6 +250,10 @@ export function PendienteFormDialog({
       }, {
         projectId,
         files,
+        replacements: Object.entries(replacements).map(([fotoId, item]) => ({
+          fotoId,
+          file: item.file,
+        })),
       })
       if (!ok) return
     } else {
@@ -165,11 +269,25 @@ export function PendienteFormDialog({
       if (!next && isSaving) return
       onOpenChange(next)
     }}>
-      <DialogContent className="w-[calc(100%-1.5rem)] max-w-lg max-h-[92vh] overflow-y-auto">
+      <DialogContent
+        className="w-[calc(100%-1.5rem)] max-w-lg max-h-[92vh] overflow-y-auto"
+        onInteractOutside={(event) => {
+          if (annotating) event.preventDefault()
+        }}
+        onPointerDownOutside={(event) => {
+          if (annotating) event.preventDefault()
+        }}
+        onFocusOutside={(event) => {
+          if (annotating) event.preventDefault()
+        }}
+        onEscapeKeyDown={(event) => {
+          if (annotating) event.preventDefault()
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{mode === 'create' ? 'Nuevo pendiente' : 'Editar pendiente'}</DialogTitle>
           <DialogDescription>
-            Título, detalle y fotos quedan guardados en el proyecto actual.
+            Título, detalle y fotos quedan guardados en el proyecto actual. Podés marcar cada foto antes de guardarla.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -235,6 +353,9 @@ export function PendienteFormDialog({
               <p className="text-xs text-muted-foreground/80 mt-1">
                 JPG, PNG, WebP o GIF · hasta 10 MB · {Math.max(remaining, 0)} disponibles
               </p>
+              <p className="text-xs text-muted-foreground/80 mt-1">
+                Después podés marcarlas con lápiz, círculo o flecha.
+              </p>
             </div>
             <input
               ref={fileInputRef}
@@ -247,31 +368,52 @@ export function PendienteFormDialog({
 
             {(existingFotos.length > 0 || previews.length > 0) && (
               <div className="grid grid-cols-3 gap-2">
-                {existingFotos.map((foto) => (
-                  <div key={foto.id} className="relative aspect-square rounded-lg overflow-hidden border border-border bg-muted">
-                    {foto.downloadUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={foto.downloadUrl} alt={foto.nombre} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center text-muted-foreground">
-                        <ImagePlus className="h-5 w-5" />
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      aria-label={`Quitar ${foto.nombre}`}
-                      className="absolute top-1 right-1 h-7 w-7 rounded-full bg-black/70 text-white flex items-center justify-center"
-                      onClick={() => void handleDeleteExisting(foto)}
-                      disabled={deletingFotoId === foto.id}
-                    >
-                      {deletingFotoId === foto.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                    </button>
-                  </div>
-                ))}
+                {existingFotos.map((foto) => {
+                  const replacement = replacements[foto.id]
+                  const previewUrl = replacement?.preview || foto.downloadUrl
+                  return (
+                    <div key={foto.id} className="relative aspect-square rounded-lg overflow-hidden border border-border bg-muted">
+                      {previewUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={previewUrl} alt={foto.nombre} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-muted-foreground">
+                          <ImagePlus className="h-5 w-5" />
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        aria-label={`Marcar ${foto.nombre}`}
+                        className="absolute inset-x-1 bottom-1 h-8 rounded-md bg-black/75 text-white text-xs font-medium"
+                        onClick={() => void openExistingFoto(foto)}
+                        disabled={openingFotoId === foto.id || deletingFotoId === foto.id}
+                      >
+                        {openingFotoId === foto.id ? 'Abriendo...' : replacement ? 'Marcada' : 'Marcar'}
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Quitar ${foto.nombre}`}
+                        className="absolute top-1 right-1 h-7 w-7 rounded-full bg-black/70 text-white flex items-center justify-center"
+                        onClick={() => void handleDeleteExisting(foto)}
+                        disabled={deletingFotoId === foto.id}
+                      >
+                        {deletingFotoId === foto.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
+                  )
+                })}
                 {previews.map((preview, index) => (
                   <div key={preview} className="relative aspect-square rounded-lg overflow-hidden border border-border">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={preview} alt={files[index]?.name || 'Foto nueva'} className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      aria-label={`Marcar ${files[index]?.name || 'foto nueva'}`}
+                      className="absolute inset-x-1 bottom-1 h-8 rounded-md bg-black/75 text-white text-xs font-medium"
+                      onClick={() => openNewFoto(index)}
+                    >
+                      {markedPreviews.includes(preview) ? 'Marcada' : 'Marcar'}
+                    </button>
                     <button
                       type="button"
                       aria-label={`Quitar ${files[index]?.name || 'foto nueva'}`}
@@ -303,6 +445,14 @@ export function PendienteFormDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+      {annotating && (
+        <FotoAnnotator
+          src={annotating.src}
+          nombre={annotating.nombre}
+          onCancel={closeAnnotator}
+          onSave={applyAnnotation}
+        />
+      )}
     </Dialog>
   )
 }
