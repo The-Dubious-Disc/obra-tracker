@@ -20,7 +20,7 @@ npm run lint
 npm run build
 ```
 
-Tests live in `tests/` and mock `@/lib/db`. They do not need `DATABASE_URL`. `tsconfig.json` excludes `tests/` so `next build` does not typecheck the suite. JSX in tests is compiled with `tsconfig.vitest.json` (`jsx: react-jsx`). Leave the app tsconfig on `jsx: preserve`.
+Tests live in `tests/` and mock `@/lib/db`. They do not need `DATABASE_URL`. `tsconfig.json` excludes `tests/` so `next build` does not typecheck the suite. Vitest is pinned to 3.2.4 because Vitest 5 peer-depends on `@types/node` 22 or newer, and `npm ci` (CI and Vercel) fails that conflict against this repo's `@types/node` 20. Leave the app tsconfig on `jsx: preserve`; the Vitest config compiles test JSX itself.
 
 CI is `.github/workflows/ci.yml` (`npm ci`, `npm test`, `npm run lint`) on pull requests and pushes to `master`.
 

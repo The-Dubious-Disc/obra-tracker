@@ -41,7 +41,6 @@
     "node_modules",
     "tests",
     "vitest.config.ts",
-    "vitest.config.mts",
-    "tsconfig.vitest.json"
+    "vitest.config.mts"
   ]
 }

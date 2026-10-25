@@ -5,11 +5,8 @@ import { defineConfig } from 'vitest/config'
 const root = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
-  tsconfig: './tsconfig.vitest.json',
-  oxc: {
-    jsx: {
-      runtime: 'automatic',
-    },
+  esbuild: {
+    jsx: 'automatic',
   },
   resolve: {
     alias: {
