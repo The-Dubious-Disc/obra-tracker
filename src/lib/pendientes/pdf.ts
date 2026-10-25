@@ -82,7 +82,7 @@ const BODY_LEADING = 16.5;
 const CIRCLE_DIAMETER = 32;
 const PHOTO_GAP = 16;
 const PHOTO_RADIUS = 10;
-const PHOTO_ASPECT = 1.12;
+const MAX_PHOTO_HEIGHT_RATIO = 1.45;
 const CAPTION_SIZE = 8;
 const CAPTION_TRACKING = 0.85;
 
@@ -128,25 +128,47 @@ export function detectImageKind(bytes: Uint8Array): 'jpg' | 'png' | 'other' {
   return 'other';
 }
 
+function needsExifBake(orientation: number | undefined): boolean {
+  return typeof orientation === 'number' && orientation >= 2 && orientation <= 8;
+}
+
+async function readOrientation(bytes: Uint8Array): Promise<number | undefined> {
+  try {
+    const sharpModule = await import('sharp');
+    const meta = await sharpModule.default(bytes, { failOn: 'none' }).metadata();
+    return meta.orientation;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
- * Annotated fotos are already flattened JPEGs. Those bytes are embedded unchanged.
- * Other formats are converted only when pdf-lib cannot embed them directly.
+ * JPEGs and PNGs are embedded as stored when their pixels already match the way
+ * the photo is viewed. Phone JPEGs often keep landscape sensor pixels and an
+ * EXIF orientation of 6 or 8; pdf-lib ignores that tag, so those are rotated
+ * into the visual orientation before embedding. Other formats are converted.
  */
 export async function toPdfImage(bytes: Uint8Array): Promise<{ bytes: Uint8Array; kind: 'jpg' | 'png' } | null> {
   if (!bytes.length) return null;
   const detected = detectImageKind(bytes);
-  if (detected === 'jpg' || detected === 'png') return { bytes, kind: detected };
+  const bakeOrientation = detected === 'jpg' || detected === 'png'
+    ? needsExifBake(await readOrientation(bytes))
+    : true;
+  if ((detected === 'jpg' || detected === 'png') && !bakeOrientation) {
+    return { bytes, kind: detected };
+  }
 
   try {
     const sharpModule = await import('sharp');
     const output = await sharpModule.default(bytes, { failOn: 'error' })
       .rotate()
-      .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 82 })
+      .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85 })
       .toBuffer();
-    if (!output.length) return null;
+    if (!output.length) return detected === 'other' ? null : { bytes, kind: detected === 'png' ? 'png' : 'jpg' };
     return { bytes: new Uint8Array(output), kind: 'jpg' };
   } catch {
+    if (detected === 'jpg' || detected === 'png') return { bytes, kind: detected };
     return null;
   }
 }
@@ -371,23 +393,30 @@ export async function buildPendientesPdf(input: PendientePdfInput): Promise<Uint
     }
   };
 
-  const drawContainedImage = (image: PDFImage, x: number, y: number, width: number, height: number) => {
-    const dims = image.scale(1);
-    const scale = Math.min(width / dims.width, height / dims.height);
-    const drawWidth = dims.width * scale;
-    const drawHeight = dims.height * scale;
+  const columnWidth = (CONTENT_WIDTH - PHOTO_GAP) / 2;
+  const maxPhotoHeight = columnWidth * MAX_PHOTO_HEIGHT_RATIO;
+
+  const frameFor = (image: PDFImage | null) => {
+    if (!image) return { width: columnWidth, height: columnWidth * 0.75 };
+    const { width: pixelWidth, height: pixelHeight } = image.scale(1);
+    const aspect = pixelHeight / Math.max(pixelWidth, 1);
+    let width = columnWidth;
+    let height = width * aspect;
+    if (height > maxPhotoHeight) {
+      height = maxPhotoHeight;
+      width = height / aspect;
+    }
+    return { width, height };
+  };
+
+  const drawFramedImage = (image: PDFImage, x: number, y: number, width: number, height: number) => {
     page.pushOperators(
       pushGraphicsState(),
       ...roundedRectPath(x, y, width, height, PHOTO_RADIUS),
       clip(),
       endPath(),
     );
-    page.drawImage(image, {
-      x: x + (width - drawWidth) / 2,
-      y: y + (height - drawHeight) / 2,
-      width: drawWidth,
-      height: drawHeight,
-    });
+    page.drawImage(image, { x, y, width, height });
     page.pushOperators(popGraphicsState());
   };
 
@@ -412,8 +441,7 @@ export async function buildPendientesPdf(input: PendientePdfInput): Promise<Uint
     const titleLines = wrapText(titulo, fontBold, ITEM_TITLE_SIZE, titleMaxWidth);
     const titleBlockHeight = Math.max(CIRCLE_DIAMETER, titleLines.length * ITEM_TITLE_LEADING);
     if (item.fotos.length > 0) {
-      const photoWidth = (CONTENT_WIDTH - PHOTO_GAP) / 2;
-      const photoRow = 10 + photoWidth * PHOTO_ASPECT + 8 + CAPTION_SIZE + 18;
+      const photoRow = 10 + maxPhotoHeight + 8 + CAPTION_SIZE + 18;
       const bodyLines = item.descripcion?.trim()
         ? wrapText(sanitize(item.descripcion.trim()), font, BODY_SIZE, CONTENT_WIDTH).length
         : 0;
@@ -472,27 +500,29 @@ export async function buildPendientesPdf(input: PendientePdfInput): Promise<Uint
     if (item.fotos.length > 0) {
       cursorY -= 10;
       const slots = await Promise.all(item.fotos.map(async (foto) => embedFoto(foto)));
-      const photoWidth = (CONTENT_WIDTH - PHOTO_GAP) / 2;
-      const photoHeight = photoWidth * PHOTO_ASPECT;
       const captionBlock = 8 + CAPTION_SIZE;
 
       for (let offset = 0; offset < slots.length; offset += 2) {
         const row = slots.slice(offset, offset + 2);
-        const rowHeight = photoHeight + captionBlock + 8;
+        const frames = row.map((image) => frameFor(image));
+        const rowImageHeight = Math.max(...frames.map((frame) => frame.height));
+        const rowHeight = rowImageHeight + captionBlock + 8;
         ensure(rowHeight);
-        const bottom = cursorY - photoHeight;
+        const bottom = cursorY - rowImageHeight;
 
         row.forEach((image, column) => {
-          const x = MARGIN_X + column * (photoWidth + PHOTO_GAP);
-          if (image) drawContainedImage(image, x, bottom, photoWidth, photoHeight);
-          else fillRoundedRect(page, x, bottom, photoWidth, photoHeight, PHOTO_RADIUS, PLACEHOLDER);
+          const frame = frames[column];
+          const x = MARGIN_X + column * (columnWidth + PHOTO_GAP);
+          const y = bottom + (rowImageHeight - frame.height);
+          if (image) drawFramedImage(image, x, y, frame.width, frame.height);
+          else fillRoundedRect(page, x, y, frame.width, frame.height, PHOTO_RADIUS, PLACEHOLDER);
 
           const caption = `FOTO ${offset + column + 1}`;
           drawTrackedText(
             page,
             caption,
             x,
-            bottom - 8 - CAPTION_SIZE,
+            y - 8 - CAPTION_SIZE,
             CAPTION_SIZE,
             font,
             MUTED,
