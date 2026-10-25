@@ -4,6 +4,7 @@ import {
   PDFDict,
   PDFDocument,
   PDFName,
+  PDFNumber,
   PDFRawStream,
   decodePDFRawStream,
 } from 'pdf-lib';
@@ -105,6 +106,46 @@ function decodePdfString(raw: string, unicode: Map<number, string>): string {
   return '';
 }
 
+async function placedPhotoSizes(bytes: Uint8Array): Promise<Array<{
+  pixelWidth: number;
+  pixelHeight: number;
+  drawWidth: number;
+  drawHeight: number;
+}>> {
+  const pdf = await PDFDocument.load(bytes);
+  const pixels: Array<{ pixelWidth: number; pixelHeight: number }> = [];
+  const drawn: Array<{ drawWidth: number; drawHeight: number }> = [];
+
+  for (const page of pdf.getPages()) {
+    const xobjects = page.node.Resources()?.lookup(PDFName.of('XObject'));
+    if (xobjects instanceof PDFDict) {
+      for (const [, ref] of xobjects.entries()) {
+        const obj = page.node.context.lookup(ref);
+        if (!(obj instanceof PDFRawStream)) continue;
+        if (String(obj.dict.lookup(PDFName.of('Subtype'))) !== '/Image') continue;
+        const width = obj.dict.lookup(PDFName.of('Width'));
+        const height = obj.dict.lookup(PDFName.of('Height'));
+        if (!(width instanceof PDFNumber) || !(height instanceof PDFNumber)) continue;
+        pixels.push({ pixelWidth: width.asNumber(), pixelHeight: height.asNumber() });
+      }
+    }
+
+    const contents = page.node.Contents();
+    const streams = contents instanceof PDFArray ? contents.asArray() : contents ? [contents] : [];
+    for (const entry of streams) {
+      const content = streamText(page.node.context.lookup(entry));
+      for (const match of content.matchAll(/([0-9.]+) 0 0 ([0-9.]+) 0 0 cm/g)) {
+        const drawWidth = Number(match[1]);
+        const drawHeight = Number(match[2]);
+        if (drawWidth === 1 && drawHeight === 1) continue;
+        drawn.push({ drawWidth, drawHeight });
+      }
+    }
+  }
+
+  return pixels.map((pixel, index) => ({ ...pixel, ...drawn[index] }));
+}
+
 async function extractPdfText(bytes: Uint8Array): Promise<string> {
   const pdf = await PDFDocument.load(bytes);
   const pages = pdf.getPages();
@@ -189,6 +230,64 @@ describe('informe PDF de pendientes', () => {
     const preparedWebp = await toPdfImage(webp);
     expect(preparedWebp?.kind).toBe('jpg');
     expect(preparedWebp && detectImageKind(preparedWebp.bytes)).toBe('jpg');
+  });
+
+  it('mantiene verticales las fotos verticales, también con EXIF', async () => {
+    const portrait = new Uint8Array(await sharp({
+      create: { width: 20, height: 48, channels: 3, background: { r: 30, g: 60, b: 90 } },
+    }).jpeg({ quality: 80 }).toBuffer());
+    const preparedPortrait = await toPdfImage(portrait);
+    expect(preparedPortrait?.kind).toBe('jpg');
+    expect(preparedPortrait?.bytes).toBe(portrait);
+
+    const landscape = new Uint8Array(await sharp({
+      create: { width: 48, height: 20, channels: 3, background: { r: 20, g: 140, b: 60 } },
+    }).jpeg({ quality: 80 }).toBuffer());
+    expect((await toPdfImage(landscape))?.bytes).toBe(landscape);
+
+    const sensorLandscape = await sharp({
+      create: { width: 48, height: 20, channels: 3, background: { r: 190, g: 40, b: 40 } },
+    }).jpeg({ quality: 80 }).toBuffer();
+    const exifPortrait = new Uint8Array(await sharp(sensorLandscape).withMetadata({ orientation: 6 }).toBuffer());
+    const raw = await sharp(Buffer.from(exifPortrait)).metadata();
+    expect(raw.orientation).toBe(6);
+    expect(raw.width).toBeGreaterThan(raw.height ?? 0);
+
+    const preparedExif = await toPdfImage(exifPortrait);
+    expect(preparedExif?.kind).toBe('jpg');
+    expect(preparedExif?.bytes).not.toBe(exifPortrait);
+    const baked = await sharp(Buffer.from(preparedExif!.bytes)).metadata();
+    expect(baked.height).toBeGreaterThan(baked.width ?? 0);
+    expect(baked.orientation === undefined || baked.orientation === 1).toBe(true);
+
+    const exifRotate270 = new Uint8Array(await sharp(sensorLandscape).withMetadata({ orientation: 8 }).toBuffer());
+    const bakedRotate270 = await sharp(Buffer.from((await toPdfImage(exifRotate270))!.bytes)).metadata();
+    expect(bakedRotate270.height).toBeGreaterThan(bakedRotate270.width ?? 0);
+
+    const pdf = await buildPendientesPdf({
+      proyectoNombre: 'Casa Norte',
+      generadoEl: '25 oct 2026',
+      items: [{
+        titulo: 'Foto vertical',
+        descripcion: 'La vertical debe seguir vertical.',
+        estado: 'pendiente',
+        fotos: [
+          { nombre: 'vertical.jpg', bytes: portrait },
+          { nombre: 'exif.jpg', bytes: exifPortrait },
+          { nombre: 'paisaje.jpg', bytes: landscape },
+        ],
+      }],
+    });
+    const placed = await placedPhotoSizes(pdf);
+    expect(placed).toHaveLength(3);
+    for (const photo of placed.slice(0, 2)) {
+      expect(photo.pixelHeight).toBeGreaterThan(photo.pixelWidth);
+      expect(photo.drawHeight).toBeGreaterThan(photo.drawWidth);
+      expect(photo.drawHeight / photo.drawWidth).toBeCloseTo(photo.pixelHeight / photo.pixelWidth, 1);
+    }
+    expect(placed[2].pixelWidth).toBeGreaterThan(placed[2].pixelHeight);
+    expect(placed[2].drawWidth).toBeGreaterThan(placed[2].drawHeight);
+    expect(placed[2].drawHeight / placed[2].drawWidth).toBeCloseTo(placed[2].pixelHeight / placed[2].pixelWidth, 1);
   });
 
   it('arma el reporte con título, número, detalle y epígrafe de foto, sin estado', async () => {
