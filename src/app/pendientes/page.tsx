@@ -7,17 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import { Calendar, FileDown, ImageIcon, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { FileDown, ImageIcon, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { ImageLightbox } from '@/components/reportes/ImageLightbox'
 import { PendienteFormDialog } from '@/components/pendientes/PendienteFormDialog'
-import { estadoPendienteLabel, formatCalendarDate, isOverdue, todayIsoDate } from '@/lib/pendientes/format'
+import { estadoPendienteLabel } from '@/lib/pendientes/format'
 import type { PendienteConFotos, PendienteFoto } from '@/types/database.types'
-
-function dueValue(pendiente: PendienteConFotos) {
-  const raw = pendiente.fechaVencimiento
-    ?? (pendiente as unknown as { fecha_vencimiento?: string }).fecha_vencimiento
-  return typeof raw === 'string' ? raw : ''
-}
 
 export default function PendientesPage() {
   const { selectedProjectId, projects } = useProjectSelection()
@@ -31,7 +25,6 @@ export default function PendientesPage() {
   const [lightbox, setLightbox] = useState<{ fotos: PendienteFoto[]; index: number } | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
-  const hoy = todayIsoDate()
 
   const projectName = projects.find((project) => project.id === selectedProjectId)?.nombre
 
@@ -133,7 +126,7 @@ export default function PendientesPage() {
             {activos} {activos === 1 ? 'activo' : 'activos'}
           </p>
           <p className="text-xs text-muted-foreground">
-            El PDF incluye todos los pendientes del proyecto, con título, detalle y fotos.
+            El PDF incluye solo los pendientes abiertos, con título, detalle y fotos.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
@@ -166,8 +159,8 @@ export default function PendientesPage() {
           <CardTitle>Lista de pendientes</CardTitle>
           <CardDescription>
             {filtered.length === 0
-              ? 'Ordenados por la fecha de vencimiento más cercana.'
-              : `${filtered.length} en esta vista, ordenados por vencimiento.`}
+              ? 'Los más antiguos aparecen primero.'
+              : `${filtered.length} en esta vista, del más antiguo al más reciente.`}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -183,15 +176,13 @@ export default function PendientesPage() {
             </p>
           ) : (
             filtered.map((pendiente) => {
-              const fecha = dueValue(pendiente)
               const completed = pendiente.estado === 'completado'
-              const overdue = isOverdue(fecha, pendiente.estado, hoy)
               const fotos = pendiente.fotos ?? []
 
               return (
                 <article
                   key={pendiente.id}
-                  className={`rounded-lg border p-4 space-y-3 ${overdue ? 'border-red-300 bg-red-50/40' : ''}`}
+                  className="rounded-lg border p-4 space-y-3"
                 >
                   <div className="flex items-start gap-3">
                     <Checkbox
@@ -208,7 +199,6 @@ export default function PendientesPage() {
                         <Badge variant={completed ? 'outline' : 'secondary'}>
                           {estadoPendienteLabel(pendiente.estado)}
                         </Badge>
-                        {overdue && <Badge variant="destructive">Vencido</Badge>}
                         {fotos.length > 0 && (
                           <Badge variant="outline" className="gap-1">
                             <ImageIcon className="h-3 w-3" />
@@ -221,10 +211,6 @@ export default function PendientesPage() {
                       ) : (
                         <p className="text-sm text-muted-foreground/70">Sin detalle</p>
                       )}
-                      <p className={`text-xs flex items-center gap-1 ${overdue ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
-                        <Calendar className="h-3.5 w-3.5" />
-                        Vence: {formatCalendarDate(fecha)}
-                      </p>
                     </div>
                   </div>
 

@@ -91,7 +91,6 @@ const pendienteFotoSchema = z.object({
 export const createPendienteSchema = z.object({
   titulo: z.string({ error: 'Título es requerido' }).min(1, 'Título es requerido').max(200, 'Título demasiado largo'),
   descripcion: z.string({ error: 'El detalle es inválido' }).nullable().optional(),
-  fechaVencimiento: z.string({ error: 'Fecha inválida' }).refine((date) => !Number.isNaN(Date.parse(date)), 'Fecha inválida'),
   estado: z.enum(['pendiente', 'completado'], { error: 'Estado inválido' }).optional().default('pendiente'),
   fotos: z.array(pendienteFotoSchema, { error: 'Fotos inválidas' }).max(10, 'Máximo 10 fotos por pendiente').optional(),
 });
@@ -99,7 +98,6 @@ export const createPendienteSchema = z.object({
 export const updatePendienteSchema = z.object({
   titulo: z.string({ error: 'Título es requerido' }).min(1, 'Título es requerido').max(200, 'Título demasiado largo').optional(),
   descripcion: z.string({ error: 'El detalle es inválido' }).nullable().optional(),
-  fechaVencimiento: z.string({ error: 'Fecha inválida' }).refine((date) => !Number.isNaN(Date.parse(date)), 'Fecha inválida').optional(),
   estado: z.enum(['pendiente', 'completado'], { error: 'Estado inválido' }).optional(),
 });
 

@@ -44,7 +44,6 @@ export async function PATCH(
       descripcion: body?.descripcion === null
         ? null
         : typeof body?.descripcion === 'string' ? body.descripcion.trim() : body?.descripcion,
-      fechaVencimiento: body?.fechaVencimiento,
       estado: body?.estado,
     });
 
@@ -60,7 +59,6 @@ export async function PATCH(
       descripcion: parsed.data.descripcion === undefined
         ? undefined
         : (parsed.data.descripcion ? parsed.data.descripcion : null),
-      fechaVencimiento: parsed.data.fechaVencimiento,
       estado: parsed.data.estado,
     });
 

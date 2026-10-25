@@ -84,7 +84,6 @@ export const pendientes = pgTable('pendientes', {
   proyectoId: uuid('proyecto_id').references(() => proyectos.id, { onDelete: 'cascade' }).notNull(),
   titulo: text('titulo').notNull(),
   descripcion: text('descripcion'),
-  fechaVencimiento: date('fecha_vencimiento').notNull(),
   estado: pendienteEstadoEnum('estado').default('pendiente'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),

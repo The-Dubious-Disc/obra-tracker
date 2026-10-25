@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
-import { buildPendientesPdf, detectImageKind, pdfFilename, toPdfImage } from '@/lib/pendientes/pdf';
+import { buildPendientesPdf, detectImageKind, pdfFilename, pendientesAbiertos, toPdfImage } from '@/lib/pendientes/pdf';
 
 const PNG_1X1 = Uint8Array.from(Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
@@ -26,11 +26,9 @@ describe('informe PDF de pendientes', () => {
     const sinFoto = await buildPendientesPdf({
       proyectoNombre: 'Casa Norte',
       generadoEl: '25 de octubre de 2026, 18:30',
-      hoy: '2026-10-25',
       items: [{
         titulo: 'Revisión de cañerías',
         descripcion: 'Sin fotos todavía',
-        fechaVencimiento: '2026-10-20',
         estado: 'pendiente',
         fotos: [],
       }],
@@ -39,23 +37,20 @@ describe('informe PDF de pendientes', () => {
     const conFoto = await buildPendientesPdf({
       proyectoNombre: 'Casa Norte',
       generadoEl: '25 de octubre de 2026, 18:30',
-      hoy: '2026-10-25',
       items: [
         {
           titulo: 'Revisión de cañerías',
           descripcion: 'Pérdida en el encuentro',
-          fechaVencimiento: '2026-10-20',
           estado: 'pendiente',
           fotos: [
             { nombre: 'perdida.png', bytes: PNG_1X1, contentType: 'image/png' },
             { nombre: 'rota.bin', bytes: Uint8Array.from([9, 9, 9]), contentType: 'application/octet-stream' },
           ],
         },
-        ...Array.from({ length: 12 }, (_, index) => ({
+        ...Array.from({ length: 6 }, (_, index) => ({
           titulo: `Pendiente ${index + 2}`,
           descripcion: detalle,
-          fechaVencimiento: '2026-12-01',
-          estado: index % 2 === 0 ? 'completado' as const : 'pendiente' as const,
+          estado: 'pendiente' as const,
           fotos: [],
         })),
       ],
@@ -70,9 +65,56 @@ describe('informe PDF de pendientes', () => {
     const vacio = await buildPendientesPdf({
       proyectoNombre: 'Casa Norte',
       generadoEl: '25 de octubre de 2026',
-      hoy: '2026-10-25',
       items: [],
     });
     expect((await PDFDocument.load(vacio)).getPageCount()).toBe(1);
+  });
+
+  it('omite los pendientes completados aunque el detalle sea largo', async () => {
+    const detalle = 'Detalle del encuentro de muro y losa. '.repeat(40);
+    const abiertos = Array.from({ length: 6 }, (_, index) => ({
+      titulo: `Pendiente ${index + 1}`,
+      descripcion: detalle,
+      estado: 'pendiente' as const,
+      fotos: [] as [],
+    }));
+    const soloAbiertos = await buildPendientesPdf({
+      proyectoNombre: 'Casa Norte',
+      generadoEl: '25 de octubre de 2026',
+      items: abiertos,
+    });
+    const conCompletados = await buildPendientesPdf({
+      proyectoNombre: 'Casa Norte',
+      generadoEl: '25 de octubre de 2026',
+      items: [
+        ...abiertos,
+        {
+          titulo: 'Pintura terminada',
+          descripcion: detalle.repeat(4),
+          estado: 'completado',
+          fotos: [{ nombre: 'pintura.png', bytes: PNG_1X1, contentType: 'image/png' }],
+        },
+      ],
+    });
+    const soloCompletados = await buildPendientesPdf({
+      proyectoNombre: 'Casa Norte',
+      generadoEl: '25 de octubre de 2026',
+      items: [{
+        titulo: 'Pintura terminada',
+        descripcion: detalle.repeat(4),
+        estado: 'completado',
+        fotos: [{ nombre: 'pintura.png', bytes: PNG_1X1, contentType: 'image/png' }],
+      }],
+    });
+
+    const paginasAbiertas = (await PDFDocument.load(soloAbiertos)).getPageCount();
+    expect(paginasAbiertas).toBeGreaterThan(1);
+    expect((await PDFDocument.load(conCompletados)).getPageCount()).toBe(paginasAbiertas);
+    expect((await PDFDocument.load(soloCompletados)).getPageCount()).toBe(1);
+    expect(soloCompletados.length).toBeLessThan(soloAbiertos.length);
+    expect(pendientesAbiertos([
+      { estado: 'completado', titulo: 'Cerrado' },
+      { estado: 'pendiente', titulo: 'Abierto' },
+    ])).toEqual([{ estado: 'pendiente', titulo: 'Abierto' }]);
   });
 });

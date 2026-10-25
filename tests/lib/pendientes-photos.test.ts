@@ -5,7 +5,6 @@ import {
   preparePendienteFotos,
   resolvePendienteImageContentType,
 } from '@/lib/pendientes/photos';
-import { formatCalendarDate, isOverdue } from '@/lib/pendientes/format';
 import { addPendienteFotosSchema, createPendienteSchema, updatePendienteSchema } from '@/lib/schemas';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
@@ -80,16 +79,8 @@ describe('claves de fotos de pendientes', () => {
   });
 });
 
-describe('fechas y esquema de pendientes', () => {
-  it('formatea la fecha de calendario y marca vencidos', () => {
-    expect(formatCalendarDate('2026-10-25')).toBe('25/10/2026');
-    expect(formatCalendarDate('2026-10-25T00:00:00.000Z')).toBe('25/10/2026');
-    expect(isOverdue('2026-10-24', 'pendiente', '2026-10-25')).toBe(true);
-    expect(isOverdue('2026-10-24', 'completado', '2026-10-25')).toBe(false);
-    expect(isOverdue('2026-10-25', 'pendiente', '2026-10-25')).toBe(false);
-  });
-
-  it('exige título y fecha, y acepta fotos opcionales', () => {
+describe('esquema de pendientes', () => {
+  it('exige título, ignora la fecha de vencimiento y acepta fotos opcionales', () => {
     const valid = createPendienteSchema.safeParse({
       titulo: 'Revisar revoque',
       descripcion: 'Falta el detalle del encuentro',
@@ -97,11 +88,13 @@ describe('fechas y esquema de pendientes', () => {
       fotos: [{ r2Key: keyFor(PROJECT_ID), nombre: 'encuentro.jpg' }],
     });
     expect(valid.success).toBe(true);
-    if (valid.success) expect(valid.data.estado).toBe('pendiente');
+    if (valid.success) {
+      expect(valid.data.estado).toBe('pendiente');
+      expect(valid.data).not.toHaveProperty('fechaVencimiento');
+    }
 
     expect(createPendienteSchema.safeParse({
       titulo: '',
-      fechaVencimiento: '2026-11-02',
     }).success).toBe(false);
 
     expect(addPendienteFotosSchema.safeParse({ fotos: [] }).success).toBe(false);

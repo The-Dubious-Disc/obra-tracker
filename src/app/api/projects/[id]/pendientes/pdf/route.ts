@@ -54,7 +54,7 @@ export async function GET(
       return NextResponse.json({ error: 'Proyecto no encontrado' }, { status: 404 });
     }
 
-    const pendientes = await getProjectPendientesConFotos(projectId);
+    const pendientes = await getProjectPendientesConFotos(projectId, true);
     const items = await Promise.all(pendientes.map(async (pendiente) => {
       const fotos = await mapPool(pendiente.fotos, 4, async (foto): Promise<PdfFotoInput> => {
         try {
@@ -69,7 +69,6 @@ export async function GET(
       return {
         titulo: pendiente.titulo,
         descripcion: pendiente.descripcion,
-        fechaVencimiento: String(pendiente.fechaVencimiento),
         estado: pendiente.estado,
         fotos,
       };
@@ -82,12 +81,6 @@ export async function GET(
         dateStyle: 'long',
         timeStyle: 'short',
         timeZone: 'America/Montevideo',
-      }).format(now),
-      hoy: new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/Montevideo',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
       }).format(now),
       items,
     });

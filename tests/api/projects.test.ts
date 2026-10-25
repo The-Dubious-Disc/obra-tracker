@@ -209,7 +209,8 @@ describe('membership and pendientes', () => {
     expect(getProjectPendientesMock).toHaveBeenCalledTimes(1)
 
     const missingFields = await createPendienteRoute(jsonRequest('http://localhost/api/projects/p1/pendientes', {
-      titulo: 'Cemento',
+      titulo: '   ',
+      fechaVencimiento: '2026-04-01',
     }), projectParams)
     expect(missingFields.status).toBe(400)
 
@@ -224,7 +225,6 @@ describe('membership and pendientes', () => {
       proyectoId: 'p1',
       titulo: 'Cemento',
       descripcion: '10 bolsas',
-      fechaVencimiento: '2026-04-01',
       estado: 'pendiente',
       fotos: [],
     })

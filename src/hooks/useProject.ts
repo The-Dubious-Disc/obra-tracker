@@ -658,7 +658,6 @@ export function useCreatePendiente() {
     projectId: string
     titulo: string
     descripcion?: string
-    fechaVencimiento: string
     estado?: 'pendiente' | 'completado'
     files?: File[]
   }) => {
@@ -682,7 +681,6 @@ export function useCreatePendiente() {
         body: JSON.stringify({
           titulo: params.titulo,
           descripcion: params.descripcion,
-          fechaVencimiento: params.fechaVencimiento,
           estado: params.estado,
           fotos,
         }),
@@ -714,7 +712,6 @@ export function useUpdatePendiente() {
     data: {
       titulo?: string
       descripcion?: string | null
-      fechaVencimiento?: string
       estado?: 'pendiente' | 'completado'
     },
     extras?: {

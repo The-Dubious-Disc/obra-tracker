@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Calendar, ImagePlus, Loader2, Trash2, Upload, X } from 'lucide-react'
+import { ImagePlus, Loader2, Trash2, Upload, X } from 'lucide-react'
 import { useCreatePendiente, useDeletePendienteFoto, useUpdatePendiente } from '@/hooks/useProject'
 import {
   MAX_PENDIENTE_FOTO_BYTES,
@@ -23,11 +23,6 @@ interface PendienteFormDialogProps {
   onOpenChange: (open: boolean) => void
   onSaved: () => void
   onFotoDeleted: (fotoId: string) => void
-}
-
-function toDateInput(value?: string | null) {
-  if (!value) return ''
-  return /^(\d{4}-\d{2}-\d{2})/.exec(value)?.[1] ?? ''
 }
 
 async function prepareImageFile(file: File): Promise<File> {
@@ -75,7 +70,6 @@ export function PendienteFormDialog({
 
   const [titulo, setTitulo] = useState(pendiente?.titulo ?? '')
   const [detalle, setDetalle] = useState(pendiente?.descripcion ?? '')
-  const [fechaVencimiento, setFechaVencimiento] = useState(toDateInput(pendiente?.fechaVencimiento))
   const [estado, setEstado] = useState<'pendiente' | 'completado'>(
     pendiente?.estado === 'completado' ? 'completado' : 'pendiente',
   )
@@ -137,14 +131,13 @@ export function PendienteFormDialog({
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!titulo.trim() || !fechaVencimiento) return
+    if (!titulo.trim()) return
 
     if (mode === 'create') {
       const ok = await createPendiente({
         projectId,
         titulo: titulo.trim(),
         descripcion: detalle.trim() || undefined,
-        fechaVencimiento,
         estado,
         files,
       })
@@ -153,7 +146,6 @@ export function PendienteFormDialog({
       const ok = await updatePendiente(pendiente.id, {
         titulo: titulo.trim(),
         descripcion: detalle.trim() || null,
-        fechaVencimiento,
         estado,
       }, {
         projectId,
@@ -202,33 +194,17 @@ export function PendienteFormDialog({
               rows={4}
             />
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="pendiente-fecha">Fecha de vencimiento</Label>
-              <div className="relative">
-                <Calendar className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
-                <Input
-                  id="pendiente-fecha"
-                  type="date"
-                  value={fechaVencimiento}
-                  onChange={(event) => setFechaVencimiento(event.target.value)}
-                  className="pl-9"
-                  required
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="pendiente-estado">Estado</Label>
-              <select
-                id="pendiente-estado"
-                value={estado}
-                onChange={(event) => setEstado(event.target.value as 'pendiente' | 'completado')}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              >
-                <option value="pendiente">Pendiente</option>
-                <option value="completado">Completado</option>
-              </select>
-            </div>
+          <div className="grid gap-2">
+            <Label htmlFor="pendiente-estado">Estado</Label>
+            <select
+              id="pendiente-estado"
+              value={estado}
+              onChange={(event) => setEstado(event.target.value as 'pendiente' | 'completado')}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="pendiente">Pendiente</option>
+              <option value="completado">Completado</option>
+            </select>
           </div>
 
           <div className="grid gap-2">
@@ -316,7 +292,7 @@ export function PendienteFormDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSaving || !titulo.trim() || !fechaVencimiento}>
+            <Button type="submit" disabled={isSaving || !titulo.trim()}>
               {isSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />

@@ -213,7 +213,6 @@ export interface Database {
           proyectoId: string
           titulo: string
           descripcion: string | null
-          fechaVencimiento: string
           estado: PendienteEstado
           createdAt: string
           updatedAt: string
@@ -223,7 +222,6 @@ export interface Database {
           proyectoId: string
           titulo: string
           descripcion?: string | null
-          fechaVencimiento: string
           estado?: PendienteEstado
           createdAt?: string
           updatedAt?: string
@@ -233,7 +231,6 @@ export interface Database {
           proyectoId?: string
           titulo?: string
           descripcion?: string | null
-          fechaVencimiento?: string
           estado?: PendienteEstado
           createdAt?: string
           updatedAt?: string

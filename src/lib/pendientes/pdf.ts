@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib';
-import { estadoPendienteLabel, formatCalendarDate, isOverdue } from '@/lib/pendientes/format';
+import { estadoPendienteLabel } from '@/lib/pendientes/format';
 
 export interface PdfFotoInput {
   nombre: string;
@@ -10,7 +10,6 @@ export interface PdfFotoInput {
 export interface PdfPendienteInput {
   titulo: string;
   descripcion: string | null;
-  fechaVencimiento: string;
   estado: 'pendiente' | 'completado';
   fotos: PdfFotoInput[];
 }
@@ -18,8 +17,11 @@ export interface PdfPendienteInput {
 export interface PendientePdfInput {
   proyectoNombre: string;
   generadoEl: string;
-  hoy: string;
   items: PdfPendienteInput[];
+}
+
+export function pendientesAbiertos<T extends { estado: string }>(items: T[]): T[] {
+  return items.filter((item) => item.estado === 'pendiente');
 }
 
 const PAGE_WIDTH = 595.28;
@@ -146,6 +148,7 @@ function truncateToWidth(text: string, font: PDFFont, size: number, maxWidth: nu
 }
 
 export async function buildPendientesPdf(input: PendientePdfInput): Promise<Uint8Array> {
+  const items = pendientesAbiertos(input.items);
   const pdf = await PDFDocument.create();
   pdf.setTitle(`Pendientes — ${input.proyectoNombre}`);
   pdf.setAuthor('ObraTracker');
@@ -264,24 +267,23 @@ export async function buildPendientesPdf(input: PendientePdfInput): Promise<Uint
 
   drawHeader();
 
-  const completados = input.items.filter((item) => item.estado === 'completado').length;
   const summary = sanitize(
-    `${input.items.length} pendientes · ${input.items.length - completados} activos · ${completados} completados`,
+    items.length === 1 ? '1 pendiente abierto' : `${items.length} pendientes abiertos`,
   );
   drawLines([summary], 10, font, rgb(0.33, 0.36, 0.42), 6);
   cursorY -= 6;
 
-  if (input.items.length === 0) {
+  if (items.length === 0) {
     drawLines(
-      ['No hay pendientes para este proyecto.'],
+      ['No hay pendientes abiertos para este proyecto.'],
       12,
       font,
       rgb(0.33, 0.36, 0.42),
     );
   }
 
-  for (let index = 0; index < input.items.length; index += 1) {
-    const item = input.items[index];
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
     ensure(72);
     page.drawRectangle({
       x: MARGIN,
@@ -297,15 +299,8 @@ export async function buildPendientesPdf(input: PendientePdfInput): Promise<Uint
     const titleLines = wrapText(`${numero}  ${titulo}`, fontBold, 13, contentWidth);
     drawLines(titleLines, 13, fontBold, rgb(0.1, 0.12, 0.16), 3);
 
-    const vencido = isOverdue(item.fechaVencimiento, item.estado, input.hoy);
-    const meta = sanitize(
-      [
-        `Estado: ${estadoPendienteLabel(item.estado)}`,
-        `Vence: ${formatCalendarDate(item.fechaVencimiento)}`,
-        vencido ? 'Vencido' : null,
-      ].filter(Boolean).join('  ·  '),
-    );
-    drawLines([meta], 9, font, vencido ? rgb(0.75, 0.18, 0.16) : rgb(0.38, 0.42, 0.48), 4);
+    const meta = sanitize(`Estado: ${estadoPendienteLabel(item.estado)}`);
+    drawLines([meta], 9, font, rgb(0.38, 0.42, 0.48), 4);
     cursorY -= 2;
 
     const detalle = item.descripcion?.trim()

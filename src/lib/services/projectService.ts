@@ -167,7 +167,7 @@ export async function getProjectPendientes(proyectoId: string, onlyPending = fal
     return await db.select()
       .from(pendientes)
       .where(whereClause)
-      .orderBy(pendientes.fechaVencimiento);
+      .orderBy(asc(pendientes.createdAt));
   } catch (error) {
     console.error('Error in getProjectPendientes:', error);
     return [];
@@ -179,12 +179,16 @@ export type PendienteConFotosRow = PendienteSelect & {
   fotos: PendienteFotoSelect[];
 };
 
-export async function getProjectPendientesConFotos(proyectoId: string): Promise<PendienteConFotosRow[]> {
+export async function getProjectPendientesConFotos(proyectoId: string, onlyPending = false): Promise<PendienteConFotosRow[]> {
   try {
+    const whereClause = onlyPending
+      ? and(eq(pendientes.proyectoId, proyectoId), eq(pendientes.estado, 'pendiente'))
+      : eq(pendientes.proyectoId, proyectoId);
+
     const rows = await db.select()
       .from(pendientes)
-      .where(eq(pendientes.proyectoId, proyectoId))
-      .orderBy(asc(pendientes.fechaVencimiento), asc(pendientes.createdAt));
+      .where(whereClause)
+      .orderBy(asc(pendientes.createdAt));
 
     if (rows.length === 0) return [];
 
@@ -215,7 +219,6 @@ export async function createPendiente(data: {
   proyectoId: string;
   titulo: string;
   descripcion?: string | null;
-  fechaVencimiento: string;
   estado?: 'pendiente' | 'completado';
   fotos?: { r2Key: string; nombre: string; orden: number }[];
 }) {
@@ -225,7 +228,6 @@ export async function createPendiente(data: {
       proyectoId: data.proyectoId,
       titulo: data.titulo,
       descripcion: data.descripcion || null,
-      fechaVencimiento: data.fechaVencimiento,
       ...(data.estado ? { estado: data.estado } : {}),
     }).returning();
     createdId = newPendiente.id;
@@ -256,7 +258,6 @@ export async function createPendiente(data: {
 export async function updatePendiente(pendienteId: string, data: {
   titulo?: string;
   descripcion?: string | null;
-  fechaVencimiento?: string;
   estado?: 'pendiente' | 'completado';
 }) {
   try {
@@ -264,7 +265,6 @@ export async function updatePendiente(pendienteId: string, data: {
       .set({
         ...(data.titulo !== undefined ? { titulo: data.titulo } : {}),
         ...(data.descripcion !== undefined ? { descripcion: data.descripcion } : {}),
-        ...(data.fechaVencimiento !== undefined ? { fechaVencimiento: data.fechaVencimiento } : {}),
         ...(data.estado !== undefined ? { estado: data.estado } : {}),
         updatedAt: new Date(),
       })

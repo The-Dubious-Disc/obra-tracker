@@ -75,15 +75,13 @@ export async function POST(
 
     const body = await request.json();
     const titulo = typeof body?.titulo === 'string' ? body.titulo.trim() : '';
-    const fechaVencimiento = typeof body?.fechaVencimiento === 'string' ? body.fechaVencimiento : '';
-    if (!titulo || !fechaVencimiento) {
+    if (!titulo) {
       return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 });
     }
 
     const parsed = createPendienteSchema.safeParse({
       titulo,
       descripcion: typeof body?.descripcion === 'string' ? body.descripcion.trim() : body?.descripcion,
-      fechaVencimiento,
       estado: body?.estado,
       fotos: body?.fotos,
     });
@@ -110,7 +108,6 @@ export async function POST(
       proyectoId: projectId,
       titulo: parsed.data.titulo,
       descripcion: parsed.data.descripcion ? parsed.data.descripcion : null,
-      fechaVencimiento: parsed.data.fechaVencimiento,
       estado: parsed.data.estado,
       fotos: prepared.fotos,
     });
