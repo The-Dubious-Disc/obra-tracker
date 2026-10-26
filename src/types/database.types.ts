@@ -214,6 +214,8 @@ export interface Database {
           titulo: string
           descripcion: string | null
           estado: PendienteEstado
+          responsableUsuarioId: string | null
+          responsableConstructor: boolean
           createdAt: string
           updatedAt: string
         }
@@ -223,6 +225,8 @@ export interface Database {
           titulo: string
           descripcion?: string | null
           estado?: PendienteEstado
+          responsableUsuarioId?: string | null
+          responsableConstructor?: boolean
           createdAt?: string
           updatedAt?: string
         }
@@ -232,6 +236,8 @@ export interface Database {
           titulo?: string
           descripcion?: string | null
           estado?: PendienteEstado
+          responsableUsuarioId?: string | null
+          responsableConstructor?: boolean
           createdAt?: string
           updatedAt?: string
         }
@@ -474,6 +480,8 @@ export interface PendienteFoto {
 
 export interface PendienteConFotos extends Pendiente {
   fotos?: PendienteFoto[]
+  responsableNombre?: string | null
+  responsableEmail?: string | null
 }
 export type Pago = Database['public']['Tables']['pagos']['Row']
 export type Plano = Database['public']['Tables']['planos']['Row']

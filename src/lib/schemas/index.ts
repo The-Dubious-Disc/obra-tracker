@@ -87,18 +87,35 @@ const pendienteFotoSchema = z.object({
   nombre: z.string({ error: 'Cada foto necesita un nombre' }).min(1, 'Cada foto necesita un nombre').max(255),
 });
 
+export const responsableAsignacionSchema = z.discriminatedUnion('tipo', [
+  z.object({
+    tipo: z.literal('constructor'),
+  }),
+  z.object({
+    tipo: z.literal('usuario'),
+    usuarioId: z.string().uuid('Responsable inválido'),
+  }),
+], { error: 'Responsable inválido' });
+
+const responsableOpcionalSchema = z.union([
+  z.null(),
+  responsableAsignacionSchema,
+]).optional();
+
 // Pendiente schemas
 export const createPendienteSchema = z.object({
   titulo: z.string({ error: 'Título es requerido' }).min(1, 'Título es requerido').max(200, 'Título demasiado largo'),
   descripcion: z.string({ error: 'El detalle es inválido' }).nullable().optional(),
   estado: z.enum(['pendiente', 'completado'], { error: 'Estado inválido' }).optional().default('pendiente'),
   fotos: z.array(pendienteFotoSchema, { error: 'Fotos inválidas' }).max(10, 'Máximo 10 fotos por pendiente').optional(),
+  responsable: responsableOpcionalSchema,
 });
 
 export const updatePendienteSchema = z.object({
   titulo: z.string({ error: 'Título es requerido' }).min(1, 'Título es requerido').max(200, 'Título demasiado largo').optional(),
   descripcion: z.string({ error: 'El detalle es inválido' }).nullable().optional(),
   estado: z.enum(['pendiente', 'completado'], { error: 'Estado inválido' }).optional(),
+  responsable: responsableOpcionalSchema,
 });
 
 export const addPendienteFotosSchema = z.object({

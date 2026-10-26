@@ -11,6 +11,13 @@ import { FileDown, ImageIcon, Loader2, Pencil, Plus, Trash2 } from 'lucide-react
 import { ImageLightbox } from '@/components/reportes/ImageLightbox'
 import { PendienteFormDialog } from '@/components/pendientes/PendienteFormDialog'
 import { estadoPendienteLabel } from '@/lib/pendientes/format'
+import {
+  RESPONSABLE_CONSTRUCTOR,
+  RESPONSABLE_SIN_ASIGNAR,
+  opcionesResponsable,
+  responsableLabel,
+  type ResponsableOpcion,
+} from '@/lib/pendientes/responsable'
 import type { PendienteConFotos, PendienteFoto } from '@/types/database.types'
 
 export default function PendientesPage() {
@@ -25,8 +32,39 @@ export default function PendientesPage() {
   const [lightbox, setLightbox] = useState<{ fotos: PendienteFoto[]; index: number } | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [pdfAlcance, setPdfAlcance] = useState<'todos' | 'responsable'>('todos')
+  const [pdfResponsable, setPdfResponsable] = useState('')
+  const [responsables, setResponsables] = useState<ResponsableOpcion[]>([])
 
   const projectName = projects.find((project) => project.id === selectedProjectId)?.nombre
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setResponsables([])
+      return
+    }
+
+    let cancelled = false
+    setPdfAlcance('todos')
+    setPdfResponsable('')
+
+    async function loadResponsables(projectId: string) {
+      try {
+        const response = await fetch(`/api/projects/${projectId}/members`)
+        if (!response.ok) throw new Error('No se pudieron cargar los responsables')
+        const payload = await response.json()
+        if (cancelled) return
+        setResponsables(opcionesResponsable(Array.isArray(payload) ? payload : []))
+      } catch {
+        if (!cancelled) setResponsables([])
+      }
+    }
+
+    void loadResponsables(selectedProjectId)
+    return () => {
+      cancelled = true
+    }
+  }, [selectedProjectId])
 
   useEffect(() => {
     setLocalPendientes(pendientes)
@@ -85,10 +123,17 @@ export default function PendientesPage() {
 
   const exportPdf = async () => {
     if (!selectedProjectId) return
+    if (pdfAlcance === 'responsable' && !pdfResponsable) {
+      setExportError('Elegí un responsable para el PDF')
+      return
+    }
     setIsExporting(true)
     setExportError(null)
     try {
-      const response = await fetch(`/api/projects/${selectedProjectId}/pendientes/pdf`)
+      const params = new URLSearchParams()
+      if (pdfAlcance === 'responsable') params.set('responsable', pdfResponsable)
+      const query = params.toString()
+      const response = await fetch(`/api/projects/${selectedProjectId}/pendientes/pdf${query ? `?${query}` : ''}`)
       if (!response.ok) {
         const payload = await response.json().catch(() => null) as { error?: string } | null
         throw new Error(payload?.error || 'No se pudo exportar el PDF')
@@ -126,11 +171,44 @@ export default function PendientesPage() {
             {activos} {activos === 1 ? 'activo' : 'activos'}
           </p>
           <p className="text-xs text-muted-foreground">
-            El PDF incluye solo los pendientes abiertos, con título, detalle y fotos.
+            El PDF incluye solo los pendientes abiertos, con título, detalle, responsable y fotos.
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button variant="outline" className="gap-2" onClick={exportPdf} disabled={isExporting}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+          <label htmlFor="pdf-alcance" className="sr-only">Qué pendientes incluir en el PDF</label>
+          <select
+            id="pdf-alcance"
+            value={pdfAlcance}
+            onChange={(event) => setPdfAlcance(event.target.value as 'todos' | 'responsable')}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm sm:w-44"
+          >
+            <option value="todos">Todos</option>
+            <option value="responsable">Por responsable</option>
+          </select>
+          {pdfAlcance === 'responsable' && (
+            <>
+              <label htmlFor="pdf-responsable" className="sr-only">Responsable del PDF</label>
+              <select
+                id="pdf-responsable"
+                value={pdfResponsable}
+                onChange={(event) => setPdfResponsable(event.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm sm:w-56"
+              >
+                <option value="">Elegí un responsable</option>
+                <option value={RESPONSABLE_CONSTRUCTOR}>Constructor</option>
+                {responsables.map((opcion) => (
+                  <option key={opcion.usuarioId} value={opcion.usuarioId}>{opcion.label}</option>
+                ))}
+                <option value={RESPONSABLE_SIN_ASIGNAR}>Sin responsable</option>
+              </select>
+            </>
+          )}
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={exportPdf}
+            disabled={isExporting || (pdfAlcance === 'responsable' && !pdfResponsable)}
+          >
             {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
             Exportar PDF
           </Button>
@@ -206,6 +284,9 @@ export default function PendientesPage() {
                           </Badge>
                         )}
                       </div>
+                      <p className="text-sm text-muted-foreground">
+                        Responsable: {responsableLabel(pendiente) ?? 'Sin responsable'}
+                      </p>
                       {pendiente.descripcion ? (
                         <p className="text-sm text-muted-foreground whitespace-pre-wrap">{pendiente.descripcion}</p>
                       ) : (
@@ -272,6 +353,7 @@ export default function PendientesPage() {
           mode={form.mode}
           projectId={selectedProjectId}
           pendiente={form.pendiente}
+          responsables={responsables}
           onOpenChange={(open) => {
             if (!open) setForm(null)
           }}

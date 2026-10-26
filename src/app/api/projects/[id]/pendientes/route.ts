@@ -84,6 +84,7 @@ export async function POST(
       descripcion: typeof body?.descripcion === 'string' ? body.descripcion.trim() : body?.descripcion,
       estado: body?.estado,
       fotos: body?.fotos,
+      responsable: body?.responsable,
     });
 
     if (!parsed.success) {
@@ -110,10 +111,11 @@ export async function POST(
       descripcion: parsed.data.descripcion ? parsed.data.descripcion : null,
       estado: parsed.data.estado,
       fotos: prepared.fotos,
+      ...(parsed.data.responsable !== undefined ? { responsable: parsed.data.responsable } : {}),
     });
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 500 });
+      return NextResponse.json({ error: result.error }, { status: result.status ?? 500 });
     }
 
     return NextResponse.json({ pendienteId: result.pendienteId });

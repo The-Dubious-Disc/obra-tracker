@@ -1,7 +1,9 @@
 import { db } from '@/lib/db';
-import { pagos, proyectos, etapas, tareas, planos, presupuestoVersiones, proyectoMiembros, pendientes, pendienteFotos, adicionales } from '@/lib/db/schema';
+import { pagos, proyectos, etapas, tareas, planos, presupuestoVersiones, proyectoMiembros, pendientes, pendienteFotos, adicionales, usuarios } from '@/lib/db/schema';
 import type { PendienteFotoSelect, PendienteSelect } from '@/lib/db/schema';
 import { eq, desc, and, asc, inArray } from 'drizzle-orm';
+import type { ResponsableAsignacion } from '@/lib/pendientes/responsable';
+import { responsableLabel } from '@/lib/pendientes/responsable';
 
 // Projects & Summary
 export async function getProjectSummary(projectId: string, userId?: string) {
@@ -177,6 +179,8 @@ export async function getProjectPendientes(proyectoId: string, onlyPending = fal
 export type PendienteConFotosRow = PendienteSelect & {
   estado: 'pendiente' | 'completado';
   fotos: PendienteFotoSelect[];
+  responsableNombre: string | null;
+  responsableEmail: string | null;
 };
 
 export async function getProjectPendientesConFotos(proyectoId: string, onlyPending = false): Promise<PendienteConFotosRow[]> {
@@ -185,8 +189,21 @@ export async function getProjectPendientesConFotos(proyectoId: string, onlyPendi
       ? and(eq(pendientes.proyectoId, proyectoId), eq(pendientes.estado, 'pendiente'))
       : eq(pendientes.proyectoId, proyectoId);
 
-    const rows = await db.select()
+    const rows = await db.select({
+      id: pendientes.id,
+      proyectoId: pendientes.proyectoId,
+      titulo: pendientes.titulo,
+      descripcion: pendientes.descripcion,
+      estado: pendientes.estado,
+      responsableUsuarioId: pendientes.responsableUsuarioId,
+      responsableConstructor: pendientes.responsableConstructor,
+      createdAt: pendientes.createdAt,
+      updatedAt: pendientes.updatedAt,
+      responsableNombre: usuarios.nombre,
+      responsableEmail: usuarios.email,
+    })
       .from(pendientes)
+      .leftJoin(usuarios, eq(pendientes.responsableUsuarioId, usuarios.id))
       .where(whereClause)
       .orderBy(asc(pendientes.createdAt));
 
@@ -215,13 +232,84 @@ export async function getProjectPendientesConFotos(proyectoId: string, onlyPendi
   }
 }
 
+type ResponsableFields = {
+  responsableUsuarioId: string | null;
+  responsableConstructor: boolean;
+};
+
+type ResponsableResuelto =
+  | { ok: true; fields?: ResponsableFields }
+  | { ok: false; error: string; status: number };
+
+async function resolveResponsableAsignacion(
+  proyectoId: string,
+  responsable: ResponsableAsignacion | null | undefined,
+  conservarUsuarioId: string | null,
+): Promise<ResponsableResuelto> {
+  if (responsable === undefined) return { ok: true };
+  if (responsable === null) {
+    return { ok: true, fields: { responsableUsuarioId: null, responsableConstructor: false } };
+  }
+  if (responsable.tipo === 'constructor') {
+    return { ok: true, fields: { responsableUsuarioId: null, responsableConstructor: true } };
+  }
+
+  try {
+    const member = await db.query.proyectoMiembros.findFirst({
+      where: and(
+        eq(proyectoMiembros.proyectoId, proyectoId),
+        eq(proyectoMiembros.usuarioId, responsable.usuarioId),
+      ),
+    });
+    if (!member && responsable.usuarioId !== conservarUsuarioId) {
+      return { ok: false, error: 'El responsable no tiene acceso al proyecto', status: 400 };
+    }
+    return {
+      ok: true,
+      fields: { responsableUsuarioId: responsable.usuarioId, responsableConstructor: false },
+    };
+  } catch (error) {
+    console.error('Error validating pendiente responsable:', error);
+    return { ok: false, error: 'No se pudo validar el responsable', status: 500 };
+  }
+}
+
+export async function getProjectMemberDisplayName(proyectoId: string, usuarioId: string): Promise<string | null> {
+  try {
+    const [row] = await db.select({
+      nombre: usuarios.nombre,
+      email: usuarios.email,
+    })
+      .from(proyectoMiembros)
+      .innerJoin(usuarios, eq(proyectoMiembros.usuarioId, usuarios.id))
+      .where(and(
+        eq(proyectoMiembros.proyectoId, proyectoId),
+        eq(proyectoMiembros.usuarioId, usuarioId),
+      ));
+
+    if (!row) return null;
+    return responsableLabel({
+      responsableConstructor: false,
+      responsableNombre: row.nombre,
+      responsableEmail: row.email,
+    });
+  } catch (error) {
+    console.error('Error in getProjectMemberDisplayName:', error);
+    return null;
+  }
+}
+
 export async function createPendiente(data: {
   proyectoId: string;
   titulo: string;
   descripcion?: string | null;
   estado?: 'pendiente' | 'completado';
   fotos?: { r2Key: string; nombre: string; orden: number }[];
+  responsable?: ResponsableAsignacion | null;
 }) {
+  const resolved = await resolveResponsableAsignacion(data.proyectoId, data.responsable, null);
+  if (!resolved.ok) return { success: false as const, error: resolved.error, status: resolved.status };
+
   let createdId: string | null = null;
   try {
     const [newPendiente] = await db.insert(pendientes).values({
@@ -229,6 +317,7 @@ export async function createPendiente(data: {
       titulo: data.titulo,
       descripcion: data.descripcion || null,
       ...(data.estado ? { estado: data.estado } : {}),
+      ...(resolved.fields ?? {}),
     }).returning();
     createdId = newPendiente.id;
 
@@ -251,29 +340,51 @@ export async function createPendiente(data: {
       }
     }
     console.error('Error in createPendiente:', error);
-    return { success: false as const, error: 'Database error' };
+    return { success: false as const, error: 'Database error', status: 500 };
   }
 }
 
-export async function updatePendiente(pendienteId: string, data: {
-  titulo?: string;
-  descripcion?: string | null;
-  estado?: 'pendiente' | 'completado';
-}) {
+export async function updatePendiente(
+  pendienteId: string,
+  data: {
+    titulo?: string;
+    descripcion?: string | null;
+    estado?: 'pendiente' | 'completado';
+    responsable?: ResponsableAsignacion | null;
+  },
+  scope?: { proyectoId: string; responsableUsuarioId?: string | null },
+) {
+  let responsableFields: ResponsableFields | undefined;
+  if (data.responsable !== undefined) {
+    let proyectoId = scope?.proyectoId;
+    let conservarUsuarioId = scope?.responsableUsuarioId ?? null;
+    if (!proyectoId) {
+      const existing = await getPendienteById(pendienteId);
+      if (!existing) return { success: false as const, error: 'Pendiente no encontrado', status: 404 };
+      proyectoId = existing.proyectoId;
+      conservarUsuarioId = existing.responsableUsuarioId ?? null;
+    }
+
+    const resolved = await resolveResponsableAsignacion(proyectoId, data.responsable, conservarUsuarioId);
+    if (!resolved.ok) return { success: false as const, error: resolved.error, status: resolved.status };
+    responsableFields = resolved.fields;
+  }
+
   try {
     await db.update(pendientes)
       .set({
         ...(data.titulo !== undefined ? { titulo: data.titulo } : {}),
         ...(data.descripcion !== undefined ? { descripcion: data.descripcion } : {}),
         ...(data.estado !== undefined ? { estado: data.estado } : {}),
+        ...(responsableFields ?? {}),
         updatedAt: new Date(),
       })
       .where(eq(pendientes.id, pendienteId));
 
-    return { success: true };
+    return { success: true as const };
   } catch (error) {
     console.error('Error in updatePendiente:', error);
-    return { success: false, error: 'Database error' };
+    return { success: false as const, error: 'Database error', status: 500 };
   }
 }
 

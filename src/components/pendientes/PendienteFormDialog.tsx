@@ -11,6 +11,14 @@ import { useCreatePendiente, useDeletePendienteFoto, useUpdatePendiente } from '
 import { FotoAnnotator } from '@/components/pendientes/FotoAnnotator'
 import { compressPendienteFotoFile } from '@/lib/pendientes/compress'
 import { MAX_PENDIENTE_FOTOS } from '@/lib/pendientes/photos'
+import {
+  RESPONSABLE_CONSTRUCTOR,
+  conAsignadoActual,
+  responsableLabel,
+  responsablePayload,
+  responsableSelectValue,
+  type ResponsableOpcion,
+} from '@/lib/pendientes/responsable'
 import type { PendienteConFotos, PendienteFoto } from '@/types/database.types'
 
 interface AnnotatingFoto {
@@ -26,6 +34,7 @@ interface PendienteFormDialogProps {
   mode: 'create' | 'edit'
   projectId: string
   pendiente: PendienteConFotos | null
+  responsables: ResponsableOpcion[]
   onOpenChange: (open: boolean) => void
   onSaved: () => void
   onFotoDeleted: (fotoId: string) => void
@@ -36,6 +45,7 @@ export function PendienteFormDialog({
   mode,
   projectId,
   pendiente,
+  responsables,
   onOpenChange,
   onSaved,
   onFotoDeleted,
@@ -51,6 +61,7 @@ export function PendienteFormDialog({
   const [estado, setEstado] = useState<'pendiente' | 'completado'>(
     pendiente?.estado === 'completado' ? 'completado' : 'pendiente',
   )
+  const [responsable, setResponsable] = useState(responsableSelectValue(pendiente))
   const [files, setFiles] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
   const [markedPreviews, setMarkedPreviews] = useState<string[]>([])
@@ -75,6 +86,12 @@ export function PendienteFormDialog({
     if (fetchedAnnotatorUrl.current) URL.revokeObjectURL(fetchedAnnotatorUrl.current)
   }, [])
 
+  const opcionesResponsable = pendiente?.responsableUsuarioId && !pendiente.responsableConstructor
+    ? conAsignadoActual(responsables, {
+      usuarioId: pendiente.responsableUsuarioId,
+      label: responsableLabel(pendiente) ?? 'Usuario',
+    })
+    : responsables
   const existingFotos: PendienteFoto[] = pendiente?.fotos ?? []
   const remaining = MAX_PENDIENTE_FOTOS - existingFotos.length - files.length
   const isSaving = isCreating || isUpdating
@@ -208,6 +225,7 @@ export function PendienteFormDialog({
         titulo: titulo.trim(),
         descripcion: detalle.trim() || undefined,
         estado,
+        responsable: responsablePayload(responsable),
         files,
       })
       if (!ok) return
@@ -216,6 +234,7 @@ export function PendienteFormDialog({
         titulo: titulo.trim(),
         descripcion: detalle.trim() || null,
         estado,
+        responsable: responsablePayload(responsable),
       }, {
         projectId,
         files,
@@ -256,7 +275,7 @@ export function PendienteFormDialog({
         <DialogHeader>
           <DialogTitle>{mode === 'create' ? 'Nuevo pendiente' : 'Editar pendiente'}</DialogTitle>
           <DialogDescription>
-            Título, detalle y fotos quedan guardados en el proyecto actual. Podés marcar cada foto antes de guardarla.
+            Título, detalle, responsable y fotos quedan guardados en el proyecto actual. Podés marcar cada foto antes de guardarla.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -280,6 +299,21 @@ export function PendienteFormDialog({
               placeholder="Describí qué falta definir o resolver..."
               rows={4}
             />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="pendiente-responsable">Responsable</Label>
+            <select
+              id="pendiente-responsable"
+              value={responsable}
+              onChange={(event) => setResponsable(event.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="">Sin responsable</option>
+              <option value={RESPONSABLE_CONSTRUCTOR}>Constructor</option>
+              {opcionesResponsable.map((opcion) => (
+                <option key={opcion.usuarioId} value={opcion.usuarioId}>{opcion.label}</option>
+              ))}
+            </select>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="pendiente-estado">Estado</Label>

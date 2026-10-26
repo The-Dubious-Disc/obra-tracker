@@ -30,12 +30,14 @@ export interface PdfPendienteInput {
   titulo: string;
   descripcion: string | null;
   estado: 'pendiente' | 'completado';
+  responsable?: string | null;
   fotos: PdfFotoInput[];
 }
 
 export interface PendientePdfInput {
   proyectoNombre: string;
   generadoEl: string;
+  filtroResponsable?: string | null;
   items: PdfPendienteInput[];
 }
 
@@ -80,6 +82,8 @@ const ITEM_TITLE_SIZE = 16;
 const ITEM_TITLE_LEADING = 21;
 const BODY_SIZE = 11;
 const BODY_LEADING = 16.5;
+const RESPONSABLE_SIZE = 10;
+const RESPONSABLE_LEADING = 14;
 const CIRCLE_DIAMETER = 32;
 const PHOTO_GAP = 16;
 const PHOTO_RADIUS = 10;
@@ -338,7 +342,27 @@ export async function buildPendientesPdf(input: PendientePdfInput): Promise<Uint
       color: RULE,
     });
 
-    headerBottomY = ruleY - 32;
+    const filtroRaw = input.filtroResponsable?.trim() ?? '';
+    let contentTop = ruleY - 32;
+    if (filtroRaw) {
+      const filtroLabel = truncateToWidth(
+        sanitize(`Responsable: ${filtroRaw}`),
+        font,
+        DATE_SIZE,
+        CONTENT_WIDTH,
+      );
+      const filtroBaseline = ruleY - 16 - DATE_SIZE;
+      page.drawText(filtroLabel, {
+        x: MARGIN_X,
+        y: filtroBaseline,
+        size: DATE_SIZE,
+        font,
+        color: SLATE,
+      });
+      contentTop = filtroBaseline - 22;
+    }
+
+    headerBottomY = contentTop;
     cursorY = headerBottomY;
   };
 
@@ -413,13 +437,10 @@ export async function buildPendientesPdf(input: PendientePdfInput): Promise<Uint
   drawHeader();
 
   if (items.length === 0) {
-    drawLines(
-      ['No hay pendientes abiertos para este proyecto.'],
-      12,
-      font,
-      BODY,
-      18,
-    );
+    const vacio = input.filtroResponsable?.trim()
+      ? 'No hay pendientes abiertos para este responsable.'
+      : 'No hay pendientes abiertos para este proyecto.';
+    drawLines([vacio], 12, font, BODY, 18);
   }
 
   for (let index = 0; index < items.length; index += 1) {
@@ -430,13 +451,22 @@ export async function buildPendientesPdf(input: PendientePdfInput): Promise<Uint
     const titleMaxWidth = PAGE_WIDTH - MARGIN_X - titleX;
     const titleLines = wrapText(titulo, fontBold, ITEM_TITLE_SIZE, titleMaxWidth);
     const titleBlockHeight = Math.max(CIRCLE_DIAMETER, titleLines.length * ITEM_TITLE_LEADING);
+    const responsableTexto = item.responsable?.trim()
+      ? sanitize(`Responsable: ${item.responsable.trim()}`)
+      : '';
+    const responsableLines = responsableTexto
+      ? wrapText(responsableTexto, font, RESPONSABLE_SIZE, CONTENT_WIDTH)
+      : [];
+    const responsableBlock = responsableLines.length
+      ? responsableLines.length * RESPONSABLE_LEADING + 6
+      : 0;
     if (item.fotos.length > 0) {
       const photoRow = 10 + maxPhotoHeight + 8 + CAPTION_SIZE + 18;
       const bodyLines = item.descripcion?.trim()
         ? wrapText(sanitize(item.descripcion.trim()), font, BODY_SIZE, CONTENT_WIDTH).length
         : 0;
       const bodyBlock = bodyLines ? Math.min(bodyLines, 4) * BODY_LEADING + 16 : 0;
-      const together = titleBlockHeight + 20 + bodyBlock + photoRow;
+      const together = titleBlockHeight + 20 + responsableBlock + bodyBlock + photoRow;
       const pageRoom = headerBottomY - MARGIN_BOTTOM;
       if (together <= pageRoom && cursorY - together < MARGIN_BOTTOM) ensure(together);
     }
@@ -479,6 +509,11 @@ export async function buildPendientesPdf(input: PendientePdfInput): Promise<Uint
     const titleBottom = firstBaseline - (titleLines.length - 1) * ITEM_TITLE_LEADING - ITEM_TITLE_SIZE * 0.22;
     const circleBottom = circleCy - CIRCLE_DIAMETER / 2;
     cursorY = Math.min(titleBottom, circleBottom) - 14;
+
+    if (responsableLines.length > 0) {
+      drawLines(responsableLines, RESPONSABLE_SIZE, font, BODY, RESPONSABLE_LEADING);
+      cursorY -= 6;
+    }
 
     const detalle = item.descripcion?.trim() ? sanitize(item.descripcion.trim()) : '';
     if (detalle) {
