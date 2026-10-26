@@ -1,3 +1,5 @@
+import { STORED_FOTO_JPEG_QUALITIES, STORED_FOTO_MAX_EDGE } from './imageSize';
+
 export const MARK_COLORS = [
   { id: 'rojo', label: 'Rojo', value: '#e11d48' },
   { id: 'amarillo', label: 'Amarillo', value: '#facc15' },
@@ -5,8 +7,8 @@ export const MARK_COLORS = [
 ] as const;
 
 export const DEFAULT_MARK_COLOR = MARK_COLORS[0].value;
-export const ANNOTATED_FOTO_MAX_EDGE = 2000;
-export const JPEG_QUALITIES = [0.85, 0.7, 0.55] as const;
+export const ANNOTATED_FOTO_MAX_EDGE = STORED_FOTO_MAX_EDGE;
+export const JPEG_QUALITIES = STORED_FOTO_JPEG_QUALITIES;
 
 export type MarkTool = 'pen' | 'circle' | 'arrow';
 

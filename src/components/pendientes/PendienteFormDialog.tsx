@@ -9,11 +9,8 @@ import { Label } from '@/components/ui/label'
 import { ImagePlus, Loader2, Trash2, Upload, X } from 'lucide-react'
 import { useCreatePendiente, useDeletePendienteFoto, useUpdatePendiente } from '@/hooks/useProject'
 import { FotoAnnotator } from '@/components/pendientes/FotoAnnotator'
-import {
-  MAX_PENDIENTE_FOTO_BYTES,
-  MAX_PENDIENTE_FOTOS,
-  resolvePendienteImageContentType,
-} from '@/lib/pendientes/photos'
+import { compressPendienteFotoFile } from '@/lib/pendientes/compress'
+import { MAX_PENDIENTE_FOTOS } from '@/lib/pendientes/photos'
 import type { PendienteConFotos, PendienteFoto } from '@/types/database.types'
 
 interface AnnotatingFoto {
@@ -32,34 +29,6 @@ interface PendienteFormDialogProps {
   onOpenChange: (open: boolean) => void
   onSaved: () => void
   onFotoDeleted: (fotoId: string) => void
-}
-
-async function prepareImageFile(file: File): Promise<File> {
-  const type = resolvePendienteImageContentType(file.name, file.type)
-  if (!type) {
-    throw new Error(`${file.name} no es una imagen compatible`)
-  }
-  if (file.size > MAX_PENDIENTE_FOTO_BYTES) {
-    throw new Error(`${file.name} supera el límite de 10 MB`)
-  }
-  if (type === 'image/jpeg' || type === 'image/png' || type === 'image/webp' || type === 'image/gif') {
-    return file.type === type ? file : new File([file], file.name, { type })
-  }
-
-  const bitmap = await createImageBitmap(file)
-  const canvas = document.createElement('canvas')
-  const maxEdge = 2000
-  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height))
-  canvas.width = Math.max(1, Math.round(bitmap.width * scale))
-  canvas.height = Math.max(1, Math.round(bitmap.height * scale))
-  const context = canvas.getContext('2d')
-  if (!context) throw new Error(`No se pudo procesar ${file.name}`)
-  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-  bitmap.close()
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85))
-  if (!blob) throw new Error(`No se pudo procesar ${file.name}`)
-  const name = file.name.replace(/\.[^.]+$/, '') + '.jpg'
-  return new File([blob], name, { type: 'image/jpeg' })
 }
 
 export function PendienteFormDialog({
@@ -123,7 +92,7 @@ export function PendienteFormDialog({
         break
       }
       try {
-        const prepared = await prepareImageFile(file)
+        const prepared = await compressPendienteFotoFile(file)
         nextFiles.push(prepared)
         nextPreviews.push(URL.createObjectURL(prepared))
       } catch (error) {

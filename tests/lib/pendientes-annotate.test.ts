@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ANNOTATED_FOTO_MAX_EDGE,
+  JPEG_QUALITIES,
   annotatedFotoName,
   arrowHeadPixels,
   canCommit,
@@ -41,6 +43,8 @@ describe('marcas sobre fotos de pendientes', () => {
     expect(pointerToMark(1, 1, { left: 0, top: 0, width: 0, height: 10 })).toBeNull();
     expect(fitImageSize(4000, 2000, 2000)).toEqual({ width: 2000, height: 1000 });
     expect(fitImageSize(80, 40, 2000)).toEqual({ width: 80, height: 40 });
+    expect(ANNOTATED_FOTO_MAX_EDGE).toBe(2400);
+    expect(fitImageSize(4032, 3024, ANNOTATED_FOTO_MAX_EDGE)).toEqual({ width: 2400, height: 1800 });
     expect(annotatedFotoName('frente.HEIC')).toBe('frente.jpg');
     expect(annotatedFotoName('a.b.png')).toBe('a.b.jpg');
     expect(annotatedFotoName('   ')).toBe('foto.jpg');
@@ -80,9 +84,17 @@ describe('marcas sobre fotos de pendientes', () => {
   });
 
   it('elige el primer JPEG que entra en el límite', async () => {
+    expect([...JPEG_QUALITIES]).toEqual([0.92, 0.86, 0.8]);
+    expect(Math.min(...JPEG_QUALITIES)).toBeGreaterThanOrEqual(0.8);
+
     const small = new Blob([new Uint8Array(10)]);
     const big = new Blob([new Uint8Array(50)]);
-    await expect(pickJpegBlob(async (quality) => (quality > 0.8 ? big : small), 20)).resolves.toBe(small);
+    const seen: number[] = [];
+    await expect(pickJpegBlob(async (quality) => {
+      seen.push(quality);
+      return quality > 0.86 ? big : small;
+    }, 20)).resolves.toBe(small);
+    expect(seen).toEqual([0.92, 0.86]);
     await expect(pickJpegBlob(async () => big, 20)).rejects.toThrow('supera el límite');
     await expect(pickJpegBlob(async () => null, 20)).rejects.toThrow('No se pudo guardar');
   });
