@@ -18,6 +18,7 @@ import {
   type PDFImage,
   type PDFPage,
 } from 'pdf-lib';
+import { PDF_JPEG_QUALITY, PDF_PHOTO_MAX_EDGE } from './imageSize';
 
 export interface PdfFotoInput {
   nombre: string;
@@ -128,44 +129,33 @@ export function detectImageKind(bytes: Uint8Array): 'jpg' | 'png' | 'other' {
   return 'other';
 }
 
-function needsExifBake(orientation: number | undefined): boolean {
-  return typeof orientation === 'number' && orientation >= 2 && orientation <= 8;
-}
-
-async function readOrientation(bytes: Uint8Array): Promise<number | undefined> {
-  try {
-    const sharpModule = await import('sharp');
-    const meta = await sharpModule.default(bytes, { failOn: 'none' }).metadata();
-    return meta.orientation;
-  } catch {
-    return undefined;
-  }
-}
-
 /**
- * JPEGs and PNGs are embedded as stored when their pixels already match the way
- * the photo is viewed. Phone JPEGs often keep landscape sensor pixels and an
- * EXIF orientation of 6 or 8; pdf-lib ignores that tag, so those are rotated
- * into the visual orientation before embedding. Other formats are converted.
+ * Every photo is rotated for EXIF and re-encoded as JPEG before it is embedded.
+ * pdf-lib ignores the orientation tag, and passing an upright original through
+ * would copy a full phone file into the PDF. The long edge stays at print
+ * resolution for a half-width A4 frame. If sharp cannot read the file, a JPEG
+ * or PNG is embedded as stored so the photo is not dropped.
  */
 export async function toPdfImage(bytes: Uint8Array): Promise<{ bytes: Uint8Array; kind: 'jpg' | 'png' } | null> {
   if (!bytes.length) return null;
   const detected = detectImageKind(bytes);
-  const bakeOrientation = detected === 'jpg' || detected === 'png'
-    ? needsExifBake(await readOrientation(bytes))
-    : true;
-  if ((detected === 'jpg' || detected === 'png') && !bakeOrientation) {
-    return { bytes, kind: detected };
-  }
 
   try {
     const sharpModule = await import('sharp');
     const output = await sharpModule.default(bytes, { failOn: 'error' })
       .rotate()
-      .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 85 })
+      .resize({
+        width: PDF_PHOTO_MAX_EDGE,
+        height: PDF_PHOTO_MAX_EDGE,
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .jpeg({ quality: PDF_JPEG_QUALITY, mozjpeg: true })
       .toBuffer();
-    if (!output.length) return detected === 'other' ? null : { bytes, kind: detected === 'png' ? 'png' : 'jpg' };
+    if (!output.length) {
+      if (detected === 'jpg' || detected === 'png') return { bytes, kind: detected };
+      return null;
+    }
     return { bytes: new Uint8Array(output), kind: 'jpg' };
   } catch {
     if (detected === 'jpg' || detected === 'png') return { bytes, kind: detected };

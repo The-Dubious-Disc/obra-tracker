@@ -9,6 +9,7 @@ import {
   decodePDFRawStream,
 } from 'pdf-lib';
 import sharp from 'sharp';
+import { PDF_PHOTO_MAX_EDGE } from '@/lib/pendientes/imageSize';
 import {
   buildPendientesPdf,
   detectImageKind,
@@ -209,20 +210,24 @@ describe('informe PDF de pendientes', () => {
     expect(formatPdfExportDate(new Date('2026-01-05T15:00:00Z'))).toBe('5 ene 2026');
   });
 
-  it('conserva JPEG y PNG tal como están y convierte otros formatos', async () => {
+  it('re-encoda JPEG, PNG y otros formatos en lugar de copiar los bytes', async () => {
     expect(detectImageKind(PNG_1X1)).toBe('png');
     expect(await toPdfImage(new Uint8Array([1, 2, 3, 4]))).toBeNull();
 
     const png = await toPdfImage(PNG_1X1);
-    expect(png?.kind).toBe('png');
-    expect(png?.bytes).toBe(PNG_1X1);
+    expect(png?.kind).toBe('jpg');
+    expect(png && detectImageKind(png.bytes)).toBe('jpg');
+    expect(png?.bytes).not.toEqual(PNG_1X1);
 
     const jpeg = new Uint8Array(await sharp({
       create: { width: 8, height: 6, channels: 3, background: { r: 180, g: 170, b: 160 } },
     }).jpeg({ quality: 80 }).toBuffer());
     const preparedJpeg = await toPdfImage(jpeg);
     expect(preparedJpeg?.kind).toBe('jpg');
-    expect(preparedJpeg?.bytes).toBe(jpeg);
+    expect(preparedJpeg?.bytes).not.toEqual(jpeg);
+    const jpegMeta = await sharp(Buffer.from(preparedJpeg!.bytes)).metadata();
+    expect(jpegMeta.width).toBe(8);
+    expect(jpegMeta.height).toBe(6);
 
     const webp = new Uint8Array(await sharp({
       create: { width: 4, height: 4, channels: 3, background: { r: 20, g: 40, b: 80 } },
@@ -238,12 +243,19 @@ describe('informe PDF de pendientes', () => {
     }).jpeg({ quality: 80 }).toBuffer());
     const preparedPortrait = await toPdfImage(portrait);
     expect(preparedPortrait?.kind).toBe('jpg');
-    expect(preparedPortrait?.bytes).toBe(portrait);
+    expect(preparedPortrait?.bytes).not.toEqual(portrait);
+    const portraitMeta = await sharp(Buffer.from(preparedPortrait!.bytes)).metadata();
+    expect(portraitMeta.width).toBe(20);
+    expect(portraitMeta.height).toBe(48);
 
     const landscape = new Uint8Array(await sharp({
       create: { width: 48, height: 20, channels: 3, background: { r: 20, g: 140, b: 60 } },
     }).jpeg({ quality: 80 }).toBuffer());
-    expect((await toPdfImage(landscape))?.bytes).toBe(landscape);
+    const preparedLandscape = await toPdfImage(landscape);
+    expect(preparedLandscape?.bytes).not.toEqual(landscape);
+    const landscapeMeta = await sharp(Buffer.from(preparedLandscape!.bytes)).metadata();
+    expect(landscapeMeta.width).toBe(48);
+    expect(landscapeMeta.height).toBe(20);
 
     const sensorLandscape = await sharp({
       create: { width: 48, height: 20, channels: 3, background: { r: 190, g: 40, b: 40 } },
@@ -289,6 +301,50 @@ describe('informe PDF de pendientes', () => {
     expect(placed[2].drawWidth).toBeGreaterThan(placed[2].drawHeight);
     expect(placed[2].drawHeight / placed[2].drawWidth).toBeCloseTo(placed[2].pixelHeight / placed[2].pixelWidth, 1);
   });
+
+  it('achica las fotos grandes al embeberlas y no copia el original', async () => {
+    const big = new Uint8Array(await sharp({
+      create: {
+        width: 2400,
+        height: 1800,
+        channels: 3,
+        noise: { type: 'gaussian', mean: 128, sigma: 40 },
+      },
+    }).jpeg({ quality: 92 }).toBuffer());
+    const prepared = await toPdfImage(big);
+    expect(prepared?.kind).toBe('jpg');
+    expect(prepared!.bytes).not.toEqual(big);
+    expect(prepared!.bytes.byteLength).toBeLessThan(big.byteLength);
+    const meta = await sharp(Buffer.from(prepared!.bytes)).metadata();
+    expect(meta.width).toBe(PDF_PHOTO_MAX_EDGE);
+    expect(meta.height).toBe(1200);
+    expect(Math.max(meta.width ?? 0, meta.height ?? 0)).toBeLessThanOrEqual(PDF_PHOTO_MAX_EDGE);
+
+    const sensor = await sharp({
+      create: { width: 2200, height: 1400, channels: 3, background: { r: 90, g: 110, b: 70 } },
+    }).jpeg({ quality: 90 }).toBuffer();
+    const exifTall = new Uint8Array(await sharp(sensor).withMetadata({ orientation: 6 }).toBuffer());
+    const bakedTall = await sharp(Buffer.from((await toPdfImage(exifTall))!.bytes)).metadata();
+    expect(bakedTall.height).toBeGreaterThan(bakedTall.width ?? 0);
+    expect(Math.max(bakedTall.width ?? 0, bakedTall.height ?? 0)).toBeLessThanOrEqual(PDF_PHOTO_MAX_EDGE);
+    expect(bakedTall.orientation === undefined || bakedTall.orientation === 1).toBe(true);
+
+    const pdf = await buildPendientesPdf({
+      proyectoNombre: 'Casa Norte',
+      generadoEl: '25 oct 2026',
+      items: [{
+        titulo: 'Foto pesada',
+        descripcion: 'El original no entra entero.',
+        estado: 'pendiente',
+        fotos: [{ nombre: 'obra.jpg', bytes: big }],
+      }],
+    });
+    const placed = await placedPhotoSizes(pdf);
+    expect(placed).toHaveLength(1);
+    expect(placed[0].pixelWidth).toBe(PDF_PHOTO_MAX_EDGE);
+    expect(placed[0].pixelHeight).toBe(1200);
+    expect(pdf.byteLength).toBeLessThan(big.byteLength);
+  }, 15_000);
 
   it('arma el reporte con título, número, detalle y epígrafe de foto, sin estado', async () => {
     const detalle = 'Se observa falta de revoque en el muro este, especialmente en la zona media.';
