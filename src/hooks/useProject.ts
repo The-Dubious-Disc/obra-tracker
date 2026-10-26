@@ -659,6 +659,7 @@ export function useCreatePendiente() {
     titulo: string
     descripcion?: string
     estado?: 'pendiente' | 'completado'
+    responsable?: { tipo: 'constructor' } | { tipo: 'usuario'; usuarioId: string } | null
     files?: File[]
   }) => {
     setIsCreating(true)
@@ -683,6 +684,7 @@ export function useCreatePendiente() {
           descripcion: params.descripcion,
           estado: params.estado,
           fotos,
+          responsable: params.responsable,
         }),
       })
 
@@ -713,6 +715,7 @@ export function useUpdatePendiente() {
       titulo?: string
       descripcion?: string | null
       estado?: 'pendiente' | 'completado'
+      responsable?: { tipo: 'constructor' } | { tipo: 'usuario'; usuarioId: string } | null
     },
     extras?: {
       projectId?: string

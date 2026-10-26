@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { checkProjectAccess } from '@/lib/services/authService';
-import { getProjectPendientesConFotos } from '@/lib/services/projectService';
+import { getProjectMemberDisplayName, getProjectPendientesConFotos } from '@/lib/services/projectService';
 import { db } from '@/lib/db';
 import { proyectos } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getObjectBytes } from '@/lib/services/r2';
 import { buildPendientesPdf, formatPdfExportDate, pdfFilename, type PdfFotoInput } from '@/lib/pendientes/pdf';
+import { filtrarPendientesPorResponsable, parsePdfResponsableFiltro, responsableLabel } from '@/lib/pendientes/responsable';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,6 +47,11 @@ export async function GET(
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
     }
 
+    const filtro = parsePdfResponsableFiltro(request.nextUrl.searchParams.get('responsable'));
+    if (!filtro.ok) {
+      return NextResponse.json({ error: filtro.error }, { status: 400 });
+    }
+
     const project = await db.query.proyectos.findFirst({
       where: eq(proyectos.id, projectId),
       columns: { nombre: true },
@@ -55,7 +61,26 @@ export async function GET(
     }
 
     const pendientes = await getProjectPendientesConFotos(projectId, true);
-    const items = await Promise.all(pendientes.map(async (pendiente) => {
+    const filtroValor = filtro.value;
+    let filtroResponsable: string | null = null;
+    if (filtroValor.tipo === 'constructor') {
+      filtroResponsable = 'Constructor';
+    } else if (filtroValor.tipo === 'sin_asignar') {
+      filtroResponsable = 'Sin responsable';
+    } else if (filtroValor.tipo === 'usuario') {
+      const usuarioId = filtroValor.usuarioId;
+      const asignado = pendientes.find((item) => item.responsableUsuarioId === usuarioId);
+      filtroResponsable = asignado ? responsableLabel(asignado) : null;
+      if (!filtroResponsable) {
+        filtroResponsable = await getProjectMemberDisplayName(projectId, usuarioId);
+      }
+      if (!filtroResponsable) {
+        return NextResponse.json({ error: 'El responsable no tiene acceso al proyecto' }, { status: 400 });
+      }
+    }
+
+    const incluidos = filtrarPendientesPorResponsable(pendientes, filtroValor);
+    const items = await Promise.all(incluidos.map(async (pendiente) => {
       const fotos = await mapPool(pendiente.fotos, 4, async (foto): Promise<PdfFotoInput> => {
         try {
           const object = await getObjectBytes(foto.r2Key);
@@ -70,6 +95,7 @@ export async function GET(
         titulo: pendiente.titulo,
         descripcion: pendiente.descripcion,
         estado: pendiente.estado,
+        responsable: responsableLabel(pendiente),
         fotos,
       };
     }));
@@ -77,6 +103,7 @@ export async function GET(
     const pdfBytes = await buildPendientesPdf({
       proyectoNombre: project.nombre,
       generadoEl: formatPdfExportDate(new Date()),
+      ...(filtroResponsable ? { filtroResponsable } : {}),
       items,
     });
 

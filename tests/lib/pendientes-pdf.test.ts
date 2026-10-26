@@ -492,4 +492,45 @@ describe('informe PDF de pendientes', () => {
     expect(text).not.toContain('Pintura terminada');
     expect(text).not.toContain('Estado');
   }, 15_000);
+
+  it('imprime el responsable del ítem y del filtro, sin estado', async () => {
+    const pdf = await buildPendientesPdf({
+      proyectoNombre: 'Casa Norte',
+      generadoEl: '25 oct 2026',
+      filtroResponsable: 'Constructor',
+      items: [
+        {
+          titulo: 'Encofrado',
+          descripcion: 'Revisar el lateral',
+          estado: 'pendiente',
+          responsable: 'Constructor',
+          fotos: [],
+        },
+        {
+          titulo: 'Cerrado',
+          descripcion: 'No sale',
+          estado: 'completado',
+          responsable: 'Constructor',
+          fotos: [],
+        },
+      ],
+    });
+    const text = await extractPdfText(pdf);
+    expect(text).toContain('Responsable: Constructor');
+    expect(text).toContain('Encofrado');
+    expect(text).toContain('Revisar el lateral');
+    expect(text).not.toContain('Cerrado');
+    expect(text).not.toContain('Estado');
+
+    const vacio = await buildPendientesPdf({
+      proyectoNombre: 'Casa Norte',
+      generadoEl: '25 oct 2026',
+      filtroResponsable: 'Sin responsable',
+      items: [],
+    });
+    const vacioText = await extractPdfText(vacio);
+    expect(vacioText).toContain('Responsable: Sin responsable');
+    expect(vacioText).toContain('No hay pendientes abiertos para este responsable.');
+    expect(vacioText).not.toContain('Estado');
+  }, 15_000);
 });

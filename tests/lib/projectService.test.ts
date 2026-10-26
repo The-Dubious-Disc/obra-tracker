@@ -5,13 +5,17 @@ vi.mock('@/lib/db', async () => {
   return { db: mod.db }
 })
 
-import { etapas, pagos, presupuestoVersiones, proyectoMiembros, proyectos } from '@/lib/db/schema'
+import { etapas, pagos, pendientes, presupuestoVersiones, proyectoMiembros, proyectos } from '@/lib/db/schema'
 import {
   addEtapa,
   createPayment,
+  createPendiente,
   createProject,
+  getProjectMemberDisplayName,
+  getProjectPendientesConFotos,
   getProjectSummary,
   updateBudget,
+  updatePendiente,
 } from '@/lib/services/projectService'
 import { failNext, findFirst, inserts, queueInsert, queueSelect, resetDb, selectCount, updates } from '../helpers/db'
 
@@ -277,6 +281,138 @@ describe('addEtapa and createPayment', () => {
         moneda: 'USD',
         estado: 'confirmado',
       },
+    })
+  })
+})
+
+describe('responsable de pendientes', () => {
+  const usuario = '11111111-1111-4111-8111-111111111111'
+
+  it('deja el responsable vacío, asigna Constructor o un miembro del proyecto', async () => {
+    await expect(createPendiente({
+      proyectoId: 'p1',
+      titulo: 'Revoque',
+    })).resolves.toMatchObject({ success: true })
+    expect(inserts[0]).toMatchObject({
+      table: pendientes,
+      values: { proyectoId: 'p1', titulo: 'Revoque', descripcion: null },
+    })
+    expect(inserts[0].values).not.toHaveProperty('responsableUsuarioId')
+    expect(inserts[0].values).not.toHaveProperty('responsableConstructor')
+    expect(findFirst.proyectoMiembros).not.toHaveBeenCalled()
+
+    inserts.length = 0
+    await expect(createPendiente({
+      proyectoId: 'p1',
+      titulo: 'Encofrado',
+      responsable: null,
+    })).resolves.toMatchObject({ success: true })
+    expect(inserts[0].values).toMatchObject({
+      responsableUsuarioId: null,
+      responsableConstructor: false,
+    })
+
+    inserts.length = 0
+    await expect(createPendiente({
+      proyectoId: 'p1',
+      titulo: 'Hormigón',
+      responsable: { tipo: 'constructor' },
+    })).resolves.toMatchObject({ success: true })
+    expect(inserts[0].values).toMatchObject({
+      responsableUsuarioId: null,
+      responsableConstructor: true,
+    })
+
+    inserts.length = 0
+    findFirst.proyectoMiembros.mockResolvedValue({ id: 'm1' })
+    await expect(createPendiente({
+      proyectoId: 'p1',
+      titulo: 'Instalación',
+      responsable: { tipo: 'usuario', usuarioId: usuario },
+    })).resolves.toMatchObject({ success: true })
+    expect(inserts[0].values).toMatchObject({
+      responsableUsuarioId: usuario,
+      responsableConstructor: false,
+    })
+  })
+
+  it('rechaza un usuario sin acceso y conserva al asignado actual', async () => {
+    findFirst.proyectoMiembros.mockResolvedValue(undefined)
+    await expect(createPendiente({
+      proyectoId: 'p1',
+      titulo: 'Revoque',
+      responsable: { tipo: 'usuario', usuarioId: usuario },
+    })).resolves.toEqual({
+      success: false,
+      error: 'El responsable no tiene acceso al proyecto',
+      status: 400,
+    })
+    expect(inserts).toHaveLength(0)
+
+    await expect(updatePendiente('pen-1', {
+      responsable: { tipo: 'usuario', usuarioId: usuario },
+    }, {
+      proyectoId: 'p1',
+      responsableUsuarioId: usuario,
+    })).resolves.toEqual({ success: true })
+    expect(updates[0].set).toMatchObject({
+      responsableUsuarioId: usuario,
+      responsableConstructor: false,
+    })
+
+    updates.length = 0
+    await expect(updatePendiente('pen-1', {
+      responsable: { tipo: 'usuario', usuarioId: '22222222-2222-4222-8222-222222222222' },
+    }, {
+      proyectoId: 'p1',
+      responsableUsuarioId: usuario,
+    })).resolves.toMatchObject({ success: false, status: 400 })
+    expect(updates).toHaveLength(0)
+  })
+
+  it('actualiza el estado sin tocar el responsable y arma la etiqueta del miembro', async () => {
+    await expect(updatePendiente('pen-1', { estado: 'completado' }, { proyectoId: 'p1' }))
+      .resolves.toEqual({ success: true })
+    expect(updates[0].set).toMatchObject({ estado: 'completado' })
+    expect(updates[0].set).not.toHaveProperty('responsableConstructor')
+    expect(findFirst.proyectoMiembros).not.toHaveBeenCalled()
+
+    await expect(updatePendiente('pen-1', { responsable: null }, { proyectoId: 'p1', responsableUsuarioId: usuario }))
+      .resolves.toEqual({ success: true })
+    expect(updates[1].set).toMatchObject({
+      responsableUsuarioId: null,
+      responsableConstructor: false,
+    })
+
+    queueSelect([{ nombre: '   ', email: 'ana@obra.test' }])
+    await expect(getProjectMemberDisplayName('p1', usuario)).resolves.toBe('ana@obra.test')
+    queueSelect([])
+    await expect(getProjectMemberDisplayName('p1', usuario)).resolves.toBeNull()
+  })
+
+  it('adjunta el nombre del responsable al listar pendientes con fotos', async () => {
+    queueSelect([{
+      id: 'pen-1',
+      proyectoId: 'p1',
+      titulo: 'Revoque',
+      descripcion: null,
+      estado: 'pendiente',
+      responsableUsuarioId: usuario,
+      responsableConstructor: false,
+      createdAt: null,
+      updatedAt: null,
+      responsableNombre: '',
+      responsableEmail: 'ana@obra.test',
+    }])
+    queueSelect([{ id: 'foto-1', pendienteId: 'pen-1', r2Key: 'k', nombre: 'muro.jpg', orden: 0 }])
+
+    const rows = await getProjectPendientesConFotos('p1')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      titulo: 'Revoque',
+      responsableEmail: 'ana@obra.test',
+      estado: 'pendiente',
+      fotos: [{ id: 'foto-1' }],
     })
   })
 })

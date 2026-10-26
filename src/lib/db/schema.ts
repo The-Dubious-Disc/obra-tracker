@@ -1,5 +1,5 @@
-import { pgTable, uuid, text, decimal, timestamp, integer, boolean, pgEnum, date, doublePrecision } from "drizzle-orm/pg-core";
-import { relations } from 'drizzle-orm';
+import { pgTable, uuid, text, decimal, timestamp, integer, boolean, pgEnum, date, doublePrecision, check } from "drizzle-orm/pg-core";
+import { relations, sql } from 'drizzle-orm';
 
 // Enums
 export const tareaEstadoEnum = pgEnum('tarea_estado', ['pendiente', 'en_progreso', 'completada']);
@@ -85,9 +85,16 @@ export const pendientes = pgTable('pendientes', {
   titulo: text('titulo').notNull(),
   descripcion: text('descripcion'),
   estado: pendienteEstadoEnum('estado').default('pendiente'),
+  responsableUsuarioId: uuid('responsable_usuario_id').references(() => usuarios.id, { onDelete: 'set null' }),
+  responsableConstructor: boolean('responsable_constructor').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-});
+}, (table) => [
+  check(
+    'pendientes_responsable_excluyente',
+    sql`NOT (${table.responsableConstructor} AND ${table.responsableUsuarioId} IS NOT NULL)`,
+  ),
+]);
 
 export const pendienteFotos = pgTable('pendiente_fotos', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -253,6 +260,10 @@ export const pendientesRelations = relations(pendientes, ({ one, many }) => ({
   proyecto: one(proyectos, {
     fields: [pendientes.proyectoId],
     references: [proyectos.id],
+  }),
+  responsableUsuario: one(usuarios, {
+    fields: [pendientes.responsableUsuarioId],
+    references: [usuarios.id],
   }),
   fotos: many(pendienteFotos),
 }));

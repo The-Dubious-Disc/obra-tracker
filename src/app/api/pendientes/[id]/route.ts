@@ -45,6 +45,7 @@ export async function PATCH(
         ? null
         : typeof body?.descripcion === 'string' ? body.descripcion.trim() : body?.descripcion,
       estado: body?.estado,
+      responsable: body?.responsable,
     });
 
     if (!parsed.success) {
@@ -60,10 +61,14 @@ export async function PATCH(
         ? undefined
         : (parsed.data.descripcion ? parsed.data.descripcion : null),
       estado: parsed.data.estado,
+      ...(parsed.data.responsable !== undefined ? { responsable: parsed.data.responsable } : {}),
+    }, {
+      proyectoId: pendiente.proyectoId,
+      responsableUsuarioId: pendiente.responsableUsuarioId ?? null,
     });
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 500 });
+      return NextResponse.json({ error: result.error }, { status: result.status ?? 500 });
     }
 
     return NextResponse.json({ success: true });
